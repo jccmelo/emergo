@@ -2,29 +2,28 @@
 <?eclipse version="3.4"?>
 <plugin>
 
-   <extension
-         point="org.eclipse.ui.actionSets">
-      <actionSet
-            label="Sample Action Set"
-            visible="true"
-            id="Emergo.actionSet">
-         <menu
-               label="Sample &amp;Menu"
-               id="sampleMenu">
-            <separator
-                  name="sampleGroup">
-            </separator>
-         </menu>
-         <action
-               label="&amp;Sample Action"
-               icon="icons/Emergo-Logo.gif"
-               class="br.ufpe.cin.emergo.actions.EmergoAction"
-               tooltip="Hello, Eclipse world"
-               menubarPath="sampleMenu/sampleGroup"
-               toolbarPath="sampleGroup"
-               id="br.ufpe.cin.emergo.actions.EmergoAction">
-         </action>
-      </actionSet>
-   </extension>
+	<extension point="org.eclipse.ui.commands">
+		
+	<command
+        defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
+        id="br.ufpe.cin.emergo.command.Emergo"
+        name="Emergo">
+		</command>
+	</extension>
+ <extension
+       point="org.eclipse.ui.menus">
+    <menuContribution
+          allPopups="false"
+          locationURI="popup:org.eclipse.ui.popup.any">
+       <menu
+             id="emergo"
+             label="Emergo!">
+          <command
+                commandId="br.ufpe.cin.emergo.command.Emergo"
+                style="push">
+          </command>
+       </menu>
+    </menuContribution>
+ </extension>
 
 </plugin>
