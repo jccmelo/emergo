@@ -3,27 +3,21 @@
 <plugin>
 
 	<extension point="org.eclipse.ui.commands">
-		
-	<command
-        defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
-        id="br.ufpe.cin.emergo.command.Emergo"
-        name="Emergo">
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
+        		 id="br.ufpe.cin.emergo.command.Emergo"
+             	 name="Generate Interface">
 		</command>
 	</extension>
- <extension
-       point="org.eclipse.ui.menus">
-    <menuContribution
-          allPopups="false"
-          locationURI="popup:org.eclipse.ui.popup.any">
-       <menu
-             id="emergo"
-             label="Emergo!">
-          <command
-                commandId="br.ufpe.cin.emergo.command.Emergo"
-                style="push">
-          </command>
-       </menu>
-    </menuContribution>
- </extension>
+	
+	<extension point="org.eclipse.ui.menus">
+    	<menuContribution allPopups="false"
+          				  locationURI="popup:#CompilationUnitEditorContext">
+       		<menu id="emergo" label="Emergo!" icon="icons/Emergo-Logo-Blue.png">
+          		<command commandId="br.ufpe.cin.emergo.command.Emergo"
+                		 style="push">
+          		</command>
+       		</menu>
+    	</menuContribution>
+ 	</extension>
 
 </plugin>
