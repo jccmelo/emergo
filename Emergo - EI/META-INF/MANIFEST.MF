@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Emergo
+Bundle-SymbolicName: Emergo_-_EI;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: br.ufpe.cin.emergo.activator.Activator
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime
+Bundle-ActivationPolicy: lazy
+Bundle-RequiredExecutionEnvironment: J2SE-1.5
