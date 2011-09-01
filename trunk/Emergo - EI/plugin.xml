@@ -1,23 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?eclipse version="3.4"?>
+<?eclipse version="3.6"?>
 <plugin>
 
-	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
-        		 id="br.ufpe.cin.emergo.command.Emergo"
-             	 name="Generate Interface">
-		</command>
-	</extension>
+	<!-- Menu contributions -->
 	
 	<extension point="org.eclipse.ui.menus">
     	<menuContribution allPopups="false"
           				  locationURI="popup:#CompilationUnitEditorContext">
        		<menu id="emergo" label="Emergo!" icon="icons/Emergo-Logo-Blue.png">
-          		<command commandId="br.ufpe.cin.emergo.command.Emergo"
+          		<command commandId="br.ufpe.cin.emergo.command.GenerateInterface"
                 		 style="push">
           		</command>
        		</menu>
     	</menuContribution>
  	</extension>
+
+	<!-- Commands -->
+
+	<extension point="org.eclipse.ui.commands">
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
+        		 id="br.ufpe.cin.emergo.command.GenerateInterface"
+             	 name="Generate Interface">
+		</command>
+	</extension>
+ 
+ 	<!-- Short cuts (keys) -->
+ 	<!--
+ 		Map:
+ 		Ctrl + 9 = Generate Interface
+ 	-->
+ 
+ 	<extension point="org.eclipse.ui.bindings">
+    	<key
+          commandId="br.ufpe.cin.emergo.command.GenerateInterface"
+          contextId="org.eclipse.ui.contexts.window"
+          schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+          sequence="M1+9">
+    	</key>
+ 	</extension>
+ 	
+ 	<!-- //#ifdef Editor -->
+ 	
+ 	<extension id="javaeditor" point="org.eclipse.ui.editors">
+    	<editor
+        	name="//#ifdef Java Editor"
+            default="true"
+            icon="icons/Emergo-Logo-Blue.png"
+            contributorClass="org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditorActionContributor"
+            class="br.ufpe.cin.emergo.editor.IfDefJavaEditor"
+            symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
+            id="de.ovgu.cide.ColoredFoldingCompilationUnitEditor">
+            <contentTypeBinding contentTypeId="org.eclipse.jdt.core.javaSource"/> 
+		</editor>
+	</extension>
 
 </plugin>
