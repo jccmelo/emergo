@@ -18,3 +18,4 @@ Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ClassPath: .,
  lib/jw-compiler.jar
+ lib/jgrapht-jdk1.6.jar
