@@ -8,23 +8,69 @@
     	<menuContribution allPopups="false"
           				  locationURI="popup:#CompilationUnitEditorContext">
        		<menu id="emergo" label="Emergo!" icon="icons/Emergo-Logo-Blue.png">
-          		<command commandId="br.ufpe.cin.emergo.command.GenerateInterface"
+          		<command commandId="br.ufpe.cin.emergo.command.generateinterface"
                 		 style="push">
           		</command>
        		</menu>
     	</menuContribution>
  	</extension>
 
-	<!-- Commands -->
+	<extension point="org.eclipse.ui.menus">
+		<menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
+			<command commandId="br.ufpe.cin.emergo.command.hidefeature" icon="icons/Emergo-Logo-Blue.png">
+				<enabledWhen>
+					<not>
+						<count value="0" />
+					</not>
+				</enabledWhen>
+				<visibleWhen>
+					<with variable="activeMenuSelection">
+						<iterate>
+							<adapt type="org.eclipse.core.resources.IMarker"/>
+						</iterate>
+					</with>
+				</visibleWhen>
+			</command>
+        	<separator name="group.hide" visible="true"/>  
+		</menuContribution>
+	</extension>
+
+	<!-- Commands / Handlers -->
+	<!--
+ 		1) Generate Interface
+ 		2) Hide Features
+ 	-->
 
 	<extension point="org.eclipse.ui.commands">
 		<command defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
-        		 id="br.ufpe.cin.emergo.command.GenerateInterface"
+        		 id="br.ufpe.cin.emergo.command.generateinterface"
              	 name="Generate Interface">
 		</command>
 	</extension>
- 
- 	<!-- Short cuts (keys) -->
+
+ 	<extension point="org.eclipse.ui.commands">
+		<category id="br.ufpe.cin.emergo.command.markerview"
+				  name="Markers View Command">
+		</category>
+		<command categoryId="br.ufpe.cin.emergo.command.markerview"
+			description="Hide features except the selected ones" 
+			id="br.ufpe.cin.emergo.command.hidefeature"
+			name="Hide Other Features">
+		</command>
+	</extension>
+
+	<extension point="org.eclipse.ui.handlers">
+		<handler class="br.ufpe.cin.emergo.handlers.HideFeaturesHandler"
+			commandId="br.ufpe.cin.emergo.command.hidefeature" name="Handler for the hidefeature command">
+		</handler>
+		<enabledWhen>
+			<not>
+				<count value="0"/>
+			</not>
+		</enabledWhen>
+	</extension>
+
+ 	<!-- Shortcuts (keys) -->
  	<!--
  		Map:
  		Ctrl + 9 = Generate Interface
@@ -32,7 +78,7 @@
  
  	<extension point="org.eclipse.ui.bindings">
     	<key
-          commandId="br.ufpe.cin.emergo.command.GenerateInterface"
+          commandId="br.ufpe.cin.emergo.command.generateinterface"
           contextId="org.eclipse.ui.contexts.window"
           schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
           sequence="M1+9">
@@ -53,5 +99,53 @@
             <contentTypeBinding contentTypeId="org.eclipse.jdt.core.javaSource"/> 
 		</editor>
 	</extension>
+
+	<!-- View for showing Emergo results -->
+
+	<extension point="org.eclipse.ui.views">
+
+		<category name="Emergo" id="EmergoViews"/>
+
+		<view
+			category="EmergoViews"
+	    	class="br.ufpe.cin.emergo.views.EmergoResultsView"
+			icon="icons/Emergo-Logo-Blue.png"
+			id="emergoResults"
+			name="Emergo Results">
+		</view>
+	</extension>
+ 
+	<!-- Creating the markers for Emergo results -->
+
+	<extension point="org.eclipse.core.resources.markers"
+		id="Emergo.emergomarker"
+		class="br.ufpe.cin.emergo.markers.EmergoMarker"
+		name="Emergo Marker">
+		<persistent value="false"/>
+		<super type="org.eclipse.core.resources.marker"/>
+   	</extension>
+
+   	<extension point="org.eclipse.ui.ide.markerSupport">
+		<markerField 
+			class="br.ufpe.cin.emergo.markers.ConfigurationColumn"
+			id="br.ufpe.cin.emergo.markers.configurationColumn" 
+			name="Configuration"> 
+		</markerField>
+
+		<markerField
+			class="br.ufpe.cin.emergo.markers.FeatureColumn"
+			id="br.ufpe.cin.emergo.markers.featureColumn" 
+			name="Feature"> 
+		</markerField>
+
+		<markerContentGenerator id="emergoResultsSupport" name="Emergo Results" defaultMarkerGrouping="org.eclipse.ui.ide.type">
+			<markerTypeReference id="Emergo.emergomarker"/>
+			<markerFieldReference id="org.eclipse.ui.ide.severityAndDescriptionField"/>
+			<markerFieldReference id="br.ufpe.cin.emergo.markers.configurationColumn"/>
+			<markerFieldReference id="org.eclipse.ui.ide.locationField"/>
+			<markerFieldReference id="br.ufpe.cin.emergo.markers.featureColumn"/>
+			<markerFieldReference id="org.eclipse.ui.ide.resourceField"/>
+		</markerContentGenerator>
+ 	</extension>
 
 </plugin>

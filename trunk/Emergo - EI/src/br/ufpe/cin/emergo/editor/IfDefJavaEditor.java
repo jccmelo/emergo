@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.projection.ProjectionAnnotation;
@@ -22,8 +23,21 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 		
 	public IfDefJavaEditor() {
 		this.annotationModelIfDefs = new ProjectionAnnotationModel();
+		
+		/**
+		 * Steps needed for syntax highlighting
+		 */
+		
+//		IPreferenceStore preferenceStore = getPreferenceStore();
+//		JavaColorManager javaColorManager = (JavaColorManager) JavaPlugin.getDefault().getJavaTextTools().getColorManager();
+//
+//		JavaPlugin.getDefault().getJavaTextTools().get
+		
+		//setSourceViewerConfiguration(new IfDefSourceViewerConfiguration(javaColorManager, preferenceStore, this, null));
+		
+		setSourceViewerConfiguration(new IfDefSourceViewerConfiguration());
 	}
-	
+
 	public void instantiatePositions() {
 		this.positionsIfDefs = new HashSet<ArrayList<Position>>();
 	}
@@ -34,15 +48,6 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 	
 	public void createPartControl(Composite parent) {
 		super.createPartControl(parent);
-		
-//		Caret
-//		try {
-//			IWorkbenchPartSite site = getSite();
-//			IWorkbenchWindow window = site.getWorkbenchWindow();
-//			window.getSelectionService().addPostSelectionListener(new ChangeSelectionListener());
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
 		
 		ProjectionViewer viewer = (ProjectionViewer) getSourceViewer();
 
@@ -83,4 +88,8 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 		this.annotationModelIfDefs.removeAllAnnotations();
 	}
 
+	public IDocument getDocument() {
+		return getSourceViewer().getDocument();
+	}
+	
 }
