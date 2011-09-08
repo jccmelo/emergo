@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.jgrapht.Graph;
+
 import dk.au.cs.java.compiler.ErrorType;
 import dk.au.cs.java.compiler.Errors;
 import dk.au.cs.java.compiler.Main;
@@ -176,7 +178,7 @@ public class JWCompilerDependencyFinder {
 		});
 
 		// Generate the intermediate depency graph.
-		IntermediateDependencyGraphBuilder.build(node, cfg, pointsInUserSelection, methodDeclBox[0]);
+		Graph<Object, ValueContainerEdge> useDefWeb = IntermediateDependencyGraphBuilder.build(node, cfg, pointsInUserSelection, methodDeclBox[0]);
 
 	}
 
@@ -184,11 +186,7 @@ public class JWCompilerDependencyFinder {
 	private static AProgram parseProgram(List<File> sourceFiles) {
 		final List<ACompilationUnit> sources = new /* CopyOnWrite */ArrayList<ACompilationUnit>();
 
-		// LinkedList<Thread> threads = new LinkedList<Thread>();
 		for (final File file : sourceFiles) {
-			/*
-			 * Thread thread = new Thread() { public void run() {
-			 */
 			try {
 				showPhaseProgress();
 				FileInputStream fis = new FileInputStream(file);
@@ -211,13 +209,11 @@ public class JWCompilerDependencyFinder {
 				Errors.check(); // no use in parsing of not all files can be read
 			}
 		}
-		/*
-		 * }; threads.add(thread); thread.start(); } for (Thread thread : threads) { try { thread.join(); } catch
-		 * (InterruptedException e) { } }
-		 */
 		AProgram node = new AProgram(new TIdentifier("AProgram", 0, 0), sources);
-		node.setOptionalInvariant(true); // enables the runtime tree
-											// invariant
+
+		// enables the runtime tree invariant
+		node.setOptionalInvariant(true);
+
 		return node;
 	}
 };

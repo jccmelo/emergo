@@ -2,107 +2,92 @@ package br.ufpe.cin.emergo.handlers;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
-import org.jgrapht.DirectedGraph;
+import org.jgrapht.Graph;
 import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.StringNameProvider;
-import org.jgrapht.graph.DirectedGraphUnion;
-import org.jgrapht.graph.DirectedMultigraph;
-import org.jgrapht.graph.DirectedPseudograph;
+import org.jgrapht.graph.DefaultDirectedGraph;
 
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.DirectAnalysis;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
-import dk.au.cs.java.compiler.cfg.analysis.Process;
-import dk.au.cs.java.compiler.cfg.analysis.ReachingDefinitionsRules;
-import dk.au.cs.java.compiler.cfg.analysis.VariableInfo;
-import dk.au.cs.java.compiler.cfg.point.LValue;
 import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.cfg.point.Read;
 import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
-import dk.au.cs.java.compiler.type.members.Method;
 import dk.brics.lattice.LatticeSet;
-import dk.brics.lattice.LatticeSetFilter;
 
 public class IntermediateDependencyGraphBuilder {
 
-	private static final class ReachingDefinitionsRulesExtension extends ReachingDefinitionsRules {
-		private final DirectedGraph<Object, ValueContainerEdge> reachesData;
+	/**
+	 * Defeats instantiation.
+	 * 
+	 */
+	private IntermediateDependencyGraphBuilder() {
 
-		private ReachingDefinitionsRulesExtension(DirectedGraph<Object, ValueContainerEdge> reachesData) {
-			this.reachesData = reachesData;
-		}
-
-		@Override
-		public void computeRead(final Read point, VariableInfo<LatticeSet<Write>> info) {
-			info.process(point, new Process<LatticeSet<Write>>() {
-				public LatticeSet<Write> process(LatticeSet<Write> set) {
-					return set.filter(new LatticeSetFilter<Write>() {
-
-						public boolean accept(Write write) {
-							LValue lValue = write.getLValue();
-							Read read = point;
-							if (lValue.equals(read.getExpression())) {
-								reachesData.addVertex(read);
-								reachesData.addEdge(write, read);
-							}
-							return true;
-						}
-					});
-				}
-			});
-			reachesData.addVertex(point);
-		}
-		
-		@Override
-		public void computeWrite(final Write point, VariableInfo<LatticeSet<Write>> info) {
-			super.computeWrite(point, info);
-			reachesData.addVertex(point);
-		}
 	}
 
-	public static void build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
-		final DirectedPseudograph<Object, ValueContainerEdge> reachesData = new DirectedPseudograph<Object, ValueContainerEdge>(ValueContainerEdge.class);
+	/**
+	 * Finds the dependencies in the {@code cfg} wrt the user selection ({@code pointsInUserSelection}). These
+	 * dependencies are represented as an (possibly cyclic) directed graph.
+	 * 
+	 * @param node
+	 * @param cfg
+	 * @param pointsInUserSelection
+	 * @param methodDecl
+	 * @return
+	 */
+	public static Graph<Object, ValueContainerEdge> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
+		// This graph will contain a representation for the data dependencies.
+		final DefaultDirectedGraph<Object, ValueContainerEdge> reachesData = new DefaultDirectedGraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
 
-		ReachingDefinitionsRules defUseRules = new ReachingDefinitionsRulesExtension(reachesData);
-		DirectAnalysis<LatticeSet<Write>> analysisResult = AnalysisProcessor.process(methodDecl, defUseRules);
-//		DirectAnalysis<LatticeSet<Object>> analysisResult = AnalysisProcessor.process(methodDecl, new DefUseRules());
-		analysisResult.startAnalysis(cfg);
-		analysisResult.endAnalysis(cfg);
+		DirectAnalysis<LatticeSet<Object>> analysisResult = AnalysisProcessor.process(methodDecl, new DefUseRules(reachesData));
 
-		// XXX DEBUG code. Move it somewhere else.
-		{
-			DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
-				@Override
-				public String getVertexName(Object vertex) {
-					if (vertex instanceof Write) {
-						return "\"w " + vertex.toString().replace("\"", "'") + "\"";
-					} else if (vertex instanceof Read) {
-						return "\"r " + vertex.toString().replace("\"", "'") + "\"";
-					} else {
-						return "\"" + vertex.toString().replace("\"", "'") + "\"";
-					}
-				}
-			}, null, null);
-			try {
-				File file1Dot = new File(System.getProperty("user.home") + File.separator + "jwdebuginfo.dot");
-				FileWriter fileWriter1 = new FileWriter(file1Dot);
-				exporter.export(fileWriter1, reachesData);
-				fileWriter1.close();
+		DefaultDirectedGraph<Object, ValueContainerEdge> filteredReachesData = filterWithUserSelection(pointsInUserSelection, reachesData);
 
-				File file2Dot = new File(System.getProperty("user.home") + File.separator + "selectioncfg.dot");
-				FileWriter fileWriter2 = new FileWriter(file2Dot);
-				fileWriter2.write(cfg.toDot(analysisResult));
-				fileWriter2.close();
-			} catch (Exception e) {
-				e.printStackTrace();
+		// XXX Prints out stuff to help debugging. Remove later.
+		_debug(cfg, reachesData, filteredReachesData, analysisResult);
+
+		return reachesData;
+	}
+
+	private static DefaultDirectedGraph<Object, ValueContainerEdge> filterWithUserSelection(List<Point> pointsInUserSelection, DefaultDirectedGraph<Object, ValueContainerEdge> reachesData) {
+		final DefaultDirectedGraph<Object, ValueContainerEdge> filteredGraph = new DefaultDirectedGraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
+
+		LinkedList<Point> workList = new LinkedList<Point>(pointsInUserSelection);
+		HashSet<Point> alreadyVisitedPoints = new HashSet<Point>();
+
+		while (!workList.isEmpty()) {
+			Point head = workList.removeFirst();
+			if (!reachesData.containsVertex(head)) {
+				alreadyVisitedPoints.add(head);
+				continue;
 			}
-
+			Set<ValueContainerEdge> outgoingEdges = reachesData.outgoingEdgesOf(head);
+			if (outgoingEdges.isEmpty()) {
+				alreadyVisitedPoints.add(head);
+				continue;
+			}
+			alreadyVisitedPoints.add(head);
+			for (ValueContainerEdge edge : outgoingEdges) {
+				Point target = (Point) reachesData.getEdgeTarget(edge);
+				filteredGraph.addVertex(head);
+				filteredGraph.addVertex(target);
+				filteredGraph.addEdge(head, target);
+				if (alreadyVisitedPoints.add(target)) {
+					workList.add(target);
+				}
+			}
 		}
+
+		return filteredGraph;
 	}
+
 	// public static void build(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<?> analysisResult) {
 	// DirectedMultigraph<Write, ValueContainerEdge> reachesData = new DirectedMultigraph<Write,
 	// ValueContainerEdge>(ValueContainerEdge.class);
@@ -174,4 +159,37 @@ public class IntermediateDependencyGraphBuilder {
 	// }
 	// }
 
+	private static void _debug(ControlFlowGraph cfg, final DefaultDirectedGraph<Object, ValueContainerEdge> reachesData, DefaultDirectedGraph<Object, ValueContainerEdge> filteredReachesData, DirectAnalysis<LatticeSet<Object>> analysisResult) {
+		// XXX DEBUG code. Move it somewhere else.
+		DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
+			@Override
+			public String getVertexName(Object vertex) {
+				if (vertex instanceof Write) {
+					return "\"[" + ((Write) vertex).getToken().getLine() + "]w " + vertex.toString().replace("\"", "'") + "\"";
+				} else if (vertex instanceof Read) {
+					return "\"[" + ((Read) vertex).getToken().getLine() + "]r " + vertex.toString().replace("\"", "'") + "\"";
+				} else {
+					return "\"" + vertex.toString().replace("\"", "'") + "\"";
+				}
+			}
+		}, null, null);
+		try {
+			File file1Dot = new File(System.getProperty("user.home") + File.separator + "jwd.dot");
+			FileWriter fileWriter1 = new FileWriter(file1Dot);
+			exporter.export(fileWriter1, reachesData);
+			fileWriter1.close();
+
+			File file3Dot = new File(System.getProperty("user.home") + File.separator + "jwdf.dot");
+			FileWriter fileWriter3 = new FileWriter(file3Dot);
+			exporter.export(fileWriter3, filteredReachesData);
+			fileWriter3.close();
+
+			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
+			FileWriter fileWriter2 = new FileWriter(file2Dot);
+			fileWriter2.write(cfg.toDot(analysisResult));
+			fileWriter2.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

@@ -2,17 +2,23 @@ package br.ufpe.cin.emergo.handlers;
 
 import java.util.Set;
 
+import org.jgrapht.Graph;
+import org.jgrapht.graph.DirectedPseudograph;
+
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.ForwardStrategy;
 import dk.au.cs.java.compiler.cfg.analysis.Analysis;
 import dk.au.cs.java.compiler.cfg.analysis.Process;
 import dk.au.cs.java.compiler.cfg.analysis.VariableInfo;
 import dk.au.cs.java.compiler.cfg.analysis.VariableRead;
+import dk.au.cs.java.compiler.cfg.point.Expression;
 import dk.au.cs.java.compiler.cfg.point.LValue;
 import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.cfg.point.Read;
+import dk.au.cs.java.compiler.cfg.point.Variable;
 import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.cfg.visualizer.VisualizerPropertyCollector;
+import dk.au.cs.java.compiler.node.Token;
 import dk.brics.lattice.Lattice;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
@@ -26,8 +32,11 @@ import dk.brics.util.collection.Stringifier;
 public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	private static final String ID = "DU";
 
-	public DefUseRules() {
+	private Graph<Object, ValueContainerEdge> reachesData;
+
+	public DefUseRules(Graph<Object, ValueContainerEdge> reachesData) {
 		super(ID, ForwardStrategy.INSTANCE);
+		this.reachesData = reachesData;
 	}
 
 	@Override
@@ -38,7 +47,6 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	@Override
 	public void generateProperty(VisualizerPropertyCollector collector) {
 		collector.addNodeSetProperty(ID, "DefUse");
-
 	}
 
 	@Override
@@ -50,12 +58,13 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 				if (variable != null) {
 					Set<Point> points = CollectionUtil.newInsertOrderSet();
 					for (Point target : collector.getPoints()) {
-						if (target instanceof Write) {
-							Write write = (Write) target;
-							if (read.getExpression().equals(write.getLValue())) {
-								points.add(write);
-							}
-						}
+						points.add(target);
+						// if (target instanceof Write) {
+						// Write write = (Write) target;
+						// if (read.getExpression().equals(write.getLValue())) {
+						// points.add(write);
+						// }
+						// }
 					}
 					collector.addNodeSetPropertyValue(source, ID, points);
 				}
@@ -84,13 +93,30 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 				set = set.filter(new LatticeSetFilter<Object>() {
 
 					public boolean accept(Object element) {
-						if (element instanceof Read) {
-							return !((Read) element).getVariable().equals(point.getVariable());
+						if (element instanceof Write) {
+							Write write = (Write) element;
+							if (write.getLValue().equals(point.getExpression())) {
+								reachesData.addVertex(write);
+								reachesData.addVertex(point);
+								reachesData.addEdge(write, point);
+							}
+							return true;
+						} else if (element instanceof Read) {
+							Read read = (Read) element;
+							if (point.toString().contains(read.getVariable().toString())) {
+								reachesData.addVertex(read);
+								reachesData.addVertex(point);
+								reachesData.addEdge(read, point);
+							}
+							return true;
+						} else {
+							// this should not happen at all.
+							assert false;
+							return false;
 						}
-						return true;
 					}
 				});
-				set.include(point);
+				set = set.include(point);
 				return set;
 			}
 		});
@@ -98,6 +124,7 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 
 	@Override
 	public void computeWrite(final Write point, VariableInfo<LatticeSet<Object>> info) {
+
 		info.process(point, new Process<LatticeSet<Object>>() {
 
 			public LatticeSet<Object> process(LatticeSet<Object> set) {
@@ -106,9 +133,21 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 
 					public boolean accept(Object element) {
 						if (element instanceof Write) {
-							return !((Write) element).getLValue().equals(lvalue);
-						} else {
+							Write write = (Write) element;
+							LValue lv = write.getLValue();
+							return !lv.equals(lvalue);
+						} else if (element instanceof Read) {
+							Read read = (Read) element;
+							if (point.getVariable().equals(read.getVariable())) {
+								reachesData.addVertex(point);
+								reachesData.addVertex(read);
+								reachesData.addEdge(read, point);
+							}
 							return true;
+						} else {
+							// this should not happen at all.
+							assert false;
+							return false;
 						}
 					}
 
