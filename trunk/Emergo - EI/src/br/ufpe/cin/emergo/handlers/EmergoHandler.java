@@ -36,6 +36,10 @@ import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 
+import br.ufpe.cin.emergo.core.DependencyFinder;
+import br.ufpe.cin.emergo.core.DependencyFinderID;
+import br.ufpe.cin.emergo.core.SelectionPosition;
+
 /**
  * Handler for the br.ufal.cideei.commands.DoCompute extension command.
  * 
@@ -54,69 +58,87 @@ public class EmergoHandler extends AbstractHandler {
 			 * Mechanism for passing through information that could make the dependency finder easier/faster to
 			 * implement.
 			 */
-			final Map<Object, Object> options = new HashMap<Object, Object>();
-
-			ISelection selection = HandlerUtil.getCurrentSelectionChecked(event);
-			Shell shell = HandlerUtil.getActiveShellChecked(event);
-
-			if (!(selection instanceof ITextSelection))
-				throw new ExecutionException("Not a text selection");
-
-			IFile textSelectionFile = (IFile) HandlerUtil.getActiveEditorChecked(event).getEditorInput().getAdapter(IFile.class);
-			// ITextSelection textSelection = (ITextSelection) selection;
-
-			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
-			IDocumentProvider provider = editor.getDocumentProvider();
-			IDocument document = provider.getDocument(editor.getEditorInput());
-			ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
-
-			// The project from which the file belongs.
-			IProject project = textSelectionFile.getProject();
-
-			CompilationUnit compilationUnit = getCompilationUnit(textSelectionFile);
-			SelectionNodesVisitor selectionVisitor = new SelectionNodesVisitor(textSelection);
-			compilationUnit.accept(selectionVisitor);
-			Set<ASTNode> nodesInSelection = selectionVisitor.getNodes();
-			MethodDeclaration parentMethod = getParentMethod(nodesInSelection);
-			IMethod method = (IMethod) this.compilationUnit.getElementAt(parentMethod.getStartPosition());
-
-			options.put("type", method.getDeclaringType().getFullyQualifiedName());
-			options.put("methodDescriptor", getMethodDescriptor(method));
-			options.put("method", method.getElementName());
+//			final Map<Object, Object> options = new HashMap<Object, Object>();
+//
+//			ISelection selection = HandlerUtil.getCurrentSelectionChecked(event);
+//			Shell shell = HandlerUtil.getActiveShellChecked(event);
+//
+//			if (!(selection instanceof ITextSelection))
+//				throw new ExecutionException("Not a text selection");
+//
+//			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
+//			IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
+//
+//			IDocumentProvider provider = editor.getDocumentProvider();
+//			IDocument document = provider.getDocument(editor.getEditorInput());
+//			ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
+//
+//			// The project from which the file belongs.
+//			IProject project = textSelectionFile.getProject();
+//
+//			CompilationUnit compilationUnit = getCompilationUnit(textSelectionFile);
+//			SelectionNodesVisitor selectionVisitor = new SelectionNodesVisitor(textSelection);
+//			compilationUnit.accept(selectionVisitor);
+//			Set<ASTNode> nodesInSelection = selectionVisitor.getNodes();
+//			MethodDeclaration parentMethod = getParentMethod(nodesInSelection);
+//			IMethod method = (IMethod) this.compilationUnit.getElementAt(parentMethod.getStartPosition());
+//
+//			options.put("type", method.getDeclaringType().getFullyQualifiedName());
+//			options.put("methodDescriptor", getMethodDescriptor(method));
+//			options.put("method", method.getElementName());
+//
+//			/*
+//			 * Finds out the (partial) project's classpath as a list of Files. Each File either points to a source
+//			 * folder, or an archive like a jar.
+//			 */
+//			IJavaProject javaProject = JavaCore.create(project);
+//			
+//			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
+//
+//			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
+//			List<File> classpath = new ArrayList<File>();
+//			for (IClasspathEntry cpEntry : resolvedClasspath) {
+//				switch (cpEntry.getEntryKind()) {
+//				case IClasspathEntry.CPE_CONTAINER:
+//					classpath.add(cpEntry.getPath().makeAbsolute().toFile());
+//					break;
+//				case IClasspathEntry.CPE_SOURCE:
+//					classpath.add(ResourcesPlugin.getWorkspace().getRoot().getFolder(cpEntry.getPath()).getLocation().toFile());
+//				}
+//			}
+//
+//			options.put("classpath", classpath);
+//
+//			/*
+//			 * Holds the textual selection information that needs to passed along to the underlying compiler
+//			 * infrastructure
+//			 */
+//			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(textSelectionFile.getLocation().toOSString()).build();
+//
+//			try {
+//				DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
+//			} catch (FileNotFoundException e) {
+//				ErrorDialog.openError(shell, "Error", "An error has occured", null);
+//				e.printStackTrace();
+//			}
 			
-			/*
-			 * Finds out the (partial) project's classpath as a list of Files. Each File either points to a source
-			 * folder, or an archive like a jar.
-			 */
-			IJavaProject javaProject = JavaCore.create(project);
-			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
-			List<File> classpath = new ArrayList<File>();
-			for (IClasspathEntry cpEntry : resolvedClasspath) {
-				switch (cpEntry.getEntryKind()) {
-				case IClasspathEntry.CPE_CONTAINER:
-					classpath.add(cpEntry.getPath().makeAbsolute().toFile());
-					break;
-				case IClasspathEntry.CPE_SOURCE:
-					classpath.add(ResourcesPlugin.getWorkspace().getRoot().getFolder(cpEntry.getPath()).getLocation().toFile());
-				}
-			}
-
-			options.put("classpath", classpath);
-
-			/*
-			 * Holds the textual selection information that needs to passed along to the underlying compiler
-			 * infrastructure
-			 */
-			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(textSelectionFile.getLocation().toOSString()).build();
-
+			//XXX Hardcoding method/selection information.
 			try {
-				DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
-			} catch (FileNotFoundException e) {
-				ErrorDialog.openError(shell, "Error", "An error has occured", null);
+				final Map<Object, Object> options = new HashMap<Object, Object>();
+				ArrayList<File> cp = new ArrayList<File>();
+				cp.add(new File("C:\\Users\\Társis\\runtime-EclipseApplication\\cide_funciona\\src"));
+				options.put("classpath",cp);
+				options.put("rootpath", "C:\\Users\\Társis\\runtime-EclipseApplication\\cide_funciona");
+				options.put("methodDescriptor","()V");
+				options.put("method","simple3");
+				options.put("type","br.ufal.cidex.Main");
+				SelectionPosition spos = SelectionPosition.builder().length(10).offSet(0).startLine(5).startColumn(1).endLine(5).endColumn(25).filePath("C:\\Users\\Társis\\runtime-EclipseApplication\\cide_funciona\\src\\br\\ufal\\cidex\\Main.java").build();
+				DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, spos, options);
+			} catch (Exception e) {
 				e.printStackTrace();
-			}
-
-		} catch (Exception e) {
+			}  
+ 
+		} catch (Throwable e) {
 			e.printStackTrace();
 		}
 		return null;
