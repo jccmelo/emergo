@@ -26,21 +26,57 @@ import dk.brics.util.collection.Stringifier;
 /**
  * Reaching definitions rules for a flow analysis. A def-use graph is built during the analysis, not after. Note that
  * his def-use graph is *not* feature sensistive; the flow analysis frameworks separates the rules (transfer functions)
- * of the analysis from the other logic. However, this graph can be evolved into a feature-sensitive one. See XXX
- * (describe where the graph can be evolved into a feature-sensitive one).
+ * of the analysis from the other logic.
  * 
- * @author Társis
+ * 
+ * @author Társis Tolêdo
  * 
  */
 public class DefUseRules extends Analysis<LatticeSet<Object>> {
 
-	private static final String ID = "DU";
+	/**
+	 * DUW: Def-Use Web.
+	 */
+	private static final String ID = "DUW";
 
 	private Graph<Object, ValueContainerEdge> reachesData;
 
+	private boolean buildGraph;
+
+	/**
+	 * Instantiates the rules for the DefUse web.
+	 */
+	public DefUseRules() {
+		super(ID, ForwardStrategy.INSTANCE);
+		this.reachesData = null;
+		this.buildGraph = false;
+	}
+
+	/**
+	 * Instantiates the rules for the DefUse web. Will try to build a graph along the way.
+	 * 
+	 * @param reachesData
+	 */
 	public DefUseRules(Graph<Object, ValueContainerEdge> reachesData) {
 		super(ID, ForwardStrategy.INSTANCE);
 		this.reachesData = reachesData;
+		this.buildGraph = true;
+	}
+
+	/**
+	 * Adds both src and tgt as vertices to {@code reachesData} and also an edge from src to tgt.
+	 * 
+	 * @param src
+	 * @param tgt
+	 */
+	private void addVerticesAndEdge(Point src, Point tgt) {
+		if (buildGraph) {
+			reachesData.addVertex(src);
+			reachesData.addVertex(tgt);
+			reachesData.addEdge(src, tgt);
+		} else {
+			throw new IllegalStateException("this method should not be called when on graphless mode.");
+		}
 	}
 
 	@Override
@@ -91,26 +127,26 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 				set = set.filter(new LatticeSetFilter<Object>() {
 
 					public boolean accept(Object element) {
-						if (element instanceof Write) {
-							Write write = (Write) element;
-							if (write.getLValue().equals(point.getExpression())) {
-								reachesData.addVertex(write);
-								reachesData.addVertex(point);
-								reachesData.addEdge(write, point);
+						if (buildGraph) {
+							if (element instanceof Write) {
+								Write write = (Write) element;
+								if (write.getLValue().equals(point.getExpression())) {
+									addVerticesAndEdge(write, point);
+								}
+								return true;
+							} else if (element instanceof Read) {
+								Read read = (Read) element;
+								if (point.toString().contains(read.getVariable().toString())) {
+									addVerticesAndEdge(read, point);
+								}
+								return true;
+							} else {
+								// this should not happen at all.
+								assert false;
+								return false;
 							}
-							return true;
-						} else if (element instanceof Read) {
-							Read read = (Read) element;
-							if (point.toString().contains(read.getVariable().toString())) {
-								reachesData.addVertex(read);
-								reachesData.addVertex(point);
-								reachesData.addEdge(read, point);
-							}
-							return true;
 						} else {
-							// this should not happen at all.
-							assert false;
-							return false;
+							return true;
 						}
 					}
 				});
@@ -135,11 +171,11 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 							LValue lv = write.getLValue();
 							return !lv.equals(lvalue);
 						} else if (element instanceof Read) {
-							Read read = (Read) element;
-							if (point.getVariable().equals(read.getVariable())) {
-								reachesData.addVertex(point);
-								reachesData.addVertex(read);
-								reachesData.addEdge(read, point);
+							if (buildGraph) {
+								Read read = (Read) element;
+								if (point.getVariable().equals(read.getVariable())) {
+									addVerticesAndEdge(read, point);
+								}
 							}
 							return true;
 						} else {

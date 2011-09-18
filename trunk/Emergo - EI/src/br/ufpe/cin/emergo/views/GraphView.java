@@ -67,7 +67,7 @@ public class GraphView extends ViewPart {
 		this.editor = editor;
 
 		// TODO: make this configurable for the user.
-		graph.setLayoutAlgorithm(new SpringLayoutAlgorithm(LayoutStyles.ENFORCE_BOUNDS), true);
+		graph.setLayoutAlgorithm(new SpringLayoutAlgorithm(LayoutStyles.ENFORCE_BOUNDS | LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
 
 		/*
 		 * The Graph from the Zest toolkit will gladly add objects that are are equal by the JAVA Object#equals(..)

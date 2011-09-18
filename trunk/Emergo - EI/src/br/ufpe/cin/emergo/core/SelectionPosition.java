@@ -9,7 +9,7 @@ package br.ufpe.cin.emergo.core;
  * 
  * TODO: describe if the numbers are 0-based and things like that.
  * 
- * @author Társis
+ * @author Társis Tolêdo
  * 
  */
 public final class SelectionPosition {
@@ -22,7 +22,18 @@ public final class SelectionPosition {
 	private final String filePath;
 	private final String stringRepresentation;
 
-	private SelectionPosition(int l, int o, int sl, int sc, int el, int ec, String f) {
+	/**
+	 * Clients are encouraged to use the SelectionPosition.Builder class instead of this constructor.
+	 * 
+	 * @param l
+	 * @param o
+	 * @param sl
+	 * @param sc
+	 * @param el
+	 * @param ec
+	 * @param f
+	 */
+	public SelectionPosition(int l, int o, int sl, int sc, int el, int ec, String f) {
 		this.length = l;
 		this.offSet = o;
 		this.startLine = sl;
@@ -113,6 +124,65 @@ public final class SelectionPosition {
 		return new SelectionPosition.Builder();
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + endColumn;
+		result = prime * result + endLine;
+		result = prime * result + ((filePath == null) ? 0 : filePath.hashCode());
+		result = prime * result + length;
+		result = prime * result + offSet;
+		result = prime * result + startColumn;
+		result = prime * result + startLine;
+		result = prime * result + ((stringRepresentation == null) ? 0 : stringRepresentation.hashCode());
+		return result;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof SelectionPosition))
+			return false;
+		SelectionPosition other = (SelectionPosition) obj;
+		if (endColumn != other.endColumn)
+			return false;
+		if (endLine != other.endLine)
+			return false;
+		if (filePath == null) {
+			if (other.filePath != null)
+				return false;
+		} else if (!filePath.equals(other.filePath))
+			return false;
+		if (length != other.length)
+			return false;
+		if (offSet != other.offSet)
+			return false;
+		if (startColumn != other.startColumn)
+			return false;
+		if (startLine != other.startLine)
+			return false;
+		if (stringRepresentation == null) {
+			if (other.stringRepresentation != null)
+				return false;
+		} else if (!stringRepresentation.equals(other.stringRepresentation))
+			return false;
+		return true;
+	}
+
 	/**
 	 * A simple builder for the enclosing class. Forces the client to explicitly and verbosely sets the arguments.
 	 * 
@@ -164,9 +234,6 @@ public final class SelectionPosition {
 		}
 
 		public SelectionPosition build() {
-			if (f == null) {
-				throw new IllegalArgumentException("The filepath is null");
-			}
 			return new SelectionPosition(l, o, sl, sc, el, ec, f);
 		}
 	}

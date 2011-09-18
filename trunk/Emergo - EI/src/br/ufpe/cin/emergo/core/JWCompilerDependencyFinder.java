@@ -185,6 +185,10 @@ public class JWCompilerDependencyFinder {
 		String methodDescriptor = (String) options.get("methodDescriptor");
 
 		// Information about the user selection.
+		/*
+		 * XXX the +1 heres indicate that there is some coupling, for this class knows how the information is passed
+		 * from the client
+		 */
 		final int selectionStartLine = selectionPosition.getStartLine() + 1;
 
 		TypeDeclaration typeDeclaration = ClassEnvironment.lookupCanonicalName(new InternalLookup(entryPoint, false));

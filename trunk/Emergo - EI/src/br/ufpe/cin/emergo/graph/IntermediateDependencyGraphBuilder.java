@@ -15,10 +15,10 @@ import org.jgrapht.Graph;
 import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.EdgeNameProvider;
 import org.jgrapht.ext.StringNameProvider;
-import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DirectedMultigraph;
 
 import br.ufpe.cin.emergo.core.DefUseRules;
+import br.ufpe.cin.emergo.core.SelectionPosition;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
@@ -32,6 +32,7 @@ import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.Token;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
 
@@ -57,36 +58,27 @@ public class IntermediateDependencyGraphBuilder {
 	 */
 	public static DirectedGraph<Object, ValueContainerEdge> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
 		/*
-		 * This graph will contain a representation for the data dependencies **ignoring ifdef statements**. It will be
-		 * upgraded into a feature-sensitive dependency graph later.
+		 * Instantiates an analysis with the Def-Use rules.
 		 */
-		final DefaultDirectedGraph<Object, ValueContainerEdge> reachesData = new DefaultDirectedGraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
+		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = AnalysisProcessor.processShared(methodDecl, new DefUseRules());
 
 		/*
-		 * Here we use an modified version of a reaching definitions analysis that is capable of producing a
-		 * feature-insensitive dependency graph as the analysis is ran. This should save us time that would otherwise be
-		 * spent on post-processing the results.
-		 * 
-		 * The class DefUseRules creates this graph by side-effect.
+		 * Create a new feature-sensitive dependency graph based on the results of the analysis.
 		 */
-		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = AnalysisProcessor.processShared(methodDecl, new DefUseRules(reachesData));
-
-		/*
-		 * Create a new feature-sensitive graph based on the feature-insensitive one. NOTE: the old graph is left
-		 * untouched.
-		 */
-		DirectedMultigraph<Object, ValueContainerEdge> upgradedGraph = newFeatureSensitive(cfg, sharedAnalysis);
+		DirectedMultigraph<Object, ValueContainerEdge> dependencyGraph = createGraph(cfg, sharedAnalysis);
 
 		/*
 		 * The selection boundaries are used here to filter the graph. All nodes that does not contain a path from one
-		 * of the nodes in the user selection to it is not present in the new graph generated. The old graph is also
-		 * left untouched as the new one is created.
+		 * of the nodes in the user selection to it is not present in the new graph generated. The old graph is left
+		 * untouched as the new one is created.
 		 */
-		DirectedMultigraph<Object, ValueContainerEdge> filteredDependecyGraph = filterWithUserSelection(pointsInUserSelection, upgradedGraph);
+		DirectedMultigraph<Object, ValueContainerEdge> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
+		
+		{ // XXX DEBUG CODE: move it somewhere else.
+			_debug2(filteredDependencyGraph, cfg, sharedAnalysis);
+		}
 
-		_debug2(filteredDependecyGraph, cfg, sharedAnalysis);
-
-		return filteredDependecyGraph;
+		return filteredDependencyGraph;
 	}
 
 	private static void _debug2(Graph<Object, ValueContainerEdge> graph, ControlFlowGraph cfg, SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis) {
@@ -94,7 +86,7 @@ public class IntermediateDependencyGraphBuilder {
 		DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
 			@Override
 			public String getVertexName(Object vertex) {
-				return "\"[" + ((AbstractPoint) vertex).getToken().getLine() + "]" + vertex.toString().replace("\"", "'") + "\"";
+				return "\"" + vertex.toString() + "\"";
 			}
 		}, null, new EdgeNameProvider<ValueContainerEdge>() {
 
@@ -125,7 +117,8 @@ public class IntermediateDependencyGraphBuilder {
 
 	/**
 	 * Creates a new Graph based on {@code reachesData} by creating a new graph in which all points that are not reached
-	 * by a path from one of the points in the user selection are not present.
+	 * by a path from one of the points in the user selection are not present. The nodes in this Graph are
+	 * DependencyNodes instances.
 	 * 
 	 * @param pointsInUserSelection
 	 * @param reachesData
@@ -158,9 +151,13 @@ public class IntermediateDependencyGraphBuilder {
 			alreadyVisitedPoints.add(head);
 			for (ValueContainerEdge edge : outgoingEdges) {
 				Point target = (Point) reachesData.getEdgeTarget(edge);
-				filteredGraph.addVertex(head);
-				filteredGraph.addVertex(target);
-				ValueContainerEdge addedEdge = filteredGraph.addEdge(head, target);
+				DependencyNode<Point> dependencyNodeTarget = new DependencyNode<Point>(target, makePosition(target));
+				filteredGraph.addVertex(dependencyNodeTarget);
+
+				DependencyNode<Point> dependencyNodeHead = new DependencyNode<Point>(head, makePosition(head));
+				filteredGraph.addVertex(dependencyNodeHead);
+
+				ValueContainerEdge addedEdge = filteredGraph.addEdge(dependencyNodeHead, dependencyNodeTarget);
 				if (addedEdge != null) {
 					addedEdge.setValue(edge.getValue());
 				}
@@ -173,8 +170,8 @@ public class IntermediateDependencyGraphBuilder {
 		return filteredGraph;
 	}
 
-	public static DirectedMultigraph<Object, ValueContainerEdge> newFeatureSensitive(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
-		// The new upgraded graph that this method will return.
+	private static DirectedMultigraph<Object, ValueContainerEdge> createGraph(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
+		// The dependency graph that this method will return.
 		final DirectedMultigraph<Object, ValueContainerEdge> reachesData = new DirectedMultigraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
 
 		// List of points to be visited. Starts with the CFG entry point.
@@ -219,40 +216,14 @@ public class IntermediateDependencyGraphBuilder {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (expression.toString().contains(element.getVariable().toString())) {
-										reachesData.addVertex(read);
-										reachesData.addVertex(element);
-
-										/*
-										 * To avoid having more than one edge between two given nodes, the information
-										 * contained in these edges, that is, an IfDefVarSet instance, is merged by
-										 * using the OR operator.
-										 */
-										if (reachesData.containsEdge(poppedPoint, element)) {
-											ValueContainerEdge existingEdge = reachesData.getEdge(poppedPoint, element);
-											IfDefVarSet existingIfDefVarSet = (IfDefVarSet) existingEdge.getValue();
-											IfDefVarSet or = existingIfDefVarSet.or(key);
-											existingEdge.setValue(or);
-										} else {
-											ValueContainerEdge addEdge = reachesData.addEdge(element, poppedPoint);
-											addEdge.setValue(key);
-										}
+										handleVertices(reachesData, poppedPoint, key, element);
 									}
 									return true;
 
 								} else if (obj instanceof Write) {
 									Write element = (Write) obj;
 									if (element.getLValue().equals(expression)) {
-										reachesData.addVertex(element);
-										reachesData.addVertex(read);
-										if (reachesData.containsEdge(poppedPoint, element)) {
-											ValueContainerEdge existingEdge = reachesData.getEdge(poppedPoint, element);
-											IfDefVarSet existingIfDefVarSet = (IfDefVarSet) existingEdge.getValue();
-											IfDefVarSet or = existingIfDefVarSet.or(key);
-											existingEdge.setValue(or);
-										} else {
-											ValueContainerEdge addEdge = reachesData.addEdge(element, poppedPoint);
-											addEdge.setValue(key);
-										}
+										handleVertices(reachesData, poppedPoint, key, element);
 									}
 								}
 								return true;
@@ -276,17 +247,7 @@ public class IntermediateDependencyGraphBuilder {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (rValue.equals(element.getVariable())) {
-										reachesData.addVertex(write);
-										reachesData.addVertex(element);
-										if (reachesData.containsEdge(poppedPoint, element)) {
-											ValueContainerEdge existingEdge = reachesData.getEdge(poppedPoint, element);
-											IfDefVarSet existingIfDefVarSet = (IfDefVarSet) existingEdge.getValue();
-											IfDefVarSet or = existingIfDefVarSet.or(key);
-											existingEdge.setValue(or);
-										} else {
-											ValueContainerEdge addEdge = reachesData.addEdge(element, poppedPoint);
-											addEdge.setValue(key);
-										}
+										handleVertices(reachesData, poppedPoint, key, element);
 									}
 								}
 								return true;
@@ -309,17 +270,7 @@ public class IntermediateDependencyGraphBuilder {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (strPoint.contains(element.getVariable().toString())) {
-										reachesData.addVertex(poppedPoint);
-										reachesData.addVertex(element);
-										if (reachesData.containsEdge(poppedPoint, element)) {
-											ValueContainerEdge existingEdge = reachesData.getEdge(poppedPoint, element);
-											IfDefVarSet existingIfDefVarSet = (IfDefVarSet) existingEdge.getValue();
-											IfDefVarSet or = existingIfDefVarSet.or(key);
-											existingEdge.setValue(or);
-										} else {
-											ValueContainerEdge addEdge = reachesData.addEdge(element, poppedPoint);
-											addEdge.setValue(key);
-										}
+										handleVertices(reachesData, poppedPoint, key, element);
 									}
 								}
 								return true;
@@ -330,5 +281,32 @@ public class IntermediateDependencyGraphBuilder {
 			}
 		}
 		return reachesData;
+	}
+
+	private static void handleVertices(final DirectedMultigraph<Object, ValueContainerEdge> reachesData, final Point poppedPoint, final IfDefVarSet key, Point element) {
+		// DependencyNode<Point> dependencyNodePoppedPoint = new DependencyNode<Point>(poppedPoint,
+		// makePosition(poppedPoint));
+		reachesData.addVertex(poppedPoint);
+
+		// DependencyNode<Point> dependencyNodeElement = new DependencyNode<Point>(poppedPoint, makePosition(element));
+		reachesData.addVertex(element);
+
+		/*
+		 * To avoid having more than one edge between two given nodes, the information contained in these edges, that
+		 * is, an IfDefVarSet instance, is merged by using the OR operator.
+		 */
+		if (reachesData.containsEdge(element, poppedPoint)) {
+			ValueContainerEdge existingEdge = reachesData.getEdge(element, poppedPoint);
+			IfDefVarSet existingIfDefVarSet = (IfDefVarSet) existingEdge.getValue();
+			IfDefVarSet or = existingIfDefVarSet.or(key);
+			existingEdge.setValue(or);
+		} else {
+			ValueContainerEdge addEdge = reachesData.addEdge(element, poppedPoint);
+			addEdge.setValue(key);
+		}
+	}
+
+	private static SelectionPosition makePosition(Point p) {
+		return SelectionPosition.builder().startColumn(p.getToken().getPos()).startLine(p.getToken().getLine()).build();
 	}
 }
