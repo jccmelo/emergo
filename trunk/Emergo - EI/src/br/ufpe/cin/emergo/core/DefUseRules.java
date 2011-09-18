@@ -5,7 +5,6 @@ import java.util.Set;
 import org.jgrapht.Graph;
 
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
-
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.ForwardStrategy;
 import dk.au.cs.java.compiler.cfg.analysis.Analysis;

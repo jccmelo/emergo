@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.jgrapht.DirectedGraph;
 import org.jgrapht.Graph;
 import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.EdgeNameProvider;
@@ -19,7 +20,6 @@ import org.jgrapht.graph.DirectedMultigraph;
 
 import br.ufpe.cin.emergo.core.DefUseRules;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
-import dk.au.cs.java.compiler.cfg.DirectAnalysis;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
 import dk.au.cs.java.compiler.cfg.point.AbstractPoint;
@@ -55,31 +55,92 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param methodDecl
 	 * @return
 	 */
-	public static Graph<Object, ValueContainerEdge> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
-		// This graph will contain a representation for the data dependencies.
+	public static DirectedGraph<Object, ValueContainerEdge> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
+		/*
+		 * This graph will contain a representation for the data dependencies **ignoring ifdef statements**. It will be
+		 * upgraded into a feature-sensitive dependency graph later.
+		 */
 		final DefaultDirectedGraph<Object, ValueContainerEdge> reachesData = new DefaultDirectedGraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
-		// DirectAnalysis<LatticeSet<Object>> analysisResult = AnalysisProcessor.process(methodDecl, new
-		// DefUseRules(reachesData));
-		// DefaultDirectedGraph<Object, ValueContainerEdge> filteredReachesData =
 
-		// XXX Prints out stuff to help debugging. Remove later.
-		// _debug(cfg, reachesData, filteredReachesData, analysisResult);
-
+		/*
+		 * Here we use an modified version of a reaching definitions analysis that is capable of producing a
+		 * feature-insensitive dependency graph as the analysis is ran. This should save us time that would otherwise be
+		 * spent on post-processing the results.
+		 * 
+		 * The class DefUseRules creates this graph by side-effect.
+		 */
 		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = AnalysisProcessor.processShared(methodDecl, new DefUseRules(reachesData));
-		DirectedMultigraph<Object, ValueContainerEdge> build3 = build3(cfg, sharedAnalysis);
-		DirectedMultigraph<Object, ValueContainerEdge> filterWithUserSelection = filterWithUserSelection(pointsInUserSelection, build3);
 
-		String dot = cfg.toDot(sharedAnalysis);
-		System.out.println(dot);
+		/*
+		 * Create a new feature-sensitive graph based on the feature-insensitive one. NOTE: the old graph is left
+		 * untouched.
+		 */
+		DirectedMultigraph<Object, ValueContainerEdge> upgradedGraph = newFeatureSensitive(cfg, sharedAnalysis);
 
-		_debug2(filterWithUserSelection, cfg, sharedAnalysis);
+		/*
+		 * The selection boundaries are used here to filter the graph. All nodes that does not contain a path from one
+		 * of the nodes in the user selection to it is not present in the new graph generated. The old graph is also
+		 * left untouched as the new one is created.
+		 */
+		DirectedMultigraph<Object, ValueContainerEdge> filteredDependecyGraph = filterWithUserSelection(pointsInUserSelection, upgradedGraph);
 
-		return reachesData;
+		_debug2(filteredDependecyGraph, cfg, sharedAnalysis);
+
+		return filteredDependecyGraph;
 	}
 
+	private static void _debug2(Graph<Object, ValueContainerEdge> graph, ControlFlowGraph cfg, SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis) {
+		// XXX DEBUG code. Move it somewhere else.
+		DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
+			@Override
+			public String getVertexName(Object vertex) {
+				return "\"[" + ((AbstractPoint) vertex).getToken().getLine() + "]" + vertex.toString().replace("\"", "'") + "\"";
+			}
+		}, null, new EdgeNameProvider<ValueContainerEdge>() {
+
+			public String getEdgeName(ValueContainerEdge edge) {
+				Object value = edge.getValue();
+				if (value == null)
+					return "";
+				return value.toString();
+			}
+		});
+
+		try {
+			File file = new File(System.getProperty("user.home") + File.separator + "jwdifdef.dot");
+			FileWriter writer = new FileWriter(file);
+			exporter.export(writer, graph);
+			writer.close();
+
+			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
+			FileWriter fileWriter2 = new FileWriter(file2Dot);
+			fileWriter2.write(cfg.toDot(sharedAnalysis));
+			fileWriter2.close();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Creates a new Graph based on {@code reachesData} by creating a new graph in which all points that are not reached
+	 * by a path from one of the points in the user selection are not present.
+	 * 
+	 * @param pointsInUserSelection
+	 * @param reachesData
+	 * @return a new filtered graph
+	 */
 	private static DirectedMultigraph<Object, ValueContainerEdge> filterWithUserSelection(List<Point> pointsInUserSelection, DirectedMultigraph<Object, ValueContainerEdge> reachesData) {
+		// The new graph that will be returned from this method.
 		final DirectedMultigraph<Object, ValueContainerEdge> filteredGraph = new DirectedMultigraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
 
+		/*
+		 * A worklist-like iteration idiom. Visit a point; add the point to visited; add others points (if present) in
+		 * the to-be-visited list; repeat untill list is empty.
+		 * 
+		 * The filtering result is achieved simply by setting the points in user selection in the starting list.
+		 */
 		LinkedList<Point> workList = new LinkedList<Point>(pointsInUserSelection);
 		HashSet<Point> alreadyVisitedPoints = new HashSet<Point>();
 
@@ -112,8 +173,10 @@ public class IntermediateDependencyGraphBuilder {
 		return filteredGraph;
 	}
 
-	public static DirectedMultigraph<Object, ValueContainerEdge> build3(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
+	public static DirectedMultigraph<Object, ValueContainerEdge> newFeatureSensitive(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
+		// The new upgraded graph that this method will return.
 		final DirectedMultigraph<Object, ValueContainerEdge> reachesData = new DirectedMultigraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
+
 		// List of points to be visited. Starts with the CFG entry point.
 		LinkedList<Point> pendingPoints = new LinkedList<Point>();
 		HashSet<Point> visitedPoints = new HashSet<Point>();
@@ -267,73 +330,5 @@ public class IntermediateDependencyGraphBuilder {
 			}
 		}
 		return reachesData;
-	}
-
-	private static void _debug2(Graph<Object, ValueContainerEdge> graph, ControlFlowGraph cfg, SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis) {
-		// XXX DEBUG code. Move it somewhere else.
-		DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
-			@Override
-			public String getVertexName(Object vertex) {
-				return "\"[" + ((AbstractPoint) vertex).getToken().getLine() + "]" + vertex.toString().replace("\"", "'") + "\"";
-			}
-		}, null, new EdgeNameProvider<ValueContainerEdge>() {
-
-			public String getEdgeName(ValueContainerEdge edge) {
-				Object value = edge.getValue();
-				if (value == null)
-					return "";
-				return value.toString();
-			}
-		});
-
-		try {
-			File file = new File(System.getProperty("user.home") + File.separator + "jwdifdef.dot");
-			FileWriter writer = new FileWriter(file);
-			exporter.export(writer, graph);
-			writer.close();
-
-			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
-			FileWriter fileWriter2 = new FileWriter(file2Dot);
-			fileWriter2.write(cfg.toDot(sharedAnalysis));
-			fileWriter2.close();
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	private static void _debug(ControlFlowGraph cfg, final DefaultDirectedGraph<Object, ValueContainerEdge> reachesData, DefaultDirectedGraph<Object, ValueContainerEdge> filteredReachesData, DirectAnalysis<LatticeSet<Object>> analysisResult) {
-		// XXX DEBUG code. Move it somewhere else.
-		DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
-			@Override
-			public String getVertexName(Object vertex) {
-				if (vertex instanceof Write) {
-					return "\"[" + ((Write) vertex).getToken().getLine() + "]w " + vertex.toString().replace("\"", "'") + "\"";
-				} else if (vertex instanceof Read) {
-					return "\"[" + ((Read) vertex).getToken().getLine() + "]r " + vertex.toString().replace("\"", "'") + "\"";
-				} else {
-					return "\"" + vertex.toString().replace("\"", "'") + "\"";
-				}
-			}
-		}, null, null);
-		try {
-			File file1Dot = new File(System.getProperty("user.home") + File.separator + "jwd.dot");
-			FileWriter fileWriter1 = new FileWriter(file1Dot);
-			exporter.export(fileWriter1, reachesData);
-			fileWriter1.close();
-
-			File file3Dot = new File(System.getProperty("user.home") + File.separator + "jwdf.dot");
-			FileWriter fileWriter3 = new FileWriter(file3Dot);
-			exporter.export(fileWriter3, filteredReachesData);
-			fileWriter3.close();
-
-			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
-			FileWriter fileWriter2 = new FileWriter(file2Dot);
-			fileWriter2.write(cfg.toDot(analysisResult));
-			fileWriter2.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 }

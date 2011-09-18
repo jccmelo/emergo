@@ -100,8 +100,35 @@
 		</editor>
 	</extension>
 
+	<!-- View for showing Emergo results as a graph -->
+	
+	<extension point="org.eclipse.ui.views">
+      <category
+            name="Emergo View"
+            id="br.ufpe.cin.emergo.view">
+      </category>
+      <view
+            name="Emergo Graph View"
+            icon="icons/sample.gif" 
+            category="br.ufpe.cin.emergo.view"
+            class="br.ufpe.cin.emergo.views.GraphView"
+            id="br.ufpe.cin.emergo.view.GraphView">
+      </view>
+   </extension>
+   <extension point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension
+            targetID="org.eclipse.jdt.ui.JavaPerspective">
+         <view
+               ratio="0.5"
+               relative="org.eclipse.ui.views.TaskList"
+               relationship="right"
+               id="graphviewtst.views.SampleView">
+         </view>
+      </perspectiveExtension>
+   </extension>
+	
 	<!-- View for showing Emergo results -->
-
+	
 	<extension point="org.eclipse.ui.views">
 
 		<category name="Emergo" id="EmergoViews"/>
