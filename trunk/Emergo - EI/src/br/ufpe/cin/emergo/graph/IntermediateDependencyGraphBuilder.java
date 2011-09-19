@@ -3,6 +3,7 @@ package br.ufpe.cin.emergo.graph;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -11,18 +12,19 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.jgrapht.DirectedGraph;
-import org.jgrapht.Graph;
 import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.EdgeNameProvider;
 import org.jgrapht.ext.StringNameProvider;
+import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DirectedMultigraph;
 
+import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DefUseRules;
+import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
-import dk.au.cs.java.compiler.cfg.point.AbstractPoint;
 import dk.au.cs.java.compiler.cfg.point.Expression;
 import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.cfg.point.Read;
@@ -32,7 +34,6 @@ import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
-import dk.au.cs.java.compiler.node.Token;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
 
@@ -56,63 +57,83 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param methodDecl
 	 * @return
 	 */
-	public static DirectedGraph<Object, ValueContainerEdge> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
 		/*
 		 * Instantiates an analysis with the Def-Use rules.
 		 */
 		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = AnalysisProcessor.processShared(methodDecl, new DefUseRules());
 
 		/*
-		 * Create a new feature-sensitive dependency graph based on the results of the analysis.
+		 * Create a new feature-sensitive dependency graph based on the results of the analysis. The vertices are Reads
+		 * or Writes instances.
 		 */
-		DirectedMultigraph<Object, ValueContainerEdge> dependencyGraph = createGraph(cfg, sharedAnalysis);
+		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
 
 		/*
 		 * The selection boundaries are used here to filter the graph. All nodes that does not contain a path from one
 		 * of the nodes in the user selection to it is not present in the new graph generated. The old graph is left
 		 * untouched as the new one is created.
+		 * 
+		 * In this graph, the vertices are DependencyNode instances used as wrappers for Reads and Writes.
 		 */
-		DirectedMultigraph<Object, ValueContainerEdge> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
-		
+		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
+
+		// Produce a more compact graph by collapsing nodes that belongs to the same line number.
+		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
+
 		{ // XXX DEBUG CODE: move it somewhere else.
-			_debug2(filteredDependencyGraph, cfg, sharedAnalysis);
+			_debug2(collapsedDependencyGraph, cfg, sharedAnalysis);
 		}
 
-		return filteredDependencyGraph;
+		return collapsedDependencyGraph;
 	}
 
-	private static void _debug2(Graph<Object, ValueContainerEdge> graph, ControlFlowGraph cfg, SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis) {
-		// XXX DEBUG code. Move it somewhere else.
-		DOTExporter<Object, ValueContainerEdge> exporter = new DOTExporter<Object, ValueContainerEdge>(new StringNameProvider<Object>() {
-			@Override
-			public String getVertexName(Object vertex) {
-				return "\"" + vertex.toString() + "\"";
+	private static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapseIntoLineNumbers(DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph) {
+		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedGraph = new DefaultDirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
+
+		Map<Integer, Set<DependencyNodeWrapper<Point>>> lineNodesSetMapping = new HashMap<Integer, Set<DependencyNodeWrapper<Point>>>();
+		Map<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>> lineNodeMapping = new HashMap<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>>();
+		Set<Integer> keysInSelection = new HashSet<Integer>();
+
+		Set<DependencyNodeWrapper<Point>> vertexSet = filteredDependencyGraph.vertexSet();
+		for (DependencyNodeWrapper<Point> dependencyNode : vertexSet) {
+			Point data = (Point) dependencyNode.getData();
+			Integer line = data.getToken().getLine();
+			Set<DependencyNodeWrapper<Point>> set = lineNodesSetMapping.get(line);
+			if (set == null) {
+				set = new HashSet<DependencyNodeWrapper<Point>>();
+				lineNodesSetMapping.put(line, set);
 			}
-		}, null, new EdgeNameProvider<ValueContainerEdge>() {
-
-			public String getEdgeName(ValueContainerEdge edge) {
-				Object value = edge.getValue();
-				if (value == null)
-					return "";
-				return value.toString();
+			set.add(dependencyNode);
+			if (dependencyNode.isInSelection()) {
+				keysInSelection.add(line);
 			}
-		});
-
-		try {
-			File file = new File(System.getProperty("user.home") + File.separator + "jwdifdef.dot");
-			FileWriter writer = new FileWriter(file);
-			exporter.export(writer, graph);
-			writer.close();
-
-			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
-			FileWriter fileWriter2 = new FileWriter(file2Dot);
-			fileWriter2.write(cfg.toDot(sharedAnalysis));
-			fileWriter2.close();
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
+
+		Set<Entry<Integer, Set<DependencyNodeWrapper<Point>>>> entrySet = lineNodesSetMapping.entrySet();
+		for (Entry<Integer, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
+			Integer line = entry.getKey();
+			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
+			DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> dependencyNode = new DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>(nodes, SelectionPosition.builder().startLine(line).build(), keysInSelection.contains(line));
+			collapsedGraph.addVertex(dependencyNode);
+			lineNodeMapping.put(line, dependencyNode);
+		}
+
+		for (Entry<Integer, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
+			Integer line = entry.getKey();
+			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
+			for (DependencyNodeWrapper<Point> dependencyNode : nodes) {
+				Set<ValueContainerEdge<ConfigSet>> outgoingEdgesOf = filteredDependencyGraph.outgoingEdgesOf(dependencyNode);
+				for (ValueContainerEdge<ConfigSet> valueContainerEdge : outgoingEdgesOf) {
+					DependencyNodeWrapper<Point> edgeTarget = filteredDependencyGraph.getEdgeTarget(valueContainerEdge);
+					Point data = (Point) edgeTarget.getData();
+					Integer line2 = data.getToken().getLine();
+					collapsedGraph.addEdge(lineNodeMapping.get(line), lineNodeMapping.get(line2));
+				}
+			}
+		}
+
+		return collapsedGraph;
 	}
 
 	/**
@@ -124,9 +145,9 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param reachesData
 	 * @return a new filtered graph
 	 */
-	private static DirectedMultigraph<Object, ValueContainerEdge> filterWithUserSelection(List<Point> pointsInUserSelection, DirectedMultigraph<Object, ValueContainerEdge> reachesData) {
+	private static DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filterWithUserSelection(List<Point> pointsInUserSelection, DirectedGraph<Object, ValueContainerEdge<ConfigSet>> reachesData) {
 		// The new graph that will be returned from this method.
-		final DirectedMultigraph<Object, ValueContainerEdge> filteredGraph = new DirectedMultigraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
+		final DirectedMultigraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredGraph = new DirectedMultigraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 
 		/*
 		 * A worklist-like iteration idiom. Visit a point; add the point to visited; add others points (if present) in
@@ -143,21 +164,21 @@ public class IntermediateDependencyGraphBuilder {
 				alreadyVisitedPoints.add(head);
 				continue;
 			}
-			Set<ValueContainerEdge> outgoingEdges = reachesData.outgoingEdgesOf(head);
+			Set<ValueContainerEdge<ConfigSet>> outgoingEdges = reachesData.outgoingEdgesOf(head);
 			if (outgoingEdges.isEmpty()) {
 				alreadyVisitedPoints.add(head);
 				continue;
 			}
 			alreadyVisitedPoints.add(head);
-			for (ValueContainerEdge edge : outgoingEdges) {
+			for (ValueContainerEdge<ConfigSet> edge : outgoingEdges) {
 				Point target = (Point) reachesData.getEdgeTarget(edge);
-				DependencyNode<Point> dependencyNodeTarget = new DependencyNode<Point>(target, makePosition(target));
+				DependencyNodeWrapper<Point> dependencyNodeTarget = new DependencyNodeWrapper<Point>(target, makePosition(target), pointsInUserSelection.contains(target));
 				filteredGraph.addVertex(dependencyNodeTarget);
 
-				DependencyNode<Point> dependencyNodeHead = new DependencyNode<Point>(head, makePosition(head));
+				DependencyNodeWrapper<Point> dependencyNodeHead = new DependencyNodeWrapper<Point>(head, makePosition(head), pointsInUserSelection.contains(head));
 				filteredGraph.addVertex(dependencyNodeHead);
 
-				ValueContainerEdge addedEdge = filteredGraph.addEdge(dependencyNodeHead, dependencyNodeTarget);
+				ValueContainerEdge<ConfigSet> addedEdge = filteredGraph.addEdge(dependencyNodeHead, dependencyNodeTarget);
 				if (addedEdge != null) {
 					addedEdge.setValue(edge.getValue());
 				}
@@ -170,9 +191,9 @@ public class IntermediateDependencyGraphBuilder {
 		return filteredGraph;
 	}
 
-	private static DirectedMultigraph<Object, ValueContainerEdge> createGraph(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
+	private static DirectedGraph<Object, ValueContainerEdge<ConfigSet>> createGraph(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
 		// The dependency graph that this method will return.
-		final DirectedMultigraph<Object, ValueContainerEdge> reachesData = new DirectedMultigraph<Object, ValueContainerEdge>(ValueContainerEdge.class);
+		final DirectedMultigraph<Object, ValueContainerEdge<ConfigSet>> reachesData = new DirectedMultigraph<Object, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 
 		// List of points to be visited. Starts with the CFG entry point.
 		LinkedList<Point> pendingPoints = new LinkedList<Point>();
@@ -283,12 +304,8 @@ public class IntermediateDependencyGraphBuilder {
 		return reachesData;
 	}
 
-	private static void handleVertices(final DirectedMultigraph<Object, ValueContainerEdge> reachesData, final Point poppedPoint, final IfDefVarSet key, Point element) {
-		// DependencyNode<Point> dependencyNodePoppedPoint = new DependencyNode<Point>(poppedPoint,
-		// makePosition(poppedPoint));
+	private static void handleVertices(final DirectedMultigraph<Object, ValueContainerEdge<ConfigSet>> reachesData, final Point poppedPoint, final IfDefVarSet key, Point element) {
 		reachesData.addVertex(poppedPoint);
-
-		// DependencyNode<Point> dependencyNodeElement = new DependencyNode<Point>(poppedPoint, makePosition(element));
 		reachesData.addVertex(element);
 
 		/*
@@ -296,17 +313,54 @@ public class IntermediateDependencyGraphBuilder {
 		 * is, an IfDefVarSet instance, is merged by using the OR operator.
 		 */
 		if (reachesData.containsEdge(element, poppedPoint)) {
-			ValueContainerEdge existingEdge = reachesData.getEdge(element, poppedPoint);
-			IfDefVarSet existingIfDefVarSet = (IfDefVarSet) existingEdge.getValue();
-			IfDefVarSet or = existingIfDefVarSet.or(key);
+			ValueContainerEdge<ConfigSet> existingEdge = reachesData.getEdge(element, poppedPoint);
+			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();
+			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(key));
 			existingEdge.setValue(or);
 		} else {
-			ValueContainerEdge addEdge = reachesData.addEdge(element, poppedPoint);
-			addEdge.setValue(key);
+			ValueContainerEdge<ConfigSet> addEdge = reachesData.addEdge(element, poppedPoint);
+			addEdge.setValue(new JWCompilerConfigSet(key));
 		}
 	}
 
 	private static SelectionPosition makePosition(Point p) {
 		return SelectionPosition.builder().startColumn(p.getToken().getPos()).startLine(p.getToken().getLine()).build();
 	}
+
+	private static void _debug2(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> filteredDependencyGraph, ControlFlowGraph cfg, SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis) {
+		// XXX DEBUG code. Move it somewhere else.
+		DOTExporter<DependencyNode, ValueContainerEdge<ConfigSet>> exporter = new DOTExporter<DependencyNode, ValueContainerEdge<ConfigSet>>(new StringNameProvider<DependencyNode>() {
+
+			@Override
+			public String getVertexName(DependencyNode vertex) {
+				return "\"" + vertex.toString() + "\"";
+			}
+
+		}, null, new EdgeNameProvider<ValueContainerEdge<ConfigSet>>() {
+
+			public String getEdgeName(ValueContainerEdge<ConfigSet> edge) {
+				ConfigSet value = edge.getValue();
+				if (value == null)
+					return "";
+				return value.toString();
+			}
+		});
+
+		try {
+			File file = new File(System.getProperty("user.home") + File.separator + "jwdifdef.dot");
+			FileWriter writer = new FileWriter(file);
+			exporter.export(writer, filteredDependencyGraph);
+			writer.close();
+
+			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
+			FileWriter fileWriter2 = new FileWriter(file2Dot);
+			fileWriter2.write(cfg.toDot(sharedAnalysis));
+			fileWriter2.close();
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 }

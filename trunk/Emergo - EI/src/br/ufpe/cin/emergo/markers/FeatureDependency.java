@@ -25,20 +25,24 @@ public class FeatureDependency {
 		return feature;
 	}
 
-	public void setFile(IFile file) {
+	public FeatureDependency setFile(IFile file) {
 		this.file = file;
+		return this;
 	}
 
-	public void setLineNumber(int lineNumber) {
+	public FeatureDependency setLineNumber(int lineNumber) {
 		this.lineNumber = lineNumber;
+		return this;
 	}
 
-	public void setConfiguration(String configuration) {
+	public FeatureDependency setConfiguration(String configuration) {
 		this.configuration = configuration;
+		return this;
 	}
 
-	public void setFeature(String feature) {
+	public FeatureDependency setFeature(String feature) {
 		this.feature = feature;
+		return this;
 	}
 
 }

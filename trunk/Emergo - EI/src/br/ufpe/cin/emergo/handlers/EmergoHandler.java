@@ -10,7 +10,6 @@ import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -30,17 +29,18 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.handlers.HandlerUtil;
-import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.jgrapht.DirectedGraph;
 
+import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DependencyFinder;
 import br.ufpe.cin.emergo.core.DependencyFinderID;
 import br.ufpe.cin.emergo.core.SelectionPosition;
+import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.markers.EmergoMarker;
 import br.ufpe.cin.emergo.markers.FeatureDependency;
-import br.ufpe.cin.emergo.util.SelectionNodesVisitor;
+import br.ufpe.cin.emergo.views.EmergoResultsView;
 import br.ufpe.cin.emergo.views.GraphView;
 
 /**
@@ -70,21 +70,21 @@ public class EmergoHandler extends AbstractHandler {
 				throw new ExecutionException("Not a text selection");
 
 			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
-			IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
-
-			IDocumentProvider provider = editor.getDocumentProvider();
-			IDocument document = provider.getDocument(editor.getEditorInput());
-			ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
-
-			// The project from which the file belongs.
-			IProject project = textSelectionFile.getProject();
-
-			CompilationUnit compilationUnit = getCompilationUnit(textSelectionFile);
-			SelectionNodesVisitor selectionVisitor = new SelectionNodesVisitor(textSelection);
-			compilationUnit.accept(selectionVisitor);
-			Set<ASTNode> nodesInSelection = selectionVisitor.getNodes();
-			MethodDeclaration parentMethod = getParentMethod(nodesInSelection);
-			IMethod method = (IMethod) this.compilationUnit.getElementAt(parentMethod.getStartPosition());
+			// IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
+			//
+			// IDocumentProvider provider = editor.getDocumentProvider();
+			// IDocument document = provider.getDocument(editor.getEditorInput());
+			// ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
+			//
+			// // The project that contains the file in which the selection happened.
+			// IProject project = textSelectionFile.getProject();
+			//
+			// CompilationUnit compilationUnit = getCompilationUnit(textSelectionFile);
+			// SelectionNodesVisitor selectionVisitor = new SelectionNodesVisitor(textSelection);
+			// compilationUnit.accept(selectionVisitor);
+			// Set<ASTNode> nodesInSelection = selectionVisitor.getNodes();
+			// MethodDeclaration parentMethod = getParentMethod(nodesInSelection);
+			// IMethod method = (IMethod) this.compilationUnit.getElementAt(parentMethod.getStartPosition());
 
 			// options.put("type", method.getDeclaringType().getFullyQualifiedName());
 			// options.put("methodDescriptor", getMethodDescriptor(method));
@@ -131,7 +131,6 @@ public class EmergoHandler extends AbstractHandler {
 
 			// XXX Hardcoding method/selection information while the bug with the compiler is not fixed.
 			try {
-				// final Map<Object, Object> options = new HashMap<Object, Object>();
 				ArrayList<File> cp = new ArrayList<File>();
 				cp.add(new File("C:\\Users\\Társis\\runtime-EclipseApplication\\cide_funciona\\src"));
 				options.put("classpath", cp);
@@ -140,13 +139,21 @@ public class EmergoHandler extends AbstractHandler {
 				options.put("method", "simple3");
 				options.put("type", "br.ufal.cidex.Main");
 				SelectionPosition spos = SelectionPosition.builder().length(10).offSet(0).startLine(5).startColumn(1).endLine(5).endColumn(25).filePath("C:\\Users\\Társis\\runtime-EclipseApplication\\cide_funciona\\src\\br\\ufal\\cidex\\Main.java").build();
-				DirectedGraph<Object, ValueContainerEdge> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, spos, options);
+				DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, spos, options);
 
-				IViewPart findView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(GraphView.ID);
-				if (findView instanceof GraphView) {
-					GraphView view = (GraphView) findView;
+				// TODO: make this a list of things to update instead of hardcoding.
+				// Update the graph view
+				IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(GraphView.ID);
+				if (findGraphView instanceof GraphView) {
+					GraphView view = (GraphView) findGraphView;
 					view.adaptTo(dependencyGraph, this.compilationUnit, editor, spos);
-					view.redraw();
+				}
+
+				// Update the tree view.
+				IViewPart findTableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);
+				if (findGraphView instanceof EmergoResultsView) {
+					EmergoResultsView view = (EmergoResultsView) findGraphView;
+					 view.adaptTo(dependencyGraph, this.compilationUnit, editor, spos);
 				}
 
 				return null;

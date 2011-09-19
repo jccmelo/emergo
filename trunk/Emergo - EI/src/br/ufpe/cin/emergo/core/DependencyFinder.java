@@ -4,8 +4,8 @@ import java.io.FileNotFoundException;
 import java.util.Map;
 
 import org.jgrapht.DirectedGraph;
-import org.jgrapht.Graph;
 
+import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 
 /**
@@ -35,7 +35,7 @@ public class DependencyFinder {
 	 * @return
 	 * @throws FileNotFoundException
 	 */
-	public static DirectedGraph<Object, ValueContainerEdge> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws FileNotFoundException {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws FileNotFoundException {
 		switch (finder) {
 		case JWCOMPILER:
 			return new JWCompilerDependencyFinder(selectionPosition, options).getGraph();

@@ -14,6 +14,8 @@ import java.util.Map;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.Graph;
 
+import br.ufpe.cin.emergo.graph.DependencyNode;
+import br.ufpe.cin.emergo.graph.DependencyNodeWrapper;
 import br.ufpe.cin.emergo.graph.IntermediateDependencyGraphBuilder;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 
@@ -74,7 +76,7 @@ public class JWCompilerDependencyFinder {
 	/**
 	 * Holds the dependency graph.
 	 */
-	private DirectedGraph<Object, ValueContainerEdge> useDefWeb;
+	private DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb;
 
 	/**
 	 * 
@@ -221,7 +223,7 @@ public class JWCompilerDependencyFinder {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
 				IfDefVarSet varSet = point.getVarSet();
-				System.out.println(varSet);
+				// System.out.println(varSet);
 				return null;
 			}
 		});
@@ -246,7 +248,7 @@ public class JWCompilerDependencyFinder {
 		 * Now that there is enough information about the selection and the CFGs have been generated, create the
 		 * intermediate depency graph.
 		 */
-		DirectedGraph<Object, ValueContainerEdge> useDefWeb = IntermediateDependencyGraphBuilder.build(node, cfg, pointsInUserSelection, methodDeclBox[0]);
+		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb = IntermediateDependencyGraphBuilder.build(node, cfg, pointsInUserSelection, methodDeclBox[0]);
 		this.useDefWeb = useDefWeb;
 	}
 
@@ -290,7 +292,7 @@ public class JWCompilerDependencyFinder {
 	 * 
 	 * @return a graph representing the dependencies found
 	 */
-	public DirectedGraph<Object, ValueContainerEdge> getGraph() {
+	public DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> getGraph() {
 		return this.useDefWeb;
 	}
 };
