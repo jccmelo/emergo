@@ -5,6 +5,8 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.ui.views.markers.MarkerSupportView;
 import org.jgrapht.DirectedGraph;
@@ -21,7 +23,7 @@ import br.ufpe.cin.emergo.markers.FeatureDependency;
 public class EmergoResultsView extends MarkerSupportView {
 
 	public static final String ID = "br.ufpe.cin.emergo.view.EmergoResultsView";
-	private static final int MAX_PATHS = 3;
+	private static final int MAX_PATHS = 16;
 
 	public EmergoResultsView() {
 		super("emergoResultsSupport");
@@ -29,6 +31,7 @@ public class EmergoResultsView extends MarkerSupportView {
 
 	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ICompilationUnit compilationUnit, ITextEditor editor, SelectionPosition spos, IFile textSelectionFile) {
 		Set<DependencyNode> vertexSet = dependencyGraph.vertexSet();
+		IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 		for (DependencyNode srcNode : vertexSet) {
 
 			if (!srcNode.isInSelection()) {
@@ -56,8 +59,21 @@ public class EmergoResultsView extends MarkerSupportView {
 							configAccumulator = configAccumulator.and(value);
 						}
 					}
+					int startLine = srcNode.getPosition().getStartLine();
+
 					String accString = configAccumulator == null ? "" : configAccumulator.toString();
-					EmergoMarker.createMarker("Line " + srcNode.getPosition().getStartLine(), new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
+					String message = null;
+					try {
+						message = document.get(document.getLineOffset(startLine),document.getLineLength(startLine)).toString().trim();
+					} catch (BadLocationException e) {
+						/*
+						 * Something must have went very wrong here, because the line at issue is not a valid location
+						 * in the document.
+						 */
+						message = "Unkown location";
+					}
+
+					EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
 				}
 			}
 		}

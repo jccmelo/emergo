@@ -12,13 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.jgrapht.DirectedGraph;
-import org.jgrapht.Graph;
 
 import br.ufpe.cin.emergo.graph.DependencyNode;
-import br.ufpe.cin.emergo.graph.DependencyNodeWrapper;
 import br.ufpe.cin.emergo.graph.IntermediateDependencyGraphBuilder;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
-
 import dk.au.cs.java.compiler.ErrorType;
 import dk.au.cs.java.compiler.Errors;
 import dk.au.cs.java.compiler.Flags;
@@ -47,7 +44,6 @@ import dk.au.cs.java.compiler.node.Token;
 import dk.au.cs.java.compiler.parser.Parser;
 import dk.au.cs.java.compiler.parser.ParserException;
 import dk.au.cs.java.compiler.phases.AbstractPhase;
-import dk.au.cs.java.compiler.phases.ConstantFolding;
 import dk.au.cs.java.compiler.phases.Disambiguation;
 import dk.au.cs.java.compiler.phases.Environments;
 import dk.au.cs.java.compiler.phases.Hierarchy;
@@ -86,7 +82,7 @@ public class JWCompilerDependencyFinder {
 	 * @throws FileNotFoundException
 	 */
 	public JWCompilerDependencyFinder(final SelectionPosition selectionPosition, Map<Object, Object> options) throws FileNotFoundException {
-		// Tesets compiler status.
+		// Resets compiler status.
 		Main.resetCompiler();
 
 		// The file in which the selection resides.
@@ -130,7 +126,7 @@ public class JWCompilerDependencyFinder {
 				files.addAll(expandWildcards);
 
 			} else if (file.isFile() && file.exists()) {
-				// XXX treat .jar files.
+				// XXX also include .jar files.
 			}
 		}
 
@@ -164,7 +160,7 @@ public class JWCompilerDependencyFinder {
 		node.apply(new DisambiguationCheck());
 		node.apply(new TargetResolver());
 		node.apply(new Reachability());
-		// Comment line below to disable constant folding optimizations.
+		// Comment line below to disable constant folding optimization.
 		// node.apply(new ConstantFolding());
 		node.apply(new TypeChecking());
 		node.apply(new CFGGenerator());
@@ -176,9 +172,9 @@ public class JWCompilerDependencyFinder {
 		/*
 		 * Helpful information about the method at issue is provided by the client.
 		 * 
-		 * type: the class name method:
+		 * type: the class name
 		 * 
-		 * the method within the class name
+		 * method: the method within the class name
 		 * 
 		 * methodDescriptor: a bytecode descriptor of the method
 		 */
@@ -203,7 +199,7 @@ public class JWCompilerDependencyFinder {
 		 * XXX this selection boundary check is *very* broken. Use the information on the SelectionPosition to get a
 		 * more precise set.
 		 */
-		cfg.apply(new PointVisitor() {
+		cfg.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
 				Token token = point.getToken();
@@ -219,10 +215,10 @@ public class JWCompilerDependencyFinder {
 		 * XXX use this to find out if Johnni fixed the bug that cause all nodes to marked as true instead of having a
 		 * feature expression.
 		 */
-		cfg.apply(new PointVisitor() {
+		cfg.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
-				IfDefVarSet varSet = point.getVarSet();
+				// IfDefVarSet varSet = point.getVarSet();
 				// System.out.println(varSet);
 				return null;
 			}
