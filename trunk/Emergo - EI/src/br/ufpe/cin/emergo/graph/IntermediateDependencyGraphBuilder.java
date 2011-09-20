@@ -95,6 +95,10 @@ public class IntermediateDependencyGraphBuilder {
 		Map<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>> lineNodeMapping = new HashMap<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>>();
 		Set<Integer> keysInSelection = new HashSet<Integer>();
 
+		/*
+		 * In this first step the vertices are grouped by their line number in a map. Each entry maps an integer into a
+		 * set of vertices.
+		 */
 		Set<DependencyNodeWrapper<Point>> vertexSet = filteredDependencyGraph.vertexSet();
 		for (DependencyNodeWrapper<Point> dependencyNode : vertexSet) {
 			Point data = (Point) dependencyNode.getData();
@@ -105,20 +109,41 @@ public class IntermediateDependencyGraphBuilder {
 				lineNodesSetMapping.put(line, set);
 			}
 			set.add(dependencyNode);
+
+			// Store nodes that belong to the selection for later use.
 			if (dependencyNode.isInSelection()) {
 				keysInSelection.add(line);
 			}
 		}
 
+		/*
+		 * All nodes that are mapped by the same integer are packed into a set and embedded into a
+		 * DependencyNodeWrapper. Each of these DependencyNodeWrappers are then added to the graph that will be
+		 * returned.
+		 */
 		Set<Entry<Integer, Set<DependencyNodeWrapper<Point>>>> entrySet = lineNodesSetMapping.entrySet();
 		for (Entry<Integer, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
 			Integer line = entry.getKey();
 			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
-			DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> dependencyNode = new DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>(nodes, SelectionPosition.builder().startLine(line).build(), keysInSelection.contains(line));
+
+			IfDefVarSet accumulator = null;
+			for (DependencyNodeWrapper<Point> dependencyNode : nodes) {
+				if (accumulator == null) {
+					accumulator = dependencyNode.getData().getVarSet();
+				} else {
+					accumulator = accumulator.and(dependencyNode.getData().getVarSet());
+				}
+			}
+
+			DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> dependencyNode = new DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>(nodes, SelectionPosition.builder().startLine(line).build(), keysInSelection.contains(line), accumulator);
 			collapsedGraph.addVertex(dependencyNode);
 			lineNodeMapping.put(line, dependencyNode);
 		}
 
+		/*
+		 * At this point, all nodes in the graph actually represents a set of nodes (see steps 1 and 2 above). Thus, it
+		 * is only necessary to iterate over these embedded nodes and add the edges that connected them before.
+		 */
 		for (Entry<Integer, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
 			Integer line = entry.getKey();
 			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
@@ -128,7 +153,21 @@ public class IntermediateDependencyGraphBuilder {
 					DependencyNodeWrapper<Point> edgeTarget = filteredDependencyGraph.getEdgeTarget(valueContainerEdge);
 					Point data = (Point) edgeTarget.getData();
 					Integer line2 = data.getToken().getLine();
-					collapsedGraph.addEdge(lineNodeMapping.get(line), lineNodeMapping.get(line2));
+					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> srcNodeWrapper = lineNodeMapping.get(line);
+					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> tgtNodeWrapper = lineNodeMapping.get(line2);
+
+					ValueContainerEdge<ConfigSet> addedEdge = collapsedGraph.addEdge(srcNodeWrapper, tgtNodeWrapper);
+
+					/*
+					 * If addedEdge is null, then there is already and edge connecting these nodes. The information
+					 * contained in these nodes must be merged.
+					 */
+					if (addedEdge == null) {
+						ValueContainerEdge<ConfigSet> existingEdge = collapsedGraph.getEdge(srcNodeWrapper, tgtNodeWrapper);
+						existingEdge.setValue(existingEdge.getValue().and(valueContainerEdge.getValue()));
+					} else {
+						addedEdge.setValue(valueContainerEdge.getValue());
+					}
 				}
 			}
 		}
@@ -172,10 +211,10 @@ public class IntermediateDependencyGraphBuilder {
 			alreadyVisitedPoints.add(head);
 			for (ValueContainerEdge<ConfigSet> edge : outgoingEdges) {
 				Point target = (Point) reachesData.getEdgeTarget(edge);
-				DependencyNodeWrapper<Point> dependencyNodeTarget = new DependencyNodeWrapper<Point>(target, makePosition(target), pointsInUserSelection.contains(target));
+				DependencyNodeWrapper<Point> dependencyNodeTarget = new DependencyNodeWrapper<Point>(target, makePosition(target), pointsInUserSelection.contains(target), target.getVarSet());
 				filteredGraph.addVertex(dependencyNodeTarget);
 
-				DependencyNodeWrapper<Point> dependencyNodeHead = new DependencyNodeWrapper<Point>(head, makePosition(head), pointsInUserSelection.contains(head));
+				DependencyNodeWrapper<Point> dependencyNodeHead = new DependencyNodeWrapper<Point>(head, makePosition(head), pointsInUserSelection.contains(head), head.getVarSet());
 				filteredGraph.addVertex(dependencyNodeHead);
 
 				ValueContainerEdge<ConfigSet> addedEdge = filteredGraph.addEdge(dependencyNodeHead, dependencyNodeTarget);

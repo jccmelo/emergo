@@ -2,6 +2,12 @@ package br.ufpe.cin.emergo.core;
 
 import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 
+/**
+ * Represents a set of features using the representation used by Johnni Winther's Experimental Compiler.
+ * 
+ * @author Társis
+ *
+ */
 public class JWCompilerConfigSet implements ConfigSet {
 
 	private final IfDefVarSet varSet;
@@ -33,6 +39,11 @@ public class JWCompilerConfigSet implements ConfigSet {
 		} else {
 			throw new IllegalArgumentException("Operation and between types " + JWCompilerConfigSet.class + " and " + other.getClass() + " not supported");
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return varSet.toString();
 	}
 
 	/* (non-Javadoc)

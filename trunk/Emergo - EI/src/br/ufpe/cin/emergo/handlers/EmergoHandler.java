@@ -70,7 +70,7 @@ public class EmergoHandler extends AbstractHandler {
 				throw new ExecutionException("Not a text selection");
 
 			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
-			// IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
+			IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
 			//
 			// IDocumentProvider provider = editor.getDocumentProvider();
 			// IDocument document = provider.getDocument(editor.getEditorInput());
@@ -150,11 +150,7 @@ public class EmergoHandler extends AbstractHandler {
 				}
 
 				// Update the tree view.
-				IViewPart findTableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);
-				if (findGraphView instanceof EmergoResultsView) {
-					EmergoResultsView view = (EmergoResultsView) findGraphView;
-					 view.adaptTo(dependencyGraph, this.compilationUnit, editor, spos);
-				}
+				EmergoResultsView.adaptTo(dependencyGraph, this.compilationUnit, editor, spos, textSelectionFile);
 
 				return null;
 

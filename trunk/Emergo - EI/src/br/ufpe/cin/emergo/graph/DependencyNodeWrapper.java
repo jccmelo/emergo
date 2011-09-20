@@ -1,6 +1,9 @@
 package br.ufpe.cin.emergo.graph;
 
+import br.ufpe.cin.emergo.core.ConfigSet;
+import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
+import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 
 /**
  * This is a simple wrapper class meant to be used as nodes in the dependency graph. It is capable of holding an
@@ -15,11 +18,22 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 	private final T data;
 	private final SelectionPosition position;
 	private final boolean isInSelection;
+	private final IfDefVarSet config;
 
-	public DependencyNodeWrapper(T data, SelectionPosition position, boolean isInSelection) {
+	public DependencyNodeWrapper(T data, SelectionPosition position, boolean isInSelection, IfDefVarSet config) {
 		this.data = data;
 		this.position = position;
 		this.isInSelection = isInSelection;
+		this.config = config;
+	}
+
+	/**
+	 * Returns the configuration.
+	 * 
+	 * @return
+	 */
+	public ConfigSet getConfigSet() {
+		return new JWCompilerConfigSet(config);
 	}
 
 	/**
@@ -51,24 +65,29 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 
 	@Override
 	public String toString() {
-//		return position.toString() + " " + data.toString();
+		// return position.toString() + " " + data.toString();
 		return position.toString();
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((config == null) ? 0 : config.hashCode());
 		result = prime * result + ((data == null) ? 0 : data.hashCode());
 		result = prime * result + (isInSelection ? 1231 : 1237);
 		result = prime * result + ((position == null) ? 0 : position.hashCode());
 		return result;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
@@ -80,6 +99,11 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 		if (getClass() != obj.getClass())
 			return false;
 		DependencyNodeWrapper other = (DependencyNodeWrapper) obj;
+		if (config == null) {
+			if (other.config != null)
+				return false;
+		} else if (!config.equals(other.config))
+			return false;
 		if (data == null) {
 			if (other.data != null)
 				return false;
@@ -94,7 +118,5 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 			return false;
 		return true;
 	}
-	
-	
 
 }
