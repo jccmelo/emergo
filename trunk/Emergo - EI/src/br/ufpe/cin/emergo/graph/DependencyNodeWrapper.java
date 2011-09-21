@@ -98,7 +98,7 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		DependencyNodeWrapper other = (DependencyNodeWrapper) obj;
+		DependencyNodeWrapper<?> other = (DependencyNodeWrapper<?>) obj;
 		if (config == null) {
 			if (other.config != null)
 				return false;

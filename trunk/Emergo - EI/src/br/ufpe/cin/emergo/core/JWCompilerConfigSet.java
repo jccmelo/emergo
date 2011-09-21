@@ -11,6 +11,15 @@ import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 public class JWCompilerConfigSet implements ConfigSet {
 
 	private final IfDefVarSet varSet;
+	
+
+	/**
+	 * @return the varSet
+	 */
+	//XXX Temporarily exposing the varset for a temporary workaround.
+	public IfDefVarSet getVarSet() {
+		return varSet;
+	}
 
 	public JWCompilerConfigSet(IfDefVarSet varSet) {
 		this.varSet = varSet;
@@ -75,6 +84,11 @@ public class JWCompilerConfigSet implements ConfigSet {
 		} else if (!varSet.equals(other.varSet))
 			return false;
 		return true;
+	}
+
+	@Override
+	public boolean isTrueSet() {
+		return this.varSet.equals(IfDefVarSet.getAll());
 	}
 
 	

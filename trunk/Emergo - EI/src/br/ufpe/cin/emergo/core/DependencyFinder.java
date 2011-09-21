@@ -33,9 +33,9 @@ public class DependencyFinder {
 	 * @param selectionPosition
 	 * @param options
 	 * @return
-	 * @throws FileNotFoundException
+	 * @throws EmergoException 
 	 */
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws FileNotFoundException {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws  EmergoException {
 		switch (finder) {
 		case JWCOMPILER:
 			return new JWCompilerDependencyFinder(selectionPosition, options).getGraph();

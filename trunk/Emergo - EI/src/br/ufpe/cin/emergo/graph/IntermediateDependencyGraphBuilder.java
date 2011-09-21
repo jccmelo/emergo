@@ -1,8 +1,5 @@
 package br.ufpe.cin.emergo.graph;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -12,9 +9,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.jgrapht.DirectedGraph;
-import org.jgrapht.ext.DOTExporter;
-import org.jgrapht.ext.EdgeNameProvider;
-import org.jgrapht.ext.StringNameProvider;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DirectedMultigraph;
 
@@ -22,6 +16,7 @@ import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DefUseRules;
 import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
+import br.ufpe.cin.emergo.util.DebugUtil;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
@@ -81,9 +76,13 @@ public class IntermediateDependencyGraphBuilder {
 		// Produce a more compact graph by collapsing nodes that belongs to the same line number.
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
 
-		{ // XXX DEBUG CODE: move it somewhere else.
-			_debug2(collapsedDependencyGraph, cfg, sharedAnalysis);
-		}
+		// { // XXX DEBUG CODE: move it somewhere else.
+		// _debug2(collapsedDependencyGraph, cfg, sharedAnalysis);
+		// }
+
+		DebugUtil.exportDot(dependencyGraph, null);
+
+		System.out.println(cfg.toDot(sharedAnalysis));
 
 		return collapsedDependencyGraph;
 	}
@@ -266,6 +265,10 @@ public class IntermediateDependencyGraphBuilder {
 						LatticeSet<Object> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
 
+						if (key.and(poppedPoint.getVarSet()).isEmpty()) {
+							continue;
+						}
+
 						/*
 						 * Iterate over the lattice. In this case, the statement at issue is a Read. This means that the
 						 * elements from the lattice we are interested are Writes and other Reads.
@@ -348,58 +351,34 @@ public class IntermediateDependencyGraphBuilder {
 		reachesData.addVertex(element);
 
 		/*
-		 * To avoid having more than one edge between two given nodes, the information contained in these edges, that
-		 * is, an IfDefVarSet instance, is merged by using the OR operator.
+		 * To avoid having more than one edge between two given nodes, the information contained in these edges,
+		 * internally an IfDefVarSet instance, is merged by using the OR operator.
 		 */
+
+		/*
+		 * XXX Apararently there is a bug with the feature model and the BDD representation that allows non-valid
+		 * configurations to be used freely on the compiled source code. This inspired the use of the following guard
+		 * that will check for feature model validity before adding an edge between the nodes.
+		 * 
+		 * It will prevent nodes from containing invalid configurations (hopefully).
+		 */
+
 		if (reachesData.containsEdge(element, poppedPoint)) {
 			ValueContainerEdge<ConfigSet> existingEdge = reachesData.getEdge(element, poppedPoint);
 			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();
 			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(key));
-			existingEdge.setValue(or);
+			if (((JWCompilerConfigSet)or).getVarSet().isValidInFeatureModel()) {
+				existingEdge.setValue(or);
+			}
 		} else {
-			ValueContainerEdge<ConfigSet> addEdge = reachesData.addEdge(element, poppedPoint);
-			addEdge.setValue(new JWCompilerConfigSet(key));
+			if (key.isValidInFeatureModel()) {
+				ValueContainerEdge<ConfigSet> addedEdge = reachesData.addEdge(element, poppedPoint);
+				addedEdge.setValue(new JWCompilerConfigSet(key));
+			}
 		}
 	}
 
 	private static SelectionPosition makePosition(Point p) {
 		return SelectionPosition.builder().startColumn(p.getToken().getPos()).startLine(p.getToken().getLine()).build();
 	}
-
-	private static void _debug2(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> filteredDependencyGraph, ControlFlowGraph cfg, SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis) {
-		// XXX DEBUG code. Move it somewhere else.
-		DOTExporter<DependencyNode, ValueContainerEdge<ConfigSet>> exporter = new DOTExporter<DependencyNode, ValueContainerEdge<ConfigSet>>(new StringNameProvider<DependencyNode>() {
-
-			@Override
-			public String getVertexName(DependencyNode vertex) {
-				return "\"" + vertex.toString() + "\"";
-			}
-
-		}, null, new EdgeNameProvider<ValueContainerEdge<ConfigSet>>() {
-
-			public String getEdgeName(ValueContainerEdge<ConfigSet> edge) {
-				ConfigSet value = edge.getValue();
-				if (value == null)
-					return "";
-				return value.toString();
-			}
-		});
-
-		try {
-			File file = new File(System.getProperty("user.home") + File.separator + "jwdifdef.dot");
-			FileWriter writer = new FileWriter(file);
-			exporter.export(writer, filteredDependencyGraph);
-			writer.close();
-
-			File file2Dot = new File(System.getProperty("user.home") + File.separator + "cfg.dot");
-			FileWriter fileWriter2 = new FileWriter(file2Dot);
-			fileWriter2.write(cfg.toDot(sharedAnalysis));
-			fileWriter2.close();
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
 }

@@ -1,26 +1,21 @@
 package br.ufpe.cin.emergo.core;
 
-import java.util.Set;
-
 import org.jgrapht.Graph;
+import org.jgrapht.graph.DefaultEdge;
 
-import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.ForwardStrategy;
 import dk.au.cs.java.compiler.cfg.analysis.Analysis;
 import dk.au.cs.java.compiler.cfg.analysis.Process;
-import dk.au.cs.java.compiler.cfg.analysis.VariableInfo;
-import dk.au.cs.java.compiler.cfg.analysis.VariableRead;
+import dk.au.cs.java.compiler.cfg.analysis.ProcessInfo;
 import dk.au.cs.java.compiler.cfg.point.LValue;
 import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.cfg.point.Read;
 import dk.au.cs.java.compiler.cfg.point.Write;
-import dk.au.cs.java.compiler.cfg.visualizer.VisualizerPropertyCollector;
 import dk.brics.lattice.Lattice;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
 import dk.brics.lattice.UnionSetLattice;
-import dk.brics.util.collection.CollectionUtil;
 import dk.brics.util.collection.Stringifier;
 
 /**
@@ -39,7 +34,7 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	 */
 	private static final String ID = "DUW";
 
-	private Graph<Object, ValueContainerEdge> reachesData;
+	private Graph<Object, DefaultEdge> reachesData;
 
 	private boolean buildGraph;
 
@@ -57,7 +52,7 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	 * 
 	 * @param reachesData
 	 */
-	public DefUseRules(Graph<Object, ValueContainerEdge> reachesData) {
+	public DefUseRules(Graph<Object, DefaultEdge> reachesData) {
 		super(ID, ForwardStrategy.INSTANCE);
 		this.reachesData = reachesData;
 		this.buildGraph = true;
@@ -80,30 +75,8 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	}
 
 	@Override
-	public Lattice<LatticeSet<Object>> createLattice(@SuppressWarnings("unused") ControlFlowGraph controlFlowGraph) {
+	public Lattice<LatticeSet<Object>> createLattice(ControlFlowGraph controlFlowGraph) {
 		return new UnionSetLattice<Object>();
-	}
-
-	@Override
-	public void generateProperty(VisualizerPropertyCollector collector) {
-		collector.addNodeSetProperty(ID, "DefUse");
-	}
-
-	@Override
-	public void generateProperties(VisualizerPropertyCollector collector, VariableRead<LatticeSet<Object>> info) {
-		for (Point source : collector.getPoints()) {
-			if (source instanceof Read) {
-				Read read = (Read) source;
-				LatticeSet<Object> variable = info.getVariable(source);
-				if (variable != null) {
-					Set<Point> points = CollectionUtil.newInsertOrderSet();
-					for (Point target : collector.getPoints()) {
-						points.add(target);
-					}
-					collector.addNodeSetPropertyValue(source, ID, points);
-				}
-			}
-		}
 	}
 
 	@Override
@@ -120,7 +93,7 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	}
 
 	@Override
-	public void computeRead(final Read point, VariableInfo<LatticeSet<Object>> info) {
+	public void computeRead(final Read point, ProcessInfo<LatticeSet<Object>> info) {
 		info.process(point, new Process<LatticeSet<Object>>() {
 
 			public LatticeSet<Object> process(LatticeSet<Object> set) {
@@ -157,7 +130,7 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	}
 
 	@Override
-	public void computeWrite(final Write point, VariableInfo<LatticeSet<Object>> info) {
+	public void computeWrite(final Write point, ProcessInfo<LatticeSet<Object>> info) {
 
 		info.process(point, new Process<LatticeSet<Object>>() {
 

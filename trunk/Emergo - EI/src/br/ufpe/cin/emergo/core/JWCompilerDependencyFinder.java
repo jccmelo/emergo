@@ -20,6 +20,7 @@ import dk.au.cs.java.compiler.ErrorType;
 import dk.au.cs.java.compiler.Errors;
 import dk.au.cs.java.compiler.Flags;
 import dk.au.cs.java.compiler.Main;
+import dk.au.cs.java.compiler.SourceError;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
 import dk.au.cs.java.compiler.cfg.gen.CFGGenerator;
@@ -31,7 +32,6 @@ import dk.au.cs.java.compiler.check.TypeLinkingCheck;
 import dk.au.cs.java.compiler.check.WeedingCheck;
 import dk.au.cs.java.compiler.ifdef.IfDefBDDAssigner;
 import dk.au.cs.java.compiler.ifdef.IfDefUtil;
-import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.lexer.Lexer;
 import dk.au.cs.java.compiler.lexer.LexerException;
@@ -48,13 +48,10 @@ import dk.au.cs.java.compiler.phases.Disambiguation;
 import dk.au.cs.java.compiler.phases.Environments;
 import dk.au.cs.java.compiler.phases.Hierarchy;
 import dk.au.cs.java.compiler.phases.Reachability;
-import dk.au.cs.java.compiler.phases.Resources;
 import dk.au.cs.java.compiler.phases.TargetResolver;
 import dk.au.cs.java.compiler.phases.TypeChecking;
 import dk.au.cs.java.compiler.phases.TypeLinking;
 import dk.au.cs.java.compiler.phases.Weeding;
-import dk.au.cs.java.compiler.phases.XACTDesugaring;
-import dk.au.cs.java.compiler.phases.promotion.PromotionInference;
 import dk.au.cs.java.compiler.type.environment.ClassEnvironment;
 import dk.au.cs.java.compiler.type.environment.InternalLookup;
 import dk.au.cs.java.compiler.type.environment.TypeDeclaration;
@@ -79,9 +76,11 @@ public class JWCompilerDependencyFinder {
 	 * 
 	 * @param selectionPosition
 	 * @param options
-	 * @throws FileNotFoundException
+	 * @throws FileNotFoundException 
+	 * @throws EmergoException 
+	 * @throws Exception
 	 */
-	public JWCompilerDependencyFinder(final SelectionPosition selectionPosition, Map<Object, Object> options) throws FileNotFoundException {
+	public JWCompilerDependencyFinder(final SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
 		// Resets compiler status.
 		Main.resetCompiler();
 
@@ -89,7 +88,7 @@ public class JWCompilerDependencyFinder {
 		File selectionFile;
 		selectionFile = new File(selectionPosition.getFilePath());
 		if (!selectionFile.exists()) {
-			throw new FileNotFoundException("File " + selectionPosition.getFilePath() + " not found.");
+			throw new EmergoException("File " + selectionPosition.getFilePath() + " not found.");
 		}
 
 		String rootpath = (String) options.get("rootpath");
@@ -147,27 +146,54 @@ public class JWCompilerDependencyFinder {
 		 * 
 		 * TODO: Check if some of these can be removed to speed things up.
 		 */
-		node.apply(new Weeding());
-		node.apply(new WeedingCheck());
-		node.apply(new IfDefBDDAssigner());
-		node.apply(new Environments());
-		node.apply(new EnvironmentsCheck());
-		node.apply(new TypeLinking());
-		node.apply(new TypeLinkingCheck());
-		node.apply(new Hierarchy());
-		node.apply(new HierarchyCheck());
-		node.apply(new Disambiguation());
-		node.apply(new DisambiguationCheck());
-		node.apply(new TargetResolver());
-		node.apply(new Reachability());
-		// Comment line below to disable constant folding optimization.
-		// node.apply(new ConstantFolding());
-		node.apply(new TypeChecking());
-		node.apply(new CFGGenerator());
-		node.apply(new PromotionInference());
-		node.apply(new XACTDesugaring());
-		node.apply(new Resources());
-		Errors.check();
+
+		try {
+			Errors.check();
+			node.apply(new Weeding());
+			Errors.check();
+			node.apply(new WeedingCheck());
+			Errors.check();
+			node.apply(new IfDefBDDAssigner());
+			Errors.check();
+			node.apply(new Environments());
+			Errors.check();
+			node.apply(new EnvironmentsCheck());
+			Errors.check();
+			node.apply(new TypeLinking());
+			Errors.check();
+			node.apply(new TypeLinkingCheck());
+			Errors.check();
+			node.apply(new Hierarchy());
+			Errors.check();
+			node.apply(new HierarchyCheck());
+			Errors.check();
+			node.apply(new Disambiguation());
+			Errors.check();
+			node.apply(new DisambiguationCheck());
+			Errors.check();
+			node.apply(new TargetResolver());
+			Errors.check();
+			node.apply(new Reachability());
+			Errors.check();
+
+			// Comment line below to disable constant folding optimization.
+			// node.apply(new ConstantFolding());
+			// Errors.check();
+
+			node.apply(new TypeChecking());
+			Errors.check();
+			node.apply(new CFGGenerator());
+			Errors.check();
+
+			// FIXME: something goes wrong in the PromotionInference
+			// node.apply(new PromotionInference());
+			// node.apply(new XACTDesugaring());
+			// node.apply(new Resources());
+
+		} catch (SourceError ex) {
+			ex.printStackTrace();
+			throw new EmergoException("Compilation error: " + ex.getMessage());
+		}
 
 		/*
 		 * Helpful information about the method at issue is provided by the client.
@@ -188,6 +214,7 @@ public class JWCompilerDependencyFinder {
 		 * from the client
 		 */
 		final int selectionStartLine = selectionPosition.getStartLine() + 1;
+		final int selecionEndLine = selectionPosition.getEndLine() + 1;
 
 		TypeDeclaration typeDeclaration = ClassEnvironment.lookupCanonicalName(new InternalLookup(entryPoint, false));
 		final Method method = typeDeclaration.getSelfType().getMethod(methodName, methodDescriptor);
@@ -204,22 +231,9 @@ public class JWCompilerDependencyFinder {
 			protected Object defaultPoint(Point point, Object question) {
 				Token token = point.getToken();
 				int line = token.getLine();
-				if (line == selectionStartLine) {
+				if (line >= selectionStartLine && line <= selecionEndLine) {
 					pointsInUserSelection.add(point);
 				}
-				return null;
-			}
-		});
-
-		/*
-		 * XXX use this to find out if Johnni fixed the bug that cause all nodes to marked as true instead of having a
-		 * feature expression.
-		 */
-		cfg.apply(new PointVisitor<Object, Object>() {
-			@Override
-			protected Object defaultPoint(Point point, Object question) {
-				// IfDefVarSet varSet = point.getVarSet();
-				// System.out.println(varSet);
 				return null;
 			}
 		});

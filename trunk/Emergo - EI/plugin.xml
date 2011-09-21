@@ -131,14 +131,13 @@
 	
 	<extension point="org.eclipse.ui.views">
 
-		<category name="Emergo" id="EmergoViews"/>
 
 		<view
-			category="EmergoViews"
+			category="br.ufpe.cin.emergo.view"
 	    	class="br.ufpe.cin.emergo.views.EmergoResultsView"
 			icon="icons/Emergo-Logo-Blue.png"
 			id="br.ufpe.cin.emergo.view.EmergoResultsView"
-			name="Emergo Results">
+			name="Emergo Table View">
 		</view>
 	</extension>
  
@@ -165,7 +164,7 @@
 			name="Feature"> 
 		</markerField>
 
-		<markerContentGenerator id="emergoResultsSupport" name="Emergo Results" defaultMarkerGrouping="org.eclipse.ui.ide.type">
+		<markerContentGenerator id="emergoResultsSupport" name="Emergo Table View" defaultMarkerGrouping="org.eclipse.ui.ide.type">
 			<markerTypeReference id="Emergo.emergomarker"/>
 			<markerFieldReference id="org.eclipse.ui.ide.severityAndDescriptionField"/>
 			<markerFieldReference id="br.ufpe.cin.emergo.markers.configurationColumn"/>

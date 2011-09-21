@@ -6,4 +6,6 @@ public interface ConfigSet {
 	public ConfigSet or(ConfigSet other);
 
 	public ConfigSet and(ConfigSet other);
+	
+	public boolean isTrueSet();
 }

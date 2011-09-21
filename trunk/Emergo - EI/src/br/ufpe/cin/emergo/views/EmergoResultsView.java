@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.texteditor.ITextEditor;
@@ -29,7 +30,13 @@ public class EmergoResultsView extends MarkerSupportView {
 		super("emergoResultsSupport");
 	}
 
-	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ICompilationUnit compilationUnit, ITextEditor editor, SelectionPosition spos, IFile textSelectionFile) {
+	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor, SelectionPosition spos, IFile textSelectionFile) {
+		EmergoMarker.clearMarkers(textSelectionFile);
+		
+		if (dependencyGraph.vertexSet().size() < 2) {
+			return;
+		}
+
 		Set<DependencyNode> vertexSet = dependencyGraph.vertexSet();
 		IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 		for (DependencyNode srcNode : vertexSet) {
@@ -37,7 +44,7 @@ public class EmergoResultsView extends MarkerSupportView {
 			if (!srcNode.isInSelection()) {
 				continue;
 			}
-
+			
 			KShortestPaths<DependencyNode, ValueContainerEdge<ConfigSet>> shortestPaths = new KShortestPaths<DependencyNode, ValueContainerEdge<ConfigSet>>(dependencyGraph, srcNode, MAX_PATHS);
 
 			Set<DependencyNode> vertexSet2 = dependencyGraph.vertexSet();
@@ -47,6 +54,12 @@ public class EmergoResultsView extends MarkerSupportView {
 				}
 
 				List<GraphPath<DependencyNode, ValueContainerEdge<ConfigSet>>> paths = shortestPaths.getPaths(tgtNode);
+				
+				// If not paths between the nodes were found, then just move on to the next pair of nodes.
+				if (paths == null) {
+					continue;
+				}
+				
 				for (GraphPath<DependencyNode, ValueContainerEdge<ConfigSet>> path : paths) {
 					ConfigSet configAccumulator = null;
 
@@ -59,18 +72,18 @@ public class EmergoResultsView extends MarkerSupportView {
 							configAccumulator = configAccumulator.and(value);
 						}
 					}
-					int startLine = srcNode.getPosition().getStartLine();
+					int startLine = srcNode.getPosition().getStartLine() - 1;
 
 					String accString = configAccumulator == null ? "" : configAccumulator.toString();
 					String message = null;
 					try {
-						message = document.get(document.getLineOffset(startLine),document.getLineLength(startLine)).toString().trim();
+						message = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 					} catch (BadLocationException e) {
 						/*
 						 * Something must have went very wrong here, because the line at issue is not a valid location
 						 * in the document.
 						 */
-						message = "Unkown location";
+						message = "Unknown";
 					}
 
 					EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));

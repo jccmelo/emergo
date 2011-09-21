@@ -35,4 +35,9 @@ public class ValueContainerEdge<S> extends DefaultEdge {
 	public S getValue() {
 		return value;
 	}
+
+	@Override
+	public String toString() {
+		return value == null ? "" : value.toString();
+	}
 }
