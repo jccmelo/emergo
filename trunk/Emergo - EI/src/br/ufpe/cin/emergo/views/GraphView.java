@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.swt.SWT;
@@ -34,7 +35,7 @@ public class GraphView extends ViewPart {
 	private ITextEditor editor;
 	private Composite parent;
 
-	public void createPartControl(Composite parent) {
+	public void createPartControl(final Composite parent) {
 		this.parent = parent;
 
 		// Graph will hold all other objects
@@ -47,8 +48,8 @@ public class GraphView extends ViewPart {
 		// Adds a simple listener for a selection in the graph. Use this to link to the line number in the file.
 		graph.addSelectionListener(new SelectionAdapter() {
 			@Override
-			public void widgetSelected(SelectionEvent e) {
-				Graph source = (Graph) e.getSource();
+			public void widgetSelected(SelectionEvent event) {
+				Graph source = (Graph) event.getSource();
 				List<?> selection = source.getSelection();
 				if (!selection.isEmpty()) {
 					Object selectionObj = selection.get(0);
@@ -60,9 +61,9 @@ public class GraphView extends ViewPart {
 							IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 							lineLength = document.getLineLength(startLine - 1);
 							offset = document.getLineOffset(startLine - 1);
-						} catch (Throwable e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
+						} catch (BadLocationException e) {
+							MessageDialog.openInformation(parent.getShell(), "Emergo Message", "The selected node does not link to a valid position in the file. Try generating a new graph.");
+							e.printStackTrace();
 						}
 						editor.selectAndReveal(offset, lineLength);
 					}
@@ -72,7 +73,7 @@ public class GraphView extends ViewPart {
 	}
 
 	/**
-	 * XXX
+	 * Updates the graph visualization with the information provided.
 	 * 
 	 * @param dependencyGraph
 	 * @param compilationUnit
@@ -147,7 +148,6 @@ public class GraphView extends ViewPart {
 			}
 
 			GraphConnection graphConnection = new GraphConnection(graph, ZestStyles.CONNECTIONS_DIRECTED, src, tgt);
-			// XXX replace this by a propper string representation of a feature expresssion.
 			graphConnection.setText(valueContainerEdge.getValue().toString());
 		}
 	}
@@ -173,6 +173,5 @@ public class GraphView extends ViewPart {
 
 	@Override
 	public void setFocus() {
-		// XXX don't know what to do with this.
 	}
 }

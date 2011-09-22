@@ -1,5 +1,6 @@
 package br.ufpe.cin.emergo.graph;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -52,7 +53,7 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param methodDecl
 	 * @return
 	 */
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> build(AProgram node, ControlFlowGraph cfg, final List<Point> pointsInUserSelection, AMethodDecl methodDecl) {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> build(AProgram node, ControlFlowGraph cfg, final Collection<Point> pointsInUserSelection, AMethodDecl methodDecl) {
 		/*
 		 * Instantiates an analysis with the Def-Use rules.
 		 */
@@ -76,12 +77,8 @@ public class IntermediateDependencyGraphBuilder {
 		// Produce a more compact graph by collapsing nodes that belongs to the same line number.
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
 
-		// { // XXX DEBUG CODE: move it somewhere else.
-		// _debug2(collapsedDependencyGraph, cfg, sharedAnalysis);
-		// }
-
 		DebugUtil.exportDot(dependencyGraph, null);
-
+		
 		System.out.println(cfg.toDot(sharedAnalysis));
 
 		return collapsedDependencyGraph;
@@ -183,7 +180,7 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param reachesData
 	 * @return a new filtered graph
 	 */
-	private static DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filterWithUserSelection(List<Point> pointsInUserSelection, DirectedGraph<Object, ValueContainerEdge<ConfigSet>> reachesData) {
+	private static DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filterWithUserSelection(Collection<Point> pointsInUserSelection, DirectedGraph<Object, ValueContainerEdge<ConfigSet>> reachesData) {
 		// The new graph that will be returned from this method.
 		final DirectedMultigraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredGraph = new DirectedMultigraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 
@@ -260,10 +257,14 @@ public class IntermediateDependencyGraphBuilder {
 				Set<? extends Edge> ingoingEdges = read.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
 					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
+					
 					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
+						
+						IfDefVarSet model = IfDefVarSet.getModel();
+						
 
 						if (key.and(poppedPoint.getVarSet()).isEmpty()) {
 							continue;
@@ -300,6 +301,7 @@ public class IntermediateDependencyGraphBuilder {
 				Set<? extends Edge> ingoingEdges = write.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
 					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
+					
 					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
@@ -323,6 +325,7 @@ public class IntermediateDependencyGraphBuilder {
 				Set<? extends Edge> ingoingEdges = poppedPoint.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
 					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
+					
 					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
@@ -354,15 +357,6 @@ public class IntermediateDependencyGraphBuilder {
 		 * To avoid having more than one edge between two given nodes, the information contained in these edges,
 		 * internally an IfDefVarSet instance, is merged by using the OR operator.
 		 */
-
-		/*
-		 * XXX Apararently there is a bug with the feature model and the BDD representation that allows non-valid
-		 * configurations to be used freely on the compiled source code. This inspired the use of the following guard
-		 * that will check for feature model validity before adding an edge between the nodes.
-		 * 
-		 * It will prevent nodes from containing invalid configurations (hopefully).
-		 */
-
 		if (reachesData.containsEdge(element, poppedPoint)) {
 			ValueContainerEdge<ConfigSet> existingEdge = reachesData.getEdge(element, poppedPoint);
 			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();

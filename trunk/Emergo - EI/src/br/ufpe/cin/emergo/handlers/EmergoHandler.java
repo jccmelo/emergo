@@ -26,6 +26,9 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.internal.core.JavaElement;
+import org.eclipse.jdt.internal.core.SourceMethod;
+import org.eclipse.jdt.internal.corext.refactoring.util.JavaElementUtil;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -42,6 +45,7 @@ import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.jgrapht.DirectedGraph;
 
+import br.ufpe.cin.emergo.activator.Activator;
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DependencyFinder;
 import br.ufpe.cin.emergo.core.DependencyFinderID;
@@ -60,8 +64,8 @@ import br.ufpe.cin.emergo.views.GraphView;
  */
 public class EmergoHandler extends AbstractHandler {
 
-	private ICompilationUnit compilationUnit;
-	private CompilationUnit jdtCompilationUnit;
+	// private ICompilationUnit compilationUnit;
+	// private CompilationUnit jdtCompilationUnit;
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		ISelection selection = HandlerUtil.getCurrentSelectionChecked(event);
@@ -92,24 +96,6 @@ public class EmergoHandler extends AbstractHandler {
 			// The project that contains the file in which the selection happened.
 			IProject project = textSelectionFile.getProject();
 
-			CompilationUnit compilationUnit = getCompilationUnit(textSelectionFile);
-			SelectionNodesVisitor selectionVisitor = new SelectionNodesVisitor(textSelection);
-			compilationUnit.accept(selectionVisitor);
-			Set<ASTNode> nodesInSelection = selectionVisitor.getNodes();
-			MethodDeclaration parentMethod = getParentMethod(nodesInSelection);
-
-			// Cannot continue without determining a method declaration.
-			if (parentMethod == null) {
-				MessageDialog.openError(shell, "Could not find enclosing method declaration", "Could not find the enclosing method for your selection. Make sure it is within the bounds of a method declaration.");
-				return null;
-			}
-
-			IMethod method = (IMethod) this.compilationUnit.getElementAt(parentMethod.getStartPosition());
-
-			options.put("type", method.getDeclaringType().getFullyQualifiedName());
-			options.put("methodDescriptor", getMethodDescriptor(method));
-			options.put("method", method.getElementName());
-
 			/*
 			 * Finds out the (partial) project's classpath as a list of Files. Each File either points to a source
 			 * folder, or an archive like a jar.
@@ -133,16 +119,19 @@ public class EmergoHandler extends AbstractHandler {
 			options.put("classpath", classpath);
 
 			/*
-			 * Holds the textual selection information that needs to passed along to the underlying compiler
-			 * infrastructure
+			 * This instance of SelectionPosition holds the textual selection information that needs to br passed along
+			 * to the underlying compiler infrastructure
 			 */
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(textSelectionFile.getLocation().toOSString()).build();
 
 			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
 
+			/*
+			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
+			 */
 			if (dependencyGraph.vertexSet().size() < 2) {
 				// XXX cannot find path to icon!
-				new MessageDialog(shell, "Emergo Message", new Image(shell.getDisplay(), "icons/Emergo-Logo-Blue.png"), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
+				new MessageDialog(shell, "Emergo Message", null, "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
 			}
 
 			// TODO: make this a list of things to update instead of hardcoding.
@@ -166,44 +155,23 @@ public class EmergoHandler extends AbstractHandler {
 		return null;
 	}
 
-	private MethodDeclaration getParentMethod(Set<ASTNode> nodesInSelection) {
-		ASTNode parent;
-		for (ASTNode node : nodesInSelection) {
-			parent = node;
-			do {
-				if (parent.getNodeType() == ASTNode.METHOD_DECLARATION) {
-					return (MethodDeclaration) parent;
-				}
-			} while ((parent = parent.getParent()) != null);
-		}
-		return null;
-	}
-
-	private CompilationUnit getCompilationUnit(IFile textSelectionFile) {
-		this.compilationUnit = JavaCore.createCompilationUnitFrom(textSelectionFile);
-		ASTParser parser = ASTParser.newParser(AST.JLS3);
-		parser.setSource(compilationUnit);
-		parser.setKind(ASTParser.K_COMPILATION_UNIT);
-		parser.setResolveBindings(true);
-		this.jdtCompilationUnit = (CompilationUnit) parser.createAST(null);
-		return jdtCompilationUnit;
-	}
-
-	private String getMethodDescriptor(IMethod method) throws JavaModelException {
-		return Signature.createMethodSignature(method.getParameterTypes(), method.getReturnType().toString());
-	}
-
+	/**
+	 * Calculates the column number of the {@code offset} in the {@code Document doc}
+	 * 
+	 * @param doc
+	 * @param offset
+	 * @return the column number
+	 */
 	public int calculateColumnFromOffset(IDocument doc, int offset) {
 		int sumpos = 0;
 		int i = 0;
-
 		try {
 			while (sumpos + doc.getLineLength(i) - 1 < offset) {
 				sumpos += doc.getLineLength(i);
 				++i;
 			}
 		} catch (BadLocationException e) {
-			// XXX ???
+			// XXX What to do here?
 			e.printStackTrace();
 		}
 

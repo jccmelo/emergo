@@ -8,8 +8,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.jgrapht.DirectedGraph;
 
@@ -21,6 +23,7 @@ import dk.au.cs.java.compiler.Errors;
 import dk.au.cs.java.compiler.Flags;
 import dk.au.cs.java.compiler.Main;
 import dk.au.cs.java.compiler.SourceError;
+import dk.au.cs.java.compiler.analysis.DepthFirstAdapter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
 import dk.au.cs.java.compiler.cfg.gen.CFGGenerator;
@@ -28,6 +31,7 @@ import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.check.DisambiguationCheck;
 import dk.au.cs.java.compiler.check.EnvironmentsCheck;
 import dk.au.cs.java.compiler.check.HierarchyCheck;
+import dk.au.cs.java.compiler.check.TypeCheckingCheck;
 import dk.au.cs.java.compiler.check.TypeLinkingCheck;
 import dk.au.cs.java.compiler.check.WeedingCheck;
 import dk.au.cs.java.compiler.ifdef.IfDefBDDAssigner;
@@ -48,13 +52,13 @@ import dk.au.cs.java.compiler.phases.Disambiguation;
 import dk.au.cs.java.compiler.phases.Environments;
 import dk.au.cs.java.compiler.phases.Hierarchy;
 import dk.au.cs.java.compiler.phases.Reachability;
+import dk.au.cs.java.compiler.phases.Resources;
 import dk.au.cs.java.compiler.phases.TargetResolver;
 import dk.au.cs.java.compiler.phases.TypeChecking;
 import dk.au.cs.java.compiler.phases.TypeLinking;
 import dk.au.cs.java.compiler.phases.Weeding;
+import dk.au.cs.java.compiler.phases.XACTDesugaring;
 import dk.au.cs.java.compiler.type.environment.ClassEnvironment;
-import dk.au.cs.java.compiler.type.environment.InternalLookup;
-import dk.au.cs.java.compiler.type.environment.TypeDeclaration;
 import dk.au.cs.java.compiler.type.members.Method;
 import dk.brics.util.file.WildcardExpander;
 
@@ -76,8 +80,8 @@ public class JWCompilerDependencyFinder {
 	 * 
 	 * @param selectionPosition
 	 * @param options
-	 * @throws FileNotFoundException 
-	 * @throws EmergoException 
+	 * @throws FileNotFoundException
+	 * @throws EmergoException
 	 * @throws Exception
 	 */
 	public JWCompilerDependencyFinder(final SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
@@ -96,11 +100,6 @@ public class JWCompilerDependencyFinder {
 		if (!ifdefSpecFile.exists()) {
 			throw new RuntimeException("The ifdef.txt of the project was not found at " + rootpath);
 		}
-
-		EnumSet<Flags> flags = (EnumSet<Flags>) Main.FLAGS;
-		flags.add(Flags.IFDEF);
-		SharedSimultaneousAnalysis.useSharedSetStrategy(true);
-		IfDefUtil.parseIfDefSpecification(ifdefSpecFile);
 
 		// Holds a the list of Files to be parsed by the compiler.
 		List<File> files = new ArrayList<File>();
@@ -129,13 +128,23 @@ public class JWCompilerDependencyFinder {
 			}
 		}
 
-		// XXX find out classpath
-		ClassEnvironment.init("", true);
+		/*
+		 * XXX find out classpath
+		 * 
+		 * XXX WARNING! This static method causes the Feature Model, among other things, to be RESETED. It SHOULD NOT be
+		 * called AFTER the parsing of the ifdef specification file in any circustance.
+		 */
+		ClassEnvironment.init(System.getenv("CLASSPATH"), true);
+
+		EnumSet<Flags> flags = (EnumSet<Flags>) Main.FLAGS;
+		flags.add(Flags.IFDEF);
+		SharedSimultaneousAnalysis.useSharedSetStrategy(true);
+		IfDefUtil.parseIfDefSpecification(ifdefSpecFile);
 
 		// The root point of the parsed program.
 		AProgram node = parseProgram(files);
 
-		// XXX: Surprisingly, this is necessary to prevent the compiler from throwing NPEs.
+		// XXX: Surprisingly, this is necessary to prevent the compiler from throwing a NPE.
 		Main.program = node;
 
 		// XXX I don't know what this is for yet...
@@ -176,37 +185,29 @@ public class JWCompilerDependencyFinder {
 			node.apply(new Reachability());
 			Errors.check();
 
-			// Comment line below to disable constant folding optimization.
+			// Un/Comment line below to en/disable constant folding optimization.
 			// node.apply(new ConstantFolding());
 			// Errors.check();
 
 			node.apply(new TypeChecking());
 			Errors.check();
+			node.apply(new TypeCheckingCheck());
+			Errors.check();
 			node.apply(new CFGGenerator());
 			Errors.check();
 
-			// FIXME: something goes wrong in the PromotionInference
+			// FIXME: something goes wrong in the PromotionInference.
 			// node.apply(new PromotionInference());
-			// node.apply(new XACTDesugaring());
-			// node.apply(new Resources());
+			// Errors.check();
 
+			node.apply(new XACTDesugaring());
+			Errors.check();
+			node.apply(new Resources());
+			Errors.check();
 		} catch (SourceError ex) {
 			ex.printStackTrace();
 			throw new EmergoException("Compilation error: " + ex.getMessage());
 		}
-
-		/*
-		 * Helpful information about the method at issue is provided by the client.
-		 * 
-		 * type: the class name
-		 * 
-		 * method: the method within the class name
-		 * 
-		 * methodDescriptor: a bytecode descriptor of the method
-		 */
-		String entryPoint = (String) options.get("type");
-		String methodName = (String) options.get("method");
-		String methodDescriptor = (String) options.get("methodDescriptor");
 
 		// Information about the user selection.
 		/*
@@ -216,17 +217,58 @@ public class JWCompilerDependencyFinder {
 		final int selectionStartLine = selectionPosition.getStartLine() + 1;
 		final int selecionEndLine = selectionPosition.getEndLine() + 1;
 
-		TypeDeclaration typeDeclaration = ClassEnvironment.lookupCanonicalName(new InternalLookup(entryPoint, false));
-		final Method method = typeDeclaration.getSelfType().getMethod(methodName, methodDescriptor);
-		ControlFlowGraph cfg = method.getControlFlowGraph();
-
-		final List<Point> pointsInUserSelection = new ArrayList<Point>();
+		final Set<Point> pointsInUserSelection = new HashSet<Point>();
 
 		/*
-		 * XXX this selection boundary check is *very* broken. Use the information on the SelectionPosition to get a
-		 * more precise set.
+		 * Finds out in which method the user selection happened based on the information inside the SelectionPosition
+		 * instance.
 		 */
-		cfg.apply(new PointVisitor<Object, Object>() {
+		final AMethodDecl[] methodBox = new AMethodDecl[1];
+		final String filePath = selectionPosition.getFilePath();
+		node.apply(new DepthFirstAdapter() {
+			private boolean found = false;
+
+			@Override
+			public void caseACompilationUnit(ACompilationUnit cUnit) {
+				String file = cUnit.getFile().getPath();
+				if (!found && file.equals(filePath)) {
+
+					final Token[] tokenBox = new Token[1];
+
+					cUnit.apply(new DepthFirstAdapter() {
+						@Override
+						public void defaultToken(Token defaultToken) {
+							if (tokenBox[0] != null)
+								return;
+							int line = defaultToken.getLine();
+							if (line >= selectionStartLine && line <= selecionEndLine) {
+								tokenBox[0] = defaultToken;
+							}
+						}
+					});
+
+					methodBox[0] = tokenBox[0].getAncestor(AMethodDecl.class);
+					found = true;
+				}
+			}
+		});
+
+		AMethodDecl methodDecl = methodBox[0];
+		if (methodDecl == null) {
+			throw new IllegalArgumentException("Could not find enclosing method for the selection");
+		}
+		Method method = methodDecl.getMethod();
+
+		ControlFlowGraph methodInSelectionCFG = method.getControlFlowGraph();
+		// XXX check if interprocedural is enabled in the configurations
+		// methodInSelectionCFG = InterproceduralAnalysis.createInterproceduralControlFlowGraph(methodInSelectionCFG);
+
+		/*
+		 * Find which Nodes are within the boundaries of the user selection.
+		 * 
+		 * TODO: use the column information for a more precise set.
+		 */
+		methodInSelectionCFG.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
 				Token token = point.getToken();
@@ -239,26 +281,10 @@ public class JWCompilerDependencyFinder {
 		});
 
 		/*
-		 * XXX this is a *very* expensive way of finding out the AMethodDecl from a Method. Look for a faster/easier
-		 * way.
-		 */
-		final AMethodDecl[] methodDeclBox = new AMethodDecl[1];
-		node.apply(new AbstractPhase() {
-			Method m = method.getDeclaringMember();
-
-			@Override
-			public void inAMethodDecl(AMethodDecl node) {
-				if (node.getMethod().equals(m)) {
-					methodDeclBox[0] = node;
-				}
-			}
-		});
-
-		/*
 		 * Now that there is enough information about the selection and the CFGs have been generated, create the
 		 * intermediate depency graph.
 		 */
-		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb = IntermediateDependencyGraphBuilder.build(node, cfg, pointsInUserSelection, methodDeclBox[0]);
+		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb = IntermediateDependencyGraphBuilder.build(node, methodInSelectionCFG, pointsInUserSelection, methodDecl);
 		this.useDefWeb = useDefWeb;
 	}
 
@@ -266,7 +292,11 @@ public class JWCompilerDependencyFinder {
 	private static AProgram parseProgram(List<File> sourceFiles) {
 		final List<ACompilationUnit> sources = new /* CopyOnWrite */ArrayList<ACompilationUnit>();
 
+		// LinkedList<Thread> threads = new LinkedList<Thread>();
 		for (final File file : sourceFiles) {
+			/*
+			 * Thread thread = new Thread() { public void run() {
+			 */
 			try {
 				showPhaseProgress();
 				FileInputStream fis = new FileInputStream(file);
@@ -289,11 +319,13 @@ public class JWCompilerDependencyFinder {
 				Errors.check(); // no use in parsing of not all files can be read
 			}
 		}
+		/*
+		 * }; threads.add(thread); thread.start(); } for (Thread thread : threads) { try { thread.join(); } catch
+		 * (InterruptedException e) { } }
+		 */
 		AProgram node = new AProgram(new TIdentifier("AProgram", 0, 0), sources);
-
-		// enables the runtime tree invariant
-		node.setOptionalInvariant(true);
-
+		node.setOptionalInvariant(true); // enables the runtime tree
+											// invariant
 		return node;
 	}
 

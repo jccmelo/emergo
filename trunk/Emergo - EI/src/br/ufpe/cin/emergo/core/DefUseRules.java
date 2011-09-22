@@ -12,6 +12,7 @@ import dk.au.cs.java.compiler.cfg.point.LValue;
 import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.cfg.point.Read;
 import dk.au.cs.java.compiler.cfg.point.Write;
+import dk.au.cs.java.compiler.type.NameContext;
 import dk.brics.lattice.Lattice;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
@@ -87,7 +88,7 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 		return variable.toString(new Stringifier<Object>() {
 
 			public String toString(Object point) {
-				return ((Point) point).getLabelText();
+				return ((Point) point).getLabelText(new NameContext());
 			}
 		});
 	}
