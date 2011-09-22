@@ -35,7 +35,7 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 		
 		//setSourceViewerConfiguration(new IfDefSourceViewerConfiguration(javaColorManager, preferenceStore, this, null));
 		
-		setSourceViewerConfiguration(new IfDefSourceViewerConfiguration());
+//		setSourceViewerConfiguration(new IfDefSourceViewerConfiguration());
 	}
 
 	public void instantiatePositions() {

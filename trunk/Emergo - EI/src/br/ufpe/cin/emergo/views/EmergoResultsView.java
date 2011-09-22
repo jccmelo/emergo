@@ -74,7 +74,7 @@ public class EmergoResultsView extends MarkerSupportView {
 					}
 					int startLine = srcNode.getPosition().getStartLine() - 1;
 
-					String accString = configAccumulator == null ? "" : configAccumulator.toString();
+//					String accString = configAccumulator == null ? "" : configAccumulator.toString();
 					String message = null;
 					try {
 						message = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
@@ -86,7 +86,8 @@ public class EmergoResultsView extends MarkerSupportView {
 						message = "Unknown";
 					}
 
-					EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
+					EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(configAccumulator).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
+					//EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
 				}
 			}
 		}

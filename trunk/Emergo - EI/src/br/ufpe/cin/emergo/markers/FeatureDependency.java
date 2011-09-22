@@ -2,11 +2,13 @@ package br.ufpe.cin.emergo.markers;
 
 import org.eclipse.core.resources.IFile;
 
+import br.ufpe.cin.emergo.core.ConfigSet;
+
 public class FeatureDependency {
 
 	private IFile file;
 	private int lineNumber;
-	private String configuration;
+	private ConfigSet configuration;
 	private String feature;
 
 	public IFile getFile() {
@@ -17,7 +19,7 @@ public class FeatureDependency {
 		return lineNumber;
 	}
 
-	public String getConfiguration() {
+	public ConfigSet getConfiguration() {
 		return configuration;
 	}
 
@@ -35,7 +37,7 @@ public class FeatureDependency {
 		return this;
 	}
 
-	public FeatureDependency setConfiguration(String configuration) {
+	public FeatureDependency setConfiguration(ConfigSet configuration) {
 		this.configuration = configuration;
 		return this;
 	}
@@ -90,8 +92,5 @@ public class FeatureDependency {
 			return false;
 		return true;
 	}
-	
-	
-	
 
 }

@@ -12,6 +12,7 @@ import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jface.text.BadLocationException;
@@ -22,6 +23,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.views.markers.MarkerItem;
 
+import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.editor.IfDefJavaEditor;
 
 public class HideFeaturesHandler extends AbstractHandler {
@@ -52,7 +54,11 @@ public class HideFeaturesHandler extends AbstractHandler {
 //					 * Informations received from the selected market.
 //					 */
 //					String feature = (String) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
-//
+					
+					ConfigSet configuration = (ConfigSet) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
+					
+					System.out.println("===> " + configuration);
+
 //					/*
 //					 * This visitor selects the features that will be collapsed.
 //					 */
@@ -81,16 +87,19 @@ public class HideFeaturesHandler extends AbstractHandler {
 
 					//TODO Temporary objects (features and featuresLineNumbers):
 					Set<String> features = new HashSet<String>();
-					features.add("A");
+					features.add("COPY");
 					
 					Map<String, Set<Integer>> featuresToLineNumbers;
 					
 					Set<Integer> lines = new TreeSet<Integer>();
-					lines.add(new Integer(32));
-					lines.add(new Integer(33));
+					lines.add(new Integer(20));
+					lines.add(new Integer(21));
+					lines.add(new Integer(22));
+					lines.add(new Integer(23));
+					lines.add(new Integer(24));
 					
 					featuresToLineNumbers = new HashMap<String, Set<Integer>>();
-					featuresToLineNumbers.put("A", lines);
+					featuresToLineNumbers.put("COPY", lines);
 					//TODO (end)
 					
 					ArrayList<Position> positions = createPositions(d, features, featuresToLineNumbers);
