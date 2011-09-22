@@ -52,6 +52,7 @@ import br.ufpe.cin.emergo.core.DependencyFinderID;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
+import br.ufpe.cin.emergo.util.ResourceUtil;
 import br.ufpe.cin.emergo.util.SelectionNodesVisitor;
 import br.ufpe.cin.emergo.views.EmergoResultsView;
 import br.ufpe.cin.emergo.views.GraphView;
@@ -80,7 +81,7 @@ public class EmergoHandler extends AbstractHandler {
 			final Map<Object, Object> options = new HashMap<Object, Object>();
 
 			if (!(selection instanceof ITextSelection))
-				throw new ExecutionException("Not a text selection");
+				throw new ExecutionException("Not a textual selection");
 
 			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
 			IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
@@ -90,7 +91,7 @@ public class EmergoHandler extends AbstractHandler {
 			ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
 
 			if (textSelection.getLength() == -1) {
-				MessageDialog.openError(shell, "Invalid selectino", "Your selection is invalid.");
+				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "The selection is invalid.", MessageDialog.WARNING, new String[] { "Ok" }, 0).open();
 			}
 
 			// The project that contains the file in which the selection happened.
@@ -129,9 +130,11 @@ public class EmergoHandler extends AbstractHandler {
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
 			 */
-			if (dependencyGraph.vertexSet().size() < 2) {
+			if (dependencyGraph == null || dependencyGraph.vertexSet().size() < 2) {
 				// XXX cannot find path to icon!
-				new MessageDialog(shell, "Emergo Message", null, "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
+				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
+				// TODO clear the views!
+				return null;
 			}
 
 			// TODO: make this a list of things to update instead of hardcoding.
@@ -147,7 +150,7 @@ public class EmergoHandler extends AbstractHandler {
 
 		} catch (Throwable e) {
 			String message = e.getMessage() == null ? "No message specified" : e.getMessage();
-			InternalErrorDialog internalErrorDialog = new InternalErrorDialog(shell, "An error has occurred", null, message, e, MessageDialog.ERROR, new String[] { "Ok", "Details" }, 0);
+			InternalErrorDialog internalErrorDialog = new InternalErrorDialog(shell, "An error has occurred", ResourceUtil.getEmergoIcon(), message, e, MessageDialog.ERROR, new String[] { "Ok", "Details" }, 0);
 			internalErrorDialog.setDetailButton(1);
 			internalErrorDialog.open();
 			e.printStackTrace();

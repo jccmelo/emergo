@@ -1,6 +1,7 @@
 package br.ufpe.cin.emergo.graph;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -19,7 +20,11 @@ import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.util.DebugUtil;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
+import dk.au.cs.java.compiler.cfg.VisualizerUtil;
+import dk.au.cs.java.compiler.cfg.Worklist;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
+import dk.au.cs.java.compiler.cfg.analysis.InterproceduralAnalysis;
+import dk.au.cs.java.compiler.cfg.analysis.rules.ReachingDefinitionsRules;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
 import dk.au.cs.java.compiler.cfg.point.Expression;
 import dk.au.cs.java.compiler.cfg.point.Point;
@@ -30,6 +35,7 @@ import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.Node;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
 
@@ -53,7 +59,7 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param methodDecl
 	 * @return
 	 */
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> build(AProgram node, ControlFlowGraph cfg, final Collection<Point> pointsInUserSelection, AMethodDecl methodDecl) {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildIntraproceduralGraph(AProgram node, ControlFlowGraph cfg, final Collection<Point> pointsInUserSelection, Node methodDecl) {
 		/*
 		 * Instantiates an analysis with the Def-Use rules.
 		 */
@@ -78,9 +84,19 @@ public class IntermediateDependencyGraphBuilder {
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
 
 		DebugUtil.exportDot(dependencyGraph, null);
-		
-		System.out.println(cfg.toDot(sharedAnalysis));
 
+		return collapsedDependencyGraph;
+	}
+
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, final Collection<Point> pointsInUserSelection) {
+		SharedSimultaneousAnalysis<LatticeSet<Object>> defUseRules = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
+		Worklist.process(cfg, defUseRules);
+		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, defUseRules);
+		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
+		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
+		
+		System.out.println(cfg.toDot());
+		
 		return collapsedDependencyGraph;
 	}
 
@@ -257,14 +273,16 @@ public class IntermediateDependencyGraphBuilder {
 				Set<? extends Edge> ingoingEdges = read.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
 					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
-					
+
+					if (variable == null)
+						continue;
+
 					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
-						
+
 						IfDefVarSet model = IfDefVarSet.getModel();
-						
 
 						if (key.and(poppedPoint.getVarSet()).isEmpty()) {
 							continue;
@@ -301,7 +319,10 @@ public class IntermediateDependencyGraphBuilder {
 				Set<? extends Edge> ingoingEdges = write.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
 					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
-					
+
+					if (variable == null)
+						continue;
+
 					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
@@ -325,7 +346,10 @@ public class IntermediateDependencyGraphBuilder {
 				Set<? extends Edge> ingoingEdges = poppedPoint.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
 					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
-					
+
+					if (variable == null)
+						continue;
+
 					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
@@ -361,7 +385,7 @@ public class IntermediateDependencyGraphBuilder {
 			ValueContainerEdge<ConfigSet> existingEdge = reachesData.getEdge(element, poppedPoint);
 			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();
 			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(key));
-			if (((JWCompilerConfigSet)or).getVarSet().isValidInFeatureModel()) {
+			if (((JWCompilerConfigSet) or).getVarSet().isValidInFeatureModel()) {
 				existingEdge.setValue(or);
 			}
 		} else {

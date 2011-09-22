@@ -28,6 +28,7 @@ import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
+import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class GraphView extends ViewPart {
 	public static final String ID = "br.ufpe.cin.emergo.view.GraphView";
@@ -62,7 +63,7 @@ public class GraphView extends ViewPart {
 							lineLength = document.getLineLength(startLine - 1);
 							offset = document.getLineOffset(startLine - 1);
 						} catch (BadLocationException e) {
-							MessageDialog.openInformation(parent.getShell(), "Emergo Message", "The selected node does not link to a valid position in the file. Try generating a new graph.");
+							new MessageDialog(parent.getShell(), "Emergo Message", ResourceUtil.getEmergoIcon(), "The selected node does not link to a valid position in the file. Try generating a new graph.", MessageDialog.WARNING, new String[] { "Ok" }, 0).open();
 							e.printStackTrace();
 						}
 						editor.selectAndReveal(offset, lineLength);

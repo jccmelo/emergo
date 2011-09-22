@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -25,9 +26,14 @@ import dk.au.cs.java.compiler.Main;
 import dk.au.cs.java.compiler.SourceError;
 import dk.au.cs.java.compiler.analysis.DepthFirstAdapter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
+import dk.au.cs.java.compiler.cfg.VisualizerUtil;
+import dk.au.cs.java.compiler.cfg.Worklist;
+import dk.au.cs.java.compiler.cfg.analysis.InterproceduralAnalysis;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
+import dk.au.cs.java.compiler.cfg.analysis.rules.ReachingDefinitionsRules;
 import dk.au.cs.java.compiler.cfg.gen.CFGGenerator;
 import dk.au.cs.java.compiler.cfg.point.Point;
+import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.check.DisambiguationCheck;
 import dk.au.cs.java.compiler.check.EnvironmentsCheck;
 import dk.au.cs.java.compiler.check.HierarchyCheck;
@@ -47,7 +53,6 @@ import dk.au.cs.java.compiler.node.TIdentifier;
 import dk.au.cs.java.compiler.node.Token;
 import dk.au.cs.java.compiler.parser.Parser;
 import dk.au.cs.java.compiler.parser.ParserException;
-import dk.au.cs.java.compiler.phases.AbstractPhase;
 import dk.au.cs.java.compiler.phases.Disambiguation;
 import dk.au.cs.java.compiler.phases.Environments;
 import dk.au.cs.java.compiler.phases.Hierarchy;
@@ -60,6 +65,7 @@ import dk.au.cs.java.compiler.phases.Weeding;
 import dk.au.cs.java.compiler.phases.XACTDesugaring;
 import dk.au.cs.java.compiler.type.environment.ClassEnvironment;
 import dk.au.cs.java.compiler.type.members.Method;
+import dk.brics.lattice.LatticeSet;
 import dk.brics.util.file.WildcardExpander;
 
 /**
@@ -142,13 +148,13 @@ public class JWCompilerDependencyFinder {
 		IfDefUtil.parseIfDefSpecification(ifdefSpecFile);
 
 		// The root point of the parsed program.
-		AProgram node = parseProgram(files);
+		AProgram rootNode = parseProgram(files);
 
 		// XXX: Surprisingly, this is necessary to prevent the compiler from throwing a NPE.
-		Main.program = node;
+		Main.program = rootNode;
 
 		// XXX I don't know what this is for yet...
-		node.setOptionalInvariant(true);
+		rootNode.setOptionalInvariant(true);
 
 		/*
 		 * Apply compiler phases to the root node.
@@ -158,51 +164,51 @@ public class JWCompilerDependencyFinder {
 
 		try {
 			Errors.check();
-			node.apply(new Weeding());
+			rootNode.apply(new Weeding());
 			Errors.check();
-			node.apply(new WeedingCheck());
+			rootNode.apply(new WeedingCheck());
 			Errors.check();
-			node.apply(new IfDefBDDAssigner());
+			rootNode.apply(new IfDefBDDAssigner());
 			Errors.check();
-			node.apply(new Environments());
+			rootNode.apply(new Environments());
 			Errors.check();
-			node.apply(new EnvironmentsCheck());
+			rootNode.apply(new EnvironmentsCheck());
 			Errors.check();
-			node.apply(new TypeLinking());
+			rootNode.apply(new TypeLinking());
 			Errors.check();
-			node.apply(new TypeLinkingCheck());
+			rootNode.apply(new TypeLinkingCheck());
 			Errors.check();
-			node.apply(new Hierarchy());
+			rootNode.apply(new Hierarchy());
 			Errors.check();
-			node.apply(new HierarchyCheck());
+			rootNode.apply(new HierarchyCheck());
 			Errors.check();
-			node.apply(new Disambiguation());
+			rootNode.apply(new Disambiguation());
 			Errors.check();
-			node.apply(new DisambiguationCheck());
+			rootNode.apply(new DisambiguationCheck());
 			Errors.check();
-			node.apply(new TargetResolver());
+			rootNode.apply(new TargetResolver());
 			Errors.check();
-			node.apply(new Reachability());
+			rootNode.apply(new Reachability());
 			Errors.check();
 
 			// Un/Comment line below to en/disable constant folding optimization.
 			// node.apply(new ConstantFolding());
 			// Errors.check();
 
-			node.apply(new TypeChecking());
+			rootNode.apply(new TypeChecking());
 			Errors.check();
-			node.apply(new TypeCheckingCheck());
+			rootNode.apply(new TypeCheckingCheck());
 			Errors.check();
-			node.apply(new CFGGenerator());
+			rootNode.apply(new CFGGenerator());
 			Errors.check();
 
 			// FIXME: something goes wrong in the PromotionInference.
 			// node.apply(new PromotionInference());
 			// Errors.check();
 
-			node.apply(new XACTDesugaring());
+			rootNode.apply(new XACTDesugaring());
 			Errors.check();
-			node.apply(new Resources());
+			rootNode.apply(new Resources());
 			Errors.check();
 		} catch (SourceError ex) {
 			ex.printStackTrace();
@@ -225,7 +231,7 @@ public class JWCompilerDependencyFinder {
 		 */
 		final AMethodDecl[] methodBox = new AMethodDecl[1];
 		final String filePath = selectionPosition.getFilePath();
-		node.apply(new DepthFirstAdapter() {
+		rootNode.apply(new DepthFirstAdapter() {
 			private boolean found = false;
 
 			@Override
@@ -259,16 +265,14 @@ public class JWCompilerDependencyFinder {
 		}
 		Method method = methodDecl.getMethod();
 
-		ControlFlowGraph methodInSelectionCFG = method.getControlFlowGraph();
-		// XXX check if interprocedural is enabled in the configurations
-		// methodInSelectionCFG = InterproceduralAnalysis.createInterproceduralControlFlowGraph(methodInSelectionCFG);
+		ControlFlowGraph cfg = method.getControlFlowGraph();
 
 		/*
 		 * Find which Nodes are within the boundaries of the user selection.
 		 * 
 		 * TODO: use the column information for a more precise set.
 		 */
-		methodInSelectionCFG.apply(new PointVisitor<Object, Object>() {
+		cfg.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
 				Token token = point.getToken();
@@ -280,12 +284,16 @@ public class JWCompilerDependencyFinder {
 			}
 		});
 
-		/*
-		 * Now that there is enough information about the selection and the CFGs have been generated, create the
-		 * intermediate depency graph.
-		 */
-		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb = IntermediateDependencyGraphBuilder.build(node, methodInSelectionCFG, pointsInUserSelection, methodDecl);
-		this.useDefWeb = useDefWeb;
+		boolean interprocedural = true;
+		if (interprocedural) {
+			this.useDefWeb = IntermediateDependencyGraphBuilder.buildInterproceduralGraph(rootNode, cfg, pointsInUserSelection);
+		} else {
+			/*
+			 * Now that there is enough information about the selection and the CFGs have been generated, create the
+			 * intermediate depency graph.
+			 */
+			this.useDefWeb = IntermediateDependencyGraphBuilder.buildIntraproceduralGraph(rootNode, cfg, pointsInUserSelection, methodDecl);
+		}
 	}
 
 	// XXX this method was copied from dk...compiler.Main. Go through it again.
