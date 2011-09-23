@@ -6,9 +6,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
+import java.util.Deque;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,14 +29,9 @@ import dk.au.cs.java.compiler.Main;
 import dk.au.cs.java.compiler.SourceError;
 import dk.au.cs.java.compiler.analysis.DepthFirstAdapter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
-import dk.au.cs.java.compiler.cfg.VisualizerUtil;
-import dk.au.cs.java.compiler.cfg.Worklist;
-import dk.au.cs.java.compiler.cfg.analysis.InterproceduralAnalysis;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
-import dk.au.cs.java.compiler.cfg.analysis.rules.ReachingDefinitionsRules;
 import dk.au.cs.java.compiler.cfg.gen.CFGGenerator;
 import dk.au.cs.java.compiler.cfg.point.Point;
-import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.check.DisambiguationCheck;
 import dk.au.cs.java.compiler.check.EnvironmentsCheck;
 import dk.au.cs.java.compiler.check.HierarchyCheck;
@@ -42,13 +40,16 @@ import dk.au.cs.java.compiler.check.TypeLinkingCheck;
 import dk.au.cs.java.compiler.check.WeedingCheck;
 import dk.au.cs.java.compiler.ifdef.IfDefBDDAssigner;
 import dk.au.cs.java.compiler.ifdef.IfDefUtil;
+import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.lexer.Lexer;
 import dk.au.cs.java.compiler.lexer.LexerException;
 import dk.au.cs.java.compiler.node.ACompilationUnit;
+import dk.au.cs.java.compiler.node.AIfdefStm;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
 import dk.au.cs.java.compiler.node.Start;
+import dk.au.cs.java.compiler.node.TEndif;
 import dk.au.cs.java.compiler.node.TIdentifier;
 import dk.au.cs.java.compiler.node.Token;
 import dk.au.cs.java.compiler.parser.Parser;
@@ -65,7 +66,6 @@ import dk.au.cs.java.compiler.phases.Weeding;
 import dk.au.cs.java.compiler.phases.XACTDesugaring;
 import dk.au.cs.java.compiler.type.environment.ClassEnvironment;
 import dk.au.cs.java.compiler.type.members.Method;
-import dk.brics.lattice.LatticeSet;
 import dk.brics.util.file.WildcardExpander;
 
 /**
@@ -79,20 +79,76 @@ public class JWCompilerDependencyFinder {
 	/**
 	 * Holds the dependency graph.
 	 */
-	private DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb;
+	private static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> useDefWeb;
+	private static AProgram rootNode;
 
 	/**
+	 * Returns a mapping of ifdef's ConfigSet to a Collection o lines inside a file.
 	 * 
-	 * 
-	 * @param selectionPosition
-	 * @param options
-	 * @throws FileNotFoundException
-	 * @throws EmergoException
-	 * @throws Exception
+	 * @param file
+	 * @return
 	 */
-	public JWCompilerDependencyFinder(final SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
+	public static Map<ConfigSet, Collection<Integer>> ifDefBlocks(File file) {
+		if (rootNode == null) {
+			throw new IllegalStateException("Program has not been parsed yet");
+		}
+
+		// The mapping to be returned later.
+		final Map<ConfigSet, Collection<Integer>> configSetMapping = new HashMap<ConfigSet, Collection<Integer>>();
+
+		// A stack for stacking up nested ifdef statements.
+		final Deque<IfDefVarSet> stack = new ArrayDeque<IfDefVarSet>();
+
+		final String filePath = file.getPath();
+		rootNode.apply(new DepthFirstAdapter() {
+
+			@Override
+			public void caseACompilationUnit(ACompilationUnit compilationUnit) {
+				String file = compilationUnit.getFile().getPath();
+
+				// Iterate over all compilation units looking for the one we are interested (see file argument).
+				if (file.equals(filePath)) {
+
+					// If there is a match, iterate over the nodes in this compilation unit.
+					compilationUnit.apply(new DepthFirstAdapter() {
+
+						public void caseAIfdefStm(AIfdefStm node) {
+							IfDefVarSet varSet = node.getOnTrueSet();
+							stack.push(varSet);
+
+							IfDefVarSet configAccumulator = IfDefVarSet.getModel();
+							for (IfDefVarSet each : stack) {
+								configAccumulator = configAccumulator.and(each);
+							}
+
+							int lineNumber = node.getToken().getLine();
+							ConfigSet configSet = new JWCompilerConfigSet(configAccumulator);
+							Collection<Integer> lineCollection = configSetMapping.get(configSet);
+							if (lineCollection == null) {
+								lineCollection = new HashSet<Integer>();
+								lineCollection.add(lineNumber);
+								configSetMapping.put(configSet, lineCollection);
+							} else {
+								lineCollection.add(lineNumber);
+							}
+
+							node.getThenBody().apply(this);
+							stack.pop();
+						}
+					});
+				}
+			}
+		});
+
+		return configSetMapping;
+
+	}
+
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateDependencyGraph(final SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
 		// Resets compiler status.
 		Main.resetCompiler();
+		useDefWeb = null;
+		rootNode = null;
 
 		// The file in which the selection resides.
 		File selectionFile;
@@ -147,8 +203,10 @@ public class JWCompilerDependencyFinder {
 		SharedSimultaneousAnalysis.useSharedSetStrategy(true);
 		IfDefUtil.parseIfDefSpecification(ifdefSpecFile);
 
+		IfDefVarSet.getIfDefBDDFactory();
+
 		// The root point of the parsed program.
-		AProgram rootNode = parseProgram(files);
+		rootNode = parseProgram(files);
 
 		// XXX: Surprisingly, this is necessary to prevent the compiler from throwing a NPE.
 		Main.program = rootNode;
@@ -161,7 +219,6 @@ public class JWCompilerDependencyFinder {
 		 * 
 		 * TODO: Check if some of these can be removed to speed things up.
 		 */
-
 		try {
 			Errors.check();
 			rootNode.apply(new Weeding());
@@ -284,16 +341,18 @@ public class JWCompilerDependencyFinder {
 			}
 		});
 
-		boolean interprocedural = true;
+		/*
+		 * Now that there is enough information about the selection and the CFGs have been generated, create the
+		 * intermediate dependency graph.
+		 */
+		boolean interprocedural = false;
 		if (interprocedural) {
-			this.useDefWeb = IntermediateDependencyGraphBuilder.buildInterproceduralGraph(rootNode, cfg, pointsInUserSelection);
+			useDefWeb = IntermediateDependencyGraphBuilder.buildInterproceduralGraph(rootNode, cfg, pointsInUserSelection);
 		} else {
-			/*
-			 * Now that there is enough information about the selection and the CFGs have been generated, create the
-			 * intermediate depency graph.
-			 */
-			this.useDefWeb = IntermediateDependencyGraphBuilder.buildIntraproceduralGraph(rootNode, cfg, pointsInUserSelection, methodDecl);
+			useDefWeb = IntermediateDependencyGraphBuilder.buildIntraproceduralGraph(rootNode, cfg, pointsInUserSelection, methodDecl);
 		}
+
+		return useDefWeb;
 	}
 
 	// XXX this method was copied from dk...compiler.Main. Go through it again.
@@ -336,13 +395,4 @@ public class JWCompilerDependencyFinder {
 											// invariant
 		return node;
 	}
-
-	/**
-	 * Gets the dependency graph.
-	 * 
-	 * @return a graph representing the dependencies found
-	 */
-	public DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> getGraph() {
-		return this.useDefWeb;
-	}
-};
+}

@@ -1,6 +1,7 @@
 package br.ufpe.cin.emergo.core;
 
-import java.io.FileNotFoundException;
+import java.io.File;
+import java.util.Collection;
 import java.util.Map;
 
 import org.jgrapht.DirectedGraph;
@@ -22,6 +23,11 @@ public class DependencyFinder {
 	private DependencyFinder() {
 	}
 
+	// XXX apply switching strategy for variability.
+	public static Map<ConfigSet, Collection<Integer>> getIfDefLineMapping(File file) {
+		return JWCompilerDependencyFinder.ifDefBlocks(file);
+	}
+
 	/**
 	 * Unleash the depedency-finding process based on the {@code DependencyFinder finder} for a given user selection (
 	 * {@code SelectionPosition selectionPosition}). Further information can be passed as parameters to the
@@ -33,12 +39,12 @@ public class DependencyFinder {
 	 * @param selectionPosition
 	 * @param options
 	 * @return
-	 * @throws EmergoException 
+	 * @throws EmergoException
 	 */
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws  EmergoException {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
 		switch (finder) {
 		case JWCOMPILER:
-			return new JWCompilerDependencyFinder(selectionPosition, options).getGraph();
+			return JWCompilerDependencyFinder.generateDependencyGraph(selectionPosition, options);
 		case SOOT:
 		default:
 			throw new UnsupportedOperationException("Depency finder unavailable");

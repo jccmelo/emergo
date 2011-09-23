@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.jgrapht.DirectedGraph;
+import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DirectedMultigraph;
 
@@ -94,9 +95,9 @@ public class IntermediateDependencyGraphBuilder {
 		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, defUseRules);
 		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
-		
+
 		System.out.println(cfg.toDot());
-		
+
 		return collapsedDependencyGraph;
 	}
 
@@ -298,14 +299,14 @@ public class IntermediateDependencyGraphBuilder {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (expression.toString().contains(element.getVariable().toString())) {
-										handleVertices(reachesData, poppedPoint, key, element);
+										connectVertices(reachesData, poppedPoint, key, element);
 									}
 									return true;
 
 								} else if (obj instanceof Write) {
 									Write element = (Write) obj;
 									if (element.getLValue().equals(expression)) {
-										handleVertices(reachesData, poppedPoint, key, element);
+										connectVertices(reachesData, poppedPoint, key, element);
 									}
 								}
 								return true;
@@ -333,7 +334,7 @@ public class IntermediateDependencyGraphBuilder {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (rValue.equals(element.getVariable())) {
-										handleVertices(reachesData, poppedPoint, key, element);
+										connectVertices(reachesData, poppedPoint, key, element);
 									}
 								}
 								return true;
@@ -360,7 +361,7 @@ public class IntermediateDependencyGraphBuilder {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (strPoint.contains(element.getVariable().toString())) {
-										handleVertices(reachesData, poppedPoint, key, element);
+										connectVertices(reachesData, poppedPoint, key, element);
 									}
 								}
 								return true;
@@ -373,24 +374,43 @@ public class IntermediateDependencyGraphBuilder {
 		return reachesData;
 	}
 
-	private static void handleVertices(final DirectedMultigraph<Object, ValueContainerEdge<ConfigSet>> reachesData, final Point poppedPoint, final IfDefVarSet key, Point element) {
-		reachesData.addVertex(poppedPoint);
-		reachesData.addVertex(element);
+	/**
+	 * Creates an edge between {@code source} and {@code target} objects in {@code graph} for the configuration set
+	 * {@code key} to represent a dependency between these vertices. If an edge already exists between these vertices,
+	 * then instead of creating a new edge, the old one is replaced by a new one containing both the old configuration
+	 * sets and the new configuration set.
+	 * 
+	 * @param graph
+	 * @param source
+	 * @param key
+	 * @param target
+	 */
+	private static void connectVertices(final Graph<Object, ValueContainerEdge<ConfigSet>> graph, final Object source, final IfDefVarSet key, Object target) {
+
+		/*
+		 * Counting on the graph's implementation to check for the existance of the nodes before adding to avoid
+		 * duplicate vertices.
+		 */
+		graph.addVertex(source);
+		graph.addVertex(target);
 
 		/*
 		 * To avoid having more than one edge between two given nodes, the information contained in these edges,
 		 * internally an IfDefVarSet instance, is merged by using the OR operator.
 		 */
-		if (reachesData.containsEdge(element, poppedPoint)) {
-			ValueContainerEdge<ConfigSet> existingEdge = reachesData.getEdge(element, poppedPoint);
+		if (graph.containsEdge(target, source)) {
+			ValueContainerEdge<ConfigSet> existingEdge = graph.getEdge(target, source);
 			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();
 			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(key));
+
+			// TODO: is checking agains the feature model necessary? It won't hurt to leave this here though.
 			if (((JWCompilerConfigSet) or).getVarSet().isValidInFeatureModel()) {
 				existingEdge.setValue(or);
 			}
+
 		} else {
 			if (key.isValidInFeatureModel()) {
-				ValueContainerEdge<ConfigSet> addedEdge = reachesData.addEdge(element, poppedPoint);
+				ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(target, source);
 				addedEdge.setValue(new JWCompilerConfigSet(key));
 			}
 		}
