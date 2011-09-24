@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.jgrapht.DirectedGraph;
 
@@ -48,8 +49,9 @@ import dk.au.cs.java.compiler.node.ACompilationUnit;
 import dk.au.cs.java.compiler.node.AIfdefStm;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.PBlock;
+import dk.au.cs.java.compiler.node.PStm;
 import dk.au.cs.java.compiler.node.Start;
-import dk.au.cs.java.compiler.node.TEndif;
 import dk.au.cs.java.compiler.node.TIdentifier;
 import dk.au.cs.java.compiler.node.Token;
 import dk.au.cs.java.compiler.parser.Parser;
@@ -99,7 +101,7 @@ public class JWCompilerDependencyFinder {
 		// A stack for stacking up nested ifdef statements.
 		final Deque<IfDefVarSet> stack = new ArrayDeque<IfDefVarSet>();
 
-		final String filePath = file.getPath();
+		final String filePath = file.getAbsolutePath();
 		rootNode.apply(new DepthFirstAdapter() {
 
 			@Override
@@ -112,28 +114,64 @@ public class JWCompilerDependencyFinder {
 					// If there is a match, iterate over the nodes in this compilation unit.
 					compilationUnit.apply(new DepthFirstAdapter() {
 
-						public void caseAIfdefStm(AIfdefStm node) {
-							IfDefVarSet varSet = node.getOnTrueSet();
-							stack.push(varSet);
+						public void defaultInPBlock(PBlock node) {
+							if (stack.size() == 0)
+								return;
 
-							IfDefVarSet configAccumulator = IfDefVarSet.getModel();
+							IfDefVarSet configAccumulator = null;
 							for (IfDefVarSet each : stack) {
-								configAccumulator = configAccumulator.and(each);
+								configAccumulator = configAccumulator == null ? each : configAccumulator.and(each);
 							}
 
 							int lineNumber = node.getToken().getLine();
 							ConfigSet configSet = new JWCompilerConfigSet(configAccumulator);
 							Collection<Integer> lineCollection = configSetMapping.get(configSet);
 							if (lineCollection == null) {
-								lineCollection = new HashSet<Integer>();
+								lineCollection = new TreeSet<Integer>();
 								lineCollection.add(lineNumber);
 								configSetMapping.put(configSet, lineCollection);
 							} else {
 								lineCollection.add(lineNumber);
 							}
+						}
+
+						public void defaultInPStm(PStm node) {
+							if (!(node instanceof AIfdefStm)) {
+
+								if (stack.size() == 0)
+									return;
+
+								IfDefVarSet configAccumulator = null;
+								for (IfDefVarSet each : stack) {
+									configAccumulator = configAccumulator == null ? each : configAccumulator.and(each);
+								}
+
+								int lineNumber = node.getToken().getLine();
+								ConfigSet configSet = new JWCompilerConfigSet(configAccumulator);
+								Collection<Integer> lineCollection = configSetMapping.get(configSet);
+								if (lineCollection == null) {
+									lineCollection = new TreeSet<Integer>();
+									lineCollection.add(lineNumber);
+									configSetMapping.put(configSet, lineCollection);
+								} else {
+									lineCollection.add(lineNumber);
+								}
+							}
+						}
+
+						public void caseAIfdefStm(AIfdefStm node) {
+							IfDefVarSet varSet = node.getOnTrueSet();
+							stack.push(varSet);
 
 							node.getThenBody().apply(this);
 							stack.pop();
+
+							PStm elseBody = node.getElseBody();
+							if (!(elseBody == null)) {
+								stack.push(varSet.not());
+								elseBody.apply(this);
+								stack.pop();
+							}
 						}
 					});
 				}
