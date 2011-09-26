@@ -1,8 +1,10 @@
 package br.ufpe.cin.emergo.editor;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jface.text.IDocument;
@@ -17,10 +19,10 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 
 	//public static final String EDITOR_CIDEEI_ID = "br.ufal.cideei.editor.ColoredFoldingCompilationUnitEditor";
 	
-	private HashSet<ArrayList<Position>> positionsIfDefs;
+	private Set<List<Position>> positionsIfDefs;
 	private Annotation[] oldAnnotationsIfDefs;
 	private ProjectionAnnotationModel annotationModelIfDefs;
-		
+
 	public IfDefJavaEditor() {
 		this.annotationModelIfDefs = new ProjectionAnnotationModel();
 		
@@ -38,11 +40,21 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 //		setSourceViewerConfiguration(new IfDefSourceViewerConfiguration());
 	}
 
+//	public void doSetInput(IEditorInput input) throws CoreException {
+//		 super.doSetInput(input);
+//
+//		 IPreferenceStore store = getPreferenceStore();
+//		 IfDefJavaTextTools textTools = new IfDefJavaTextTools(store);
+//		 IfDefJavaSourceViewerConfiguration ifDefSourceViewerConfiguration = 
+//			 new IfDefJavaSourceViewerConfiguration(textTools, this);
+//		 setSourceViewerConfiguration(ifDefSourceViewerConfiguration);
+//	}
+
 	public void instantiatePositions() {
-		this.positionsIfDefs = new HashSet<ArrayList<Position>>();
+		this.positionsIfDefs = new HashSet<List<Position>>();
 	}
 	
-	public HashSet<ArrayList<Position>> getPositions() {
+	public Set<List<Position>> getPositions() {
 		return this.positionsIfDefs;
 	}
 	
@@ -57,10 +69,10 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 		this.annotationModelIfDefs = viewer.getProjectionAnnotationModel();
 	}
 	
-	public void updateFoldingStructure(ArrayList<Position> positions) {
+	public void updateFoldingStructure(List<Position> positions) {
 		Annotation[] annotations = new Annotation[positions.size()];
 
-		HashMap<ProjectionAnnotation,Position> newAnnotations = new HashMap<ProjectionAnnotation, Position>();
+		Map<ProjectionAnnotation,Position> newAnnotations = new HashMap<ProjectionAnnotation, Position>();
 		
 		for (int i = 0; i < positions.size(); i++) {
 			ProjectionAnnotation annotation = new ProjectionAnnotation();
