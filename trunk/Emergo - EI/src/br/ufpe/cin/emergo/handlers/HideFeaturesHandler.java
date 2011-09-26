@@ -74,7 +74,8 @@ public class HideFeaturesHandler extends AbstractHandler {
 						 * This way, its positions are ignored by the hiding mechanism.
 						 * Therefore, configSet will not be hidden.
 						 */
-						if ((configSet.and(selectedConfigSet)).equals(configSet)) {
+						if ((configSet.and(selectedConfigSet)).equals(configSet)
+								|| (selectedConfigSet.and(configSet)).equals(selectedConfigSet)) {
 							concurrent.remove(configSet);
 						}
 					}
