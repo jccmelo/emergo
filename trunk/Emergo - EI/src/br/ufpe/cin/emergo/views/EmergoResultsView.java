@@ -1,11 +1,10 @@
 package br.ufpe.cin.emergo.views;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.texteditor.ITextEditor;
@@ -25,13 +24,26 @@ public class EmergoResultsView extends MarkerSupportView {
 
 	public static final String ID = "br.ufpe.cin.emergo.view.EmergoResultsView";
 	private static final int MAX_PATHS = 16;
-
+	private static List<IFile> selectedFiles;
+	
 	public EmergoResultsView() {
 		super("emergoResultsSupport");
+		selectedFiles = new ArrayList<IFile>();
 	}
 
 	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor, SelectionPosition spos, IFile textSelectionFile) {
-		EmergoMarker.clearMarkers(textSelectionFile);
+		
+		/*
+		 * Delete markers of all previously selected files.
+		 */
+		for (IFile file : selectedFiles) {
+			EmergoMarker.clearMarkers(file);
+		}
+		
+		/*
+		 * Then, add the file being selected...
+		 */
+		selectedFiles.add(textSelectionFile);
 		
 		if (dependencyGraph.vertexSet().size() < 2) {
 			return;
