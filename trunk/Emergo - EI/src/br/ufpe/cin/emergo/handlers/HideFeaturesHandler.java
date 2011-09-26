@@ -1,35 +1,37 @@
 package br.ufpe.cin.emergo.handlers;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.views.markers.MarkerItem;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
+import br.ufpe.cin.emergo.core.DependencyFinder;
 import br.ufpe.cin.emergo.editor.IfDefJavaEditor;
+import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class HideFeaturesHandler extends AbstractHandler {
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		ISelection selection = (ISelection) HandlerUtil.getActiveMenuSelection(event);
+		Shell shell = HandlerUtil.getActiveShellChecked(event);
 		Object marker = ((IStructuredSelection) selection).getFirstElement();
 				
 			try {
@@ -47,68 +49,50 @@ public class HideFeaturesHandler extends AbstractHandler {
 					 */
 					IFile file = (IFile) HandlerUtil.getActiveEditorChecked(event).getEditorInput().getAdapter(IFile.class);
 					
-					//TODO Francisco: instead of using Liborio's below code, we need to defined #ifdef blocks and then
-					//create the features and featuresLineNumbers objects to pass to the Projection manager.
+					/*
+					 * selectedConfigSet ==> ifdef feature expression (emergo table view)
+					 */
+					ConfigSet selectedConfigSet = (ConfigSet) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
 					
-//					/*
-//					 * Informations received from the selected market.
-//					 */
-//					String feature = (String) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
+					Map<ConfigSet, Collection<Integer>> ifDefLineMapping = DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile());
 					
-					ConfigSet configuration = (ConfigSet) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
+					/*
+					 * ConcurrentHashMap to avoid ConcurrentModificationException.
+					 */
+					ConcurrentHashMap<ConfigSet, Collection<Integer>> concurrent = new ConcurrentHashMap<ConfigSet, Collection<Integer>>();
+					concurrent.putAll(ifDefLineMapping);
+					Iterator<ConfigSet> iterator = concurrent.keySet().iterator();
 					
-					System.out.println("===> " + configuration);
-
-//					/*
-//					 * This visitor selects the features that will be collapsed.
-//					 */
-//					Set<String> configuration = this.stringToSet(feature);
-//					SupplementaryConfigurationVisitor supplementaryConfigurationVisitor = new SupplementaryConfigurationVisitor(configuration,file);
-//					
-//					ICompilationUnit compilationUnit = JavaCore.createCompilationUnitFrom(file);
-//					ASTParser parser = ASTParser.newParser(AST.JLS3);
-//					parser.setSource(compilationUnit);
-//					parser.setKind(ASTParser.K_COMPILATION_UNIT);
-//					parser.setResolveBindings(true);
-//					CompilationUnit jdtCompilationUnit = (CompilationUnit) parser.createAST(null);
-//					
-//					jdtCompilationUnit.accept(supplementaryConfigurationVisitor);
-//					HashMap<String,Set<ASTNode>> featureLines = supplementaryConfigurationVisitor.getFeatureLines();
-//					
-//					/*
-//					 * According to the visitor's results, the annotations will be created and added to the document.
-//					 */
-//					Set<String> features = supplementaryConfigurationVisitor.getFeatureNames();
-//
-//					Iterator<String> featureNames = features.iterator();
-//					
-//					HashMap<String, TreeSet<Integer>> featuresLineNumbers = convertFromNodesToLines(
-//							jdtCompilationUnit, featureLines, featureNames);
-
-					//TODO Temporary objects (features and featuresLineNumbers):
-					Set<String> features = new HashSet<String>();
-					features.add("COPY");
+					while (iterator.hasNext()) {
+						ConfigSet configSet = iterator.next();
+						
+						/*
+						 * configSet => ifdef feature expression (editor);
+						 * selectedConfigSet ==> ifdef feature expression (emergo table view).
+						 * 
+						 * If both configSets are equivalent, we remove the configSet (editor).
+						 * This way, its positions are ignored by the hiding mechanism.
+						 * Therefore, configSet will not be hidden.
+						 */
+						if ((configSet.and(selectedConfigSet)).equals(configSet)) {
+							concurrent.remove(configSet);
+						}
+					}
 					
-					Map<String, Set<Integer>> featuresToLineNumbers;
+					if (concurrent.size() == 0) {
+						new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "There is nothing to hide!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
+					}
 					
-					Set<Integer> lines = new TreeSet<Integer>();
-					lines.add(new Integer(20));
-					lines.add(new Integer(21));
-					lines.add(new Integer(22));
-					lines.add(new Integer(23));
-					lines.add(new Integer(24));
-					
-					featuresToLineNumbers = new HashMap<String, Set<Integer>>();
-					featuresToLineNumbers.put("COPY", lines);
-					//TODO (end)
-					
-					ArrayList<Position> positions = createPositions(d, features, featuresToLineNumbers);
+					/*
+					 * If concurrent.size() == 0, we still need to update the editor
+					 * in case where we already have projections there. 
+					 */
+					List<Position> positions = createPositions(d, concurrent);
+					List<Position> positionsEmpty = new ArrayList<Position>();
 					
 					/*
 					 * The action which updates the editor to show the folding areas.
 					 */
-					ArrayList<Position> positionsEmpty = new ArrayList<Position>();
-					
 					if (editor instanceof IfDefJavaEditor) {
 						((IfDefJavaEditor) editor).expandAllAnnotations(d.getLength());
 						((IfDefJavaEditor) editor).removeAllAnnotations();
@@ -118,8 +102,6 @@ public class HideFeaturesHandler extends AbstractHandler {
 					}
 				}
 			
-//			} catch (CoreException e) {
-//				e.printStackTrace();
 			} catch (BadLocationException e1) {
 				e1.printStackTrace();
 			} catch (Exception e2) {
@@ -129,14 +111,14 @@ public class HideFeaturesHandler extends AbstractHandler {
 		return null;
 	}
 	
-	private ArrayList<Position> createPositions(
-			IDocument d, Set<String> features, Map<String, Set<Integer>> featuresLineNumbers)
+	private List<Position> createPositions(
+			IDocument d, Map<ConfigSet, Collection<Integer>> featuresLineNumbers)
 					throws BadLocationException {
 		
-		Iterator<String> featureNames;
-		String featureName;
-		Set<Integer> lines;
-		ArrayList<Position> positions = new ArrayList<Position>();
+		Iterator<ConfigSet> featureNames;
+		ConfigSet featureName;
+		Collection<Integer> lines;
+		List<Position> positions = new ArrayList<Position>();
 		
 		Iterator<Integer> iteratorInteger = null;
 		int line = 0;
@@ -145,7 +127,7 @@ public class HideFeaturesHandler extends AbstractHandler {
 		int offset = 0;
 		boolean newAnnotation = false;
 		boolean first = true;
-		featureNames = features.iterator();
+		featureNames = featuresLineNumbers.keySet().iterator();
 		
 		while (featureNames.hasNext()) {
 			
@@ -163,7 +145,7 @@ public class HideFeaturesHandler extends AbstractHandler {
 				iteratorInteger = lines.iterator();
 										
 				while (iteratorInteger.hasNext()) {
-					if (newAnnotation == true) {
+					if (newAnnotation) {
 						try {
 							offset = d.getLineOffset(line - 1);
 							length = d.getLineLength(line - 1);
@@ -171,7 +153,6 @@ public class HideFeaturesHandler extends AbstractHandler {
 							length = 0;
 							offset = d.getLineOffset(line);
 						}
-						//offset = d.getLineOffset(line);
 						newAnnotation = false;
 					} else {
 						line = iteratorInteger.next().intValue() - 1;
@@ -183,7 +164,6 @@ public class HideFeaturesHandler extends AbstractHandler {
 								length = 0;
 								offset = d.getLineOffset(line);
 							}
-							//offset = d.getLineOffset(line);
 							first = false;
 						}
 					}
@@ -200,46 +180,6 @@ public class HideFeaturesHandler extends AbstractHandler {
 			}
 		}
 		return positions;
-	}
-
-	private HashMap<String, TreeSet<Integer>> convertFromNodesToLines(
-			CompilationUnit jdtCompilationUnit,
-			HashMap<String, Set<ASTNode>> featureLines,
-			Iterator<String> featureNames) {
-		
-		ASTNode node = null;
-		String featureName = null;
-		Set<Integer> lines = null;
-		Iterator<ASTNode> iteratorNodes = null;
-		Set<ASTNode> nodes = null;
-		HashMap<String, TreeSet<Integer>> featuresLineNumbers = new HashMap<String, TreeSet<Integer>>();
-		
-		while (featureNames.hasNext()) {
-			
-			featureName = featureNames.next();
-			nodes = featureLines.get(featureName);
-			lines = new TreeSet<Integer>();
-			iteratorNodes = nodes.iterator();
-			
-			while (iteratorNodes.hasNext()) {
-				node = iteratorNodes.next();
-				lines.add(new Integer(jdtCompilationUnit.getLineNumber(node.getStartPosition())));
-			}
-			
-			featuresLineNumbers.put(featureName, (TreeSet<Integer>) lines);
-		}
-		return featuresLineNumbers;
-	}
-	
-	private Set<String> stringToSet(String markerConfigColumn) {
-		
-		String feature = markerConfigColumn.substring(1, markerConfigColumn.length() - 1);
-		String[] featuresArray = feature.split(",");
-		Set<String> configuration = new HashSet<String>();
-		for (String string : featuresArray) {
-			configuration.add(string);
-		}
-		return configuration;
 	}
 	
 }
