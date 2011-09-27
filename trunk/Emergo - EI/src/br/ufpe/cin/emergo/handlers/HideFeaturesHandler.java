@@ -1,10 +1,14 @@
 package br.ufpe.cin.emergo.handlers;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.commands.AbstractHandler;
@@ -55,6 +59,23 @@ public class HideFeaturesHandler extends AbstractHandler {
 					ConfigSet selectedConfigSet = (ConfigSet) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
 					
 					Map<ConfigSet, Collection<Integer>> ifDefLineMapping = DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile());
+					
+					/*
+					 * FIXME Temporary computation to hide the endif statement and keep the ifdef.
+					 */
+					Set<Entry<ConfigSet, Collection<Integer>>> configSets = ifDefLineMapping.entrySet();
+					
+					int lastSourceLineNumber = 0;
+
+					for (Entry<ConfigSet, Collection<Integer>> entry : configSets) {
+						
+						Deque<Integer> sourceLineNumbers = new ArrayDeque<Integer>(entry.getValue());
+						sourceLineNumbers.removeFirst();
+						lastSourceLineNumber = sourceLineNumbers.getLast();
+						sourceLineNumbers.addLast(++lastSourceLineNumber);
+
+						entry.setValue(sourceLineNumbers);
+					}
 					
 					/*
 					 * ConcurrentHashMap to avoid ConcurrentModificationException.
