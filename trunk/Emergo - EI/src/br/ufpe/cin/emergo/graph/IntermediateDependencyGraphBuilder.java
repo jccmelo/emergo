@@ -254,7 +254,7 @@ public class IntermediateDependencyGraphBuilder {
 
 		// Worklist-like iteration idiom
 		while (!pendingPoints.isEmpty()) {
-			// Consumes 1st point
+			// Consumes a point
 			final Point poppedPoint = pendingPoints.removeFirst();
 			visitedPoints.add(poppedPoint);
 
@@ -385,7 +385,7 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param key
 	 * @param target
 	 */
-	private static void connectVertices(final Graph<Object, ValueContainerEdge<ConfigSet>> graph, final Object source, final IfDefVarSet key, Object target) {
+	private static void connectVertices(final Graph<Object, ValueContainerEdge<ConfigSet>> graph, final Point source, final IfDefVarSet key, Point target) {
 
 		/*
 		 * Counting on the graph's implementation to check for the existance of the nodes before adding to avoid
@@ -411,7 +411,7 @@ public class IntermediateDependencyGraphBuilder {
 		} else {
 			if (key.isValidInFeatureModel()) {
 				ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(target, source);
-				addedEdge.setValue(new JWCompilerConfigSet(key));
+				addedEdge.setValue(new JWCompilerConfigSet(key.and(source.getVarSet())));
 			}
 		}
 	}

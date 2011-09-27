@@ -11,7 +11,8 @@ import org.eclipse.jface.text.IDocument;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.part.ViewPart;
@@ -149,6 +150,8 @@ public class GraphView extends ViewPart {
 			}
 
 			GraphConnection graphConnection = new GraphConnection(graph, ZestStyles.CONNECTIONS_DIRECTED, src, tgt);
+			// FIXME: is is the programmer responsability to free the font after use.
+			graphConnection.setFont(new Font(display, new FontData("Courrier", 8, SWT.BOLD)));
 			graphConnection.setText(valueContainerEdge.getValue().toString());
 		}
 	}
