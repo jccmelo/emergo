@@ -157,10 +157,11 @@ public class GraphView extends ViewPart {
 	}
 
 	/**
-	 * Remoces edges and nodes from the graph.
+	 * Removes edges and nodes from the graph.
 	 * 
 	 */
 	private void clearGraph() {
+		assert graph != null;
 
 		// remove all the connections
 		Object[] objects = graph.getConnections().toArray();

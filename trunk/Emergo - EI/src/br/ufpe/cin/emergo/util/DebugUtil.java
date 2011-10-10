@@ -9,11 +9,6 @@ import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.EdgeNameProvider;
 import org.jgrapht.ext.StringNameProvider;
 
-import br.ufpe.cin.emergo.core.ConfigSet;
-import br.ufpe.cin.emergo.graph.DependencyNodeWrapper;
-import br.ufpe.cin.emergo.graph.ValueContainerEdge;
-import dk.au.cs.java.compiler.cfg.point.Point;
-
 /**
  * Contains some utility methods for debug.
  * 
@@ -28,7 +23,25 @@ public class DebugUtil {
 	private DebugUtil() {
 	}
 
-	public static File exportDot(DirectedGraph filteredDependencyGraph, File file) {
+	public static File exportToDotFile(String dot, File file) {
+		if (file == null) {
+			file = new File(System.getProperty("user.home") + File.separator + "unnamed.dot");
+		}
+
+		FileWriter writer;
+		try {
+			writer = new FileWriter(file);
+			writer.write(dot);
+			writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return file;
+	}
+
+	public static File exportToDotFile(DirectedGraph graph, File file) {
 		if (file == null) {
 			file = new File(System.getProperty("user.home") + File.separator + "unnamed.dot");
 		}
@@ -52,7 +65,7 @@ public class DebugUtil {
 		FileWriter writer;
 		try {
 			writer = new FileWriter(file);
-			exporter.export(writer, filteredDependencyGraph);
+			exporter.export(writer, graph);
 			writer.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

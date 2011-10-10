@@ -385,7 +385,7 @@ public class JWCompilerDependencyFinder {
 		 */
 		boolean interprocedural = false;
 		if (interprocedural) {
-			useDefWeb = IntermediateDependencyGraphBuilder.buildInterproceduralGraph(rootNode, cfg, pointsInUserSelection);
+			useDefWeb = IntermediateDependencyGraphBuilder.buildInterproceduralGraph(rootNode, cfg, selectionPosition);
 		} else {
 			useDefWeb = IntermediateDependencyGraphBuilder.buildIntraproceduralGraph(rootNode, cfg, pointsInUserSelection, methodDecl);
 		}

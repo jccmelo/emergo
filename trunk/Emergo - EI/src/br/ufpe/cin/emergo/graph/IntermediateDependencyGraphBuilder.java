@@ -1,5 +1,6 @@
 package br.ufpe.cin.emergo.graph;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,6 +26,7 @@ import dk.au.cs.java.compiler.cfg.VisualizerUtil;
 import dk.au.cs.java.compiler.cfg.Worklist;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.analysis.InterproceduralAnalysis;
+import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
 import dk.au.cs.java.compiler.cfg.analysis.rules.ReachingDefinitionsRules;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
 import dk.au.cs.java.compiler.cfg.point.Expression;
@@ -37,6 +39,7 @@ import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
 import dk.au.cs.java.compiler.node.Node;
+import dk.au.cs.java.compiler.node.Token;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
 
@@ -84,25 +87,61 @@ public class IntermediateDependencyGraphBuilder {
 		// Produce a more compact graph by collapsing nodes that belongs to the same line number.
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
 
-		DebugUtil.exportDot(dependencyGraph, null);
+		{
+			DebugUtil.exportToDotFile(dependencyGraph, new File(System.getProperty("user.home") + File.separator + "dep.dot"));
+			DebugUtil.exportToDotFile(filteredDependencyGraph, new File(System.getProperty("user.home") + File.separator + "fil.dot"));
+			DebugUtil.exportToDotFile(collapsedDependencyGraph, new File(System.getProperty("user.home") + File.separator + "col.dot"));
+		}
 
 		return collapsedDependencyGraph;
 	}
 
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, final Collection<Point> pointsInUserSelection) {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, final SelectionPosition selectionPosition) {
+		final Collection<Point> pointsInUserSelection = new HashSet<Point>();
+		cfg.apply(new PointVisitor<Object, Object>() {
+			@Override
+			protected Object defaultPoint(Point point, Object question) {
+				Token token = point.getToken();
+				int line = token.getLine();
+				if (line >= selectionPosition.getStartLine() + 1 && line <= selectionPosition.getEndLine() + 1) {
+					pointsInUserSelection.add(point);
+				}
+				return null;
+			}
+		});
+
+		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg);
 		SharedSimultaneousAnalysis<LatticeSet<Object>> defUseRules = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
-		Worklist.process(cfg, defUseRules);
-		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, defUseRules);
-		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
-		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
 
-		System.out.println(cfg.toDot());
+		Worklist.process(cfg, defUseRules);
+		DebugUtil.exportToDotFile(cfg.toDot(defUseRules), new File(System.getProperty("user.home") + File.separator + "cfg.dot"));
+
+		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, defUseRules);
+		DebugUtil.exportToDotFile(dependencyGraph, new File(System.getProperty("user.home") + File.separator + "dep.dot"));
+
+		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
+		DebugUtil.exportToDotFile(filteredDependencyGraph, new File(System.getProperty("user.home") + File.separator + "fil.dot"));
+
+		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
+		DebugUtil.exportToDotFile(collapsedDependencyGraph, new File(System.getProperty("user.home") + File.separator + "col.dot"));
 
 		return collapsedDependencyGraph;
 	}
 
-	private static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapseIntoLineNumbers(DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph) {
+	private static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapseIntoLineNumbers(DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> dependencyGraph) {
+		assert dependencyGraph != null;
+
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedGraph = new DefaultDirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
+
+		/*
+		 * This graph can not be collapsed if there are no connections between the nodes or enough nodes to enable edges
+		 * to exist.
+		 */
+		Set<DependencyNodeWrapper<Point>> vertexSet = dependencyGraph.vertexSet();
+		Set<ValueContainerEdge<ConfigSet>> edgeSet = dependencyGraph.edgeSet();
+		if (edgeSet.size() == 0 || vertexSet.size() <= 1) {
+			return collapsedGraph;
+		}
 
 		Map<Integer, Set<DependencyNodeWrapper<Point>>> lineNodesSetMapping = new HashMap<Integer, Set<DependencyNodeWrapper<Point>>>();
 		Map<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>> lineNodeMapping = new HashMap<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>>();
@@ -112,7 +151,6 @@ public class IntermediateDependencyGraphBuilder {
 		 * In this first step the vertices are grouped by their line number in a map. Each entry maps an integer into a
 		 * set of vertices.
 		 */
-		Set<DependencyNodeWrapper<Point>> vertexSet = filteredDependencyGraph.vertexSet();
 		for (DependencyNodeWrapper<Point> dependencyNode : vertexSet) {
 			Point data = (Point) dependencyNode.getData();
 			Integer line = data.getToken().getLine();
@@ -161,9 +199,9 @@ public class IntermediateDependencyGraphBuilder {
 			Integer line = entry.getKey();
 			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
 			for (DependencyNodeWrapper<Point> dependencyNode : nodes) {
-				Set<ValueContainerEdge<ConfigSet>> outgoingEdgesOf = filteredDependencyGraph.outgoingEdgesOf(dependencyNode);
+				Set<ValueContainerEdge<ConfigSet>> outgoingEdgesOf = dependencyGraph.outgoingEdgesOf(dependencyNode);
 				for (ValueContainerEdge<ConfigSet> valueContainerEdge : outgoingEdgesOf) {
-					DependencyNodeWrapper<Point> edgeTarget = filteredDependencyGraph.getEdgeTarget(valueContainerEdge);
+					DependencyNodeWrapper<Point> edgeTarget = dependencyGraph.getEdgeTarget(valueContainerEdge);
 					Point data = (Point) edgeTarget.getData();
 					Integer line2 = data.getToken().getLine();
 					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> srcNodeWrapper = lineNodeMapping.get(line);
