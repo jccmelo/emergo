@@ -98,6 +98,14 @@ public class IntermediateDependencyGraphBuilder {
 
 	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, final SelectionPosition selectionPosition) {
 		final Collection<Point> pointsInUserSelection = new HashSet<Point>();
+
+		/*
+		 * XXX it should be much faster to look for the nodes that are in the selection BEFORE creating the
+		 * interprocedural graph. However, when checking for equality on elements that are in the interprocedural graph
+		 * with the ones that are in the intraprocedural one ALWAYS fails. This is most likely due to the fact that the
+		 * classes that are IN the graphs does not implement the equals/hashCode contract.
+		 */
+		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg);
 		cfg.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
@@ -110,7 +118,6 @@ public class IntermediateDependencyGraphBuilder {
 			}
 		});
 
-		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg);
 		SharedSimultaneousAnalysis<LatticeSet<Object>> defUseRules = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
 
 		Worklist.process(cfg, defUseRules);

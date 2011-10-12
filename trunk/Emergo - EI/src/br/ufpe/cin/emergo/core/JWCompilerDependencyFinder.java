@@ -383,7 +383,7 @@ public class JWCompilerDependencyFinder {
 		 * Now that there is enough information about the selection and the CFGs have been generated, create the
 		 * intermediate dependency graph.
 		 */
-		boolean interprocedural = false;
+		boolean interprocedural = true;
 		if (interprocedural) {
 			useDefWeb = IntermediateDependencyGraphBuilder.buildInterproceduralGraph(rootNode, cfg, selectionPosition);
 		} else {
@@ -395,23 +395,19 @@ public class JWCompilerDependencyFinder {
 
 	// XXX this method was copied from dk...compiler.Main. Go through it again.
 	private static AProgram parseProgram(List<File> sourceFiles) {
-		final List<ACompilationUnit> sources = new /* CopyOnWrite */ArrayList<ACompilationUnit>();
+		final List<ACompilationUnit> sources = new ArrayList<ACompilationUnit>();
 
-		// LinkedList<Thread> threads = new LinkedList<Thread>();
 		for (final File file : sourceFiles) {
-			/*
-			 * Thread thread = new Thread() { public void run() {
-			 */
 			try {
 				showPhaseProgress();
 				FileInputStream fis = new FileInputStream(file);
 				Parser parser = new Parser(new Lexer(fis));
 				Start startsym = parser.parse();
 				fis.close();
-				ACompilationUnit cu = startsym.getCompilationUnit();
-				cu.setToken(new TIdentifier(file.getPath(), 0, 0));
-				cu.setFile(file);
-				sources.add(cu);
+				ACompilationUnit compilationUnit = startsym.getCompilationUnit();
+				compilationUnit.setToken(new TIdentifier(file.getPath(), 0, 0));
+				compilationUnit.setFile(file);
+				sources.add(compilationUnit);
 			} catch (FileNotFoundException e) {
 				Errors.errorMessage(ErrorType.FILE_OPEN_ERROR, "File " + file.getPath() + " not found");
 				Errors.check(); // no use in parsing of not all files can be found
@@ -424,13 +420,10 @@ public class JWCompilerDependencyFinder {
 				Errors.check(); // no use in parsing of not all files can be read
 			}
 		}
-		/*
-		 * }; threads.add(thread); thread.start(); } for (Thread thread : threads) { try { thread.join(); } catch
-		 * (InterruptedException e) { } }
-		 */
+
 		AProgram node = new AProgram(new TIdentifier("AProgram", 0, 0), sources);
-		node.setOptionalInvariant(true); // enables the runtime tree
-											// invariant
+		// enables the runtime tree invariant
+		node.setOptionalInvariant(true);
 		return node;
 	}
 }
