@@ -1,28 +1,64 @@
 package br.ufpe.cin.emergo.core;
 
+import org.apache.commons.collections.map.LRUMap;
+
 import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 
 /**
- * Represents a set of features using the representation used by Johnni Winther's Experimental Compiler.
+ * Represents a set of features using by wrapping around Johnni Winther's
+ * Experimental Compiler IfDefVarSet.
  * 
- * @author Társis
- *
+ * Use the static method of to make use of the embedded caching mechanism
+ * instead of creating a new instance of this class.
+ * 
+ * @author TÃ¡rsis
+ * 
  */
 public class JWCompilerConfigSet implements ConfigSet {
 
+	/*
+	 * The immutability of the IfDefVarSet class allows for an implementation of
+	 * a simple caching mechanism. If the client wants to bypass the caching
+	 * mechanism, he/she can do so by invoking the constructor directly.
+	 * Otherwise, the static method of can be used.
+	 */
+	private static final LRUMap cache = new LRUMap(16);
+
 	private final IfDefVarSet varSet;
-	
 
 	/**
 	 * @return the varSet
 	 */
-	//XXX Temporarily exposing the varset for a temporary workaround.
+	// XXX Temporarily exposing the varset for a temporary workaround.
 	public IfDefVarSet getVarSet() {
 		return varSet;
 	}
 
+	/**
+	 * Public constructor.
+	 * 
+	 * @param varSet
+	 */
 	public JWCompilerConfigSet(IfDefVarSet varSet) {
 		this.varSet = varSet;
+	}
+
+	/**
+	 * Returns an instance of JWCompilerConfigSet, but uses a simple caching
+	 * mechanism.
+	 * 
+	 * @param varSet
+	 * @return and instance of JWCompilerConfigSet
+	 */
+	public static JWCompilerConfigSet of(IfDefVarSet varSet) {
+		JWCompilerConfigSet cacheShot = (JWCompilerConfigSet) cache.get(varSet);
+		if (cacheShot == null) /* MISS? */{
+			JWCompilerConfigSet cacheElement = new JWCompilerConfigSet(varSet);
+			cache.put(varSet, cacheElement);
+			return cacheElement;
+		} /* HIT! */else {
+			return cacheShot;
+		}
 	}
 
 	@Override
@@ -36,7 +72,9 @@ public class JWCompilerConfigSet implements ConfigSet {
 			IfDefVarSet otherVarSet = ((JWCompilerConfigSet) other).varSet;
 			return new JWCompilerConfigSet(varSet.or(otherVarSet));
 		} else {
-			throw new IllegalArgumentException("Operation or between types " + JWCompilerConfigSet.class + " and " + other.getClass() + " not supported");
+			throw new IllegalArgumentException("Operation or between types "
+					+ JWCompilerConfigSet.class + " and " + other.getClass()
+					+ " not supported");
 		}
 	}
 
@@ -46,16 +84,20 @@ public class JWCompilerConfigSet implements ConfigSet {
 			IfDefVarSet otherVarSet = ((JWCompilerConfigSet) other).varSet;
 			return new JWCompilerConfigSet(varSet.and(otherVarSet));
 		} else {
-			throw new IllegalArgumentException("Operation and between types " + JWCompilerConfigSet.class + " and " + other.getClass() + " not supported");
+			throw new IllegalArgumentException("Operation and between types "
+					+ JWCompilerConfigSet.class + " and " + other.getClass()
+					+ " not supported");
 		}
 	}
-	
+
 	@Override
 	public String toString() {
 		return varSet.toString();
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
@@ -66,7 +108,9 @@ public class JWCompilerConfigSet implements ConfigSet {
 		return result;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
@@ -91,6 +135,4 @@ public class JWCompilerConfigSet implements ConfigSet {
 		return this.varSet.equals(IfDefVarSet.getAll());
 	}
 
-	
-	
 }

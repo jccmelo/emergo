@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,8 @@ public class HideFeaturesHandler extends AbstractHandler {
 					 */
 					ConfigSet selectedConfigSet = (ConfigSet) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
 					
-					Map<ConfigSet, Collection<Integer>> ifDefLineMapping = DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile());
+					DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile());
+					Map<ConfigSet, Collection<Integer>> ifDefLineMapping = new HashMap();
 					
 					/*
 					 * FIXME Temporary computation to hide the endif statement and keep the ifdef.

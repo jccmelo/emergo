@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry exported="true" kind="lib" path="lib/jgrapht-jdk1.6.jar" sourcepath="C:/Users/Társis/libs/jgrapht-0.8.2/src"/>
+	<classpathentry kind="lib" path="lib/commons-lang3-3.0.1.jar"/>
+	<classpathentry kind="lib" path="lib/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="lib/buddy.dll"/>
-	<classpathentry kind="lib" path="lib/cal.dll"/>
-	<classpathentry kind="lib" path="lib/cudd.dll"/>
 	<classpathentry kind="lib" path="lib/jw-compiler.jar"/>
 	<classpathentry kind="lib" path="lib/bcel-5.2-daimi.jar"/>
 	<classpathentry kind="lib" path="lib/cvcfg.jar"/>

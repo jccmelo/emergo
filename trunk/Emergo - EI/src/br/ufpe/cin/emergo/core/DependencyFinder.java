@@ -4,15 +4,16 @@ import java.io.File;
 import java.util.Collection;
 import java.util.Map;
 
+import org.apache.commons.lang3.Range;
 import org.jgrapht.DirectedGraph;
 
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 
 /**
- * A façade class for invoking the process of dependency discovery.
+ * A faï¿½ade class for invoking the process of dependency discovery.
  * 
- * @author Társis
+ * @author Tï¿½rsis
  * 
  */
 public class DependencyFinder {
@@ -24,7 +25,7 @@ public class DependencyFinder {
 	}
 
 	// XXX apply switching strategy for variability.
-	public static Map<ConfigSet, Collection<Integer>> getIfDefLineMapping(File file) {
+	public static Map<ConfigSet, Collection<Range<Integer>>> getIfDefLineMapping(File file) {
 		return JWCompilerDependencyFinder.ifDefBlocks(file);
 	}
 
