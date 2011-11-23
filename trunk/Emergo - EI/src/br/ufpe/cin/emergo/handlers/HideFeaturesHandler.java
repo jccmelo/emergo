@@ -1,10 +1,10 @@
 package br.ufpe.cin.emergo.handlers;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +12,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang3.Range;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -58,25 +59,33 @@ public class HideFeaturesHandler extends AbstractHandler {
 					 * selectedConfigSet ==> ifdef feature expression (emergo table view)
 					 */
 					ConfigSet selectedConfigSet = (ConfigSet) ((MarkerItem) marker).getMarker().getAttribute(IMarker.TEXT);
-					
-					DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile());
-					Map<ConfigSet, Collection<Integer>> ifDefLineMapping = new HashMap();
-					
-					/*
-					 * FIXME Temporary computation to hide the endif statement and keep the ifdef.
-					 */
-					Set<Entry<ConfigSet, Collection<Integer>>> configSets = ifDefLineMapping.entrySet();
-					
-					int lastSourceLineNumber = 0;
 
-					for (Entry<ConfigSet, Collection<Integer>> entry : configSets) {
+					//Example of featureRangeLineNumbers
+					//{(COPY)=[[12..17]], (SMS)=[[28..30], [19..24]]}
+					Map<ConfigSet, Collection<Range<Integer>>> featureRangeLineNumbers = DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile());
+
+					Map<ConfigSet, Collection<Integer>> ifDefLineMapping = new HashMap<ConfigSet, Collection<Integer>>();
+					
+					Set<Entry<ConfigSet, Collection<Range<Integer>>>> entrySet = featureRangeLineNumbers.entrySet();
+					
+					for (Entry<ConfigSet, Collection<Range<Integer>>> entry : entrySet) {
+						Collection<Range<Integer>> rangeCollection = entry.getValue();
 						
-						Deque<Integer> sourceLineNumbers = new ArrayDeque<Integer>(entry.getValue());
-						sourceLineNumbers.removeFirst();
-						lastSourceLineNumber = sourceLineNumbers.getLast();
-						sourceLineNumbers.addLast(++lastSourceLineNumber);
-
-						entry.setValue(sourceLineNumbers);
+						Collection<Integer> lineNumbers = new ArrayList<Integer>();
+						
+						for (Range<Integer> range : rangeCollection) {
+							Integer minimum = range.getMinimum();
+							Integer maximum = range.getMaximum();
+							
+//							Object[] array = generateListFromXtoY(minimum, maximum).toArray();
+//							Arrays.sort(array);
+//							Arrays.asList(array);
+							
+							lineNumbers.addAll(generateListFromXplus1toY(minimum, maximum));
+						}
+						
+						System.out.println(lineNumbers + "    " + entry.getKey());
+						ifDefLineMapping.put(entry.getKey(), lineNumbers);
 					}
 					
 					/*
@@ -135,6 +144,16 @@ public class HideFeaturesHandler extends AbstractHandler {
 		return null;
 	}
 	
+	private List<? extends Integer> generateListFromXplus1toY(Integer x, Integer y) {
+
+		List<Integer> result = new ArrayList<Integer>();
+		
+		for (int i = ++x; i <= y; i++) {
+			result.add(i);
+		}
+		return result;
+	}
+
 	private List<Position> createPositions(
 			IDocument d, Map<ConfigSet, Collection<Integer>> featuresLineNumbers)
 					throws BadLocationException {
