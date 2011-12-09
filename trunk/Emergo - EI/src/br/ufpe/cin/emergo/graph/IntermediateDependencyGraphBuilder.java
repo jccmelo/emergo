@@ -87,10 +87,12 @@ public class IntermediateDependencyGraphBuilder {
 		// Produce a more compact graph by collapsing nodes that belongs to the same line number.
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
 
+		// Export dot files for inspection.
 		{
-			DebugUtil.exportToDotFile(dependencyGraph, new File(System.getProperty("user.home") + File.separator + "dep.dot"));
-			DebugUtil.exportToDotFile(filteredDependencyGraph, new File(System.getProperty("user.home") + File.separator + "fil.dot"));
-			DebugUtil.exportToDotFile(collapsedDependencyGraph, new File(System.getProperty("user.home") + File.separator + "col.dot"));
+			DebugUtil.writeStringToFile(cfg.toDot(), "cfg-intra.dot");
+			DebugUtil.exportToDotFile(dependencyGraph, "dep-intra.dot");
+			DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-intra.dot");
+			DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-intra.dot");
 		}
 
 		return collapsedDependencyGraph;
@@ -103,7 +105,7 @@ public class IntermediateDependencyGraphBuilder {
 		 * XXX it should be much faster to look for the nodes that are in the selection BEFORE creating the
 		 * interprocedural graph. However, when checking for equality on elements that are in the interprocedural graph
 		 * with the ones that are in the intraprocedural one ALWAYS fails. This is most likely due to the fact that the
-		 * classes that are IN the graphs does not implement the equals/hashCode contract.
+		 * classes that comprise the graphs do not implement the equals/hashCode contract.
 		 */
 		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg);
 		cfg.apply(new PointVisitor<Object, Object>() {
@@ -121,17 +123,20 @@ public class IntermediateDependencyGraphBuilder {
 		SharedSimultaneousAnalysis<LatticeSet<Object>> defUseRules = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
 
 		Worklist.process(cfg, defUseRules);
-		DebugUtil.exportToDotFile(cfg.toDot(defUseRules), new File(System.getProperty("user.home") + File.separator + "cfg.dot"));
 
 		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, defUseRules);
-		DebugUtil.exportToDotFile(dependencyGraph, new File(System.getProperty("user.home") + File.separator + "dep.dot"));
 
 		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
-		DebugUtil.exportToDotFile(filteredDependencyGraph, new File(System.getProperty("user.home") + File.separator + "fil.dot"));
 
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
-		DebugUtil.exportToDotFile(collapsedDependencyGraph, new File(System.getProperty("user.home") + File.separator + "col.dot"));
 
+		// Export dot files for inspection
+		{
+			DebugUtil.writeStringToFile(cfg.toDot(defUseRules), "cfg-inter.dot");
+			DebugUtil.exportToDotFile(dependencyGraph, "dep-inter.dot");
+			DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-inter.dot");
+			DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-inter.dot");
+		}
 		return collapsedDependencyGraph;
 	}
 
@@ -448,7 +453,7 @@ public class IntermediateDependencyGraphBuilder {
 			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();
 			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(key));
 
-			// TODO: is checking agains the feature model necessary? It won't hurt to leave this here though.
+			// TODO: is checking against the feature model necessary? It won't hurt to leave this here though.
 			if (((JWCompilerConfigSet) or).getVarSet().isValidInFeatureModel()) {
 				existingEdge.setValue(or);
 			}

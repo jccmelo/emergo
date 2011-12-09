@@ -12,10 +12,12 @@ import org.jgrapht.ext.StringNameProvider;
 /**
  * Contains some utility methods for debug.
  * 
- * @author Társis
+ * @author TÃ¡rsis
  * 
  */
 public class DebugUtil {
+
+	private static String EMERGO_DIR = ".emergo";
 
 	/**
 	 * Defeats instantiation.
@@ -23,15 +25,53 @@ public class DebugUtil {
 	private DebugUtil() {
 	}
 
-	public static File exportToDotFile(String dot, File file) {
-		if (file == null) {
-			file = new File(System.getProperty("user.home") + File.separator + "unnamed.dot");
+	/**
+	 * Will try to create the a file named {@code fileName} in Emergo's default
+	 * directory in $HOME/.emergo/ and write the String {@code str} to it.
+	 * 
+	 * Throws IllegalArgumentException if either {@code str} or {@code fileName}
+	 * is null
+	 * 
+	 * @param str
+	 *            the string to written
+	 * @param fileName
+	 *            the file in which the string will be written
+	 * @return a File instance designated by {@code file} where the String
+	 *         {@code str} was written
+	 */
+	public static File writeStringToFile(String str, String fileName) {
+		return writeStringToFile(str, new File(System.getProperty("user.home")
+				+ File.separator + EMERGO_DIR + File.separator + fileName));
+	}
+
+	/**
+	 * Will try to create the a file named {@code file} and its parent
+	 * directories if they do not exist and write the String {@code str} to it.
+	 * 
+	 * Throws IllegalArgumentException if either {@code str} or {@code file} is
+	 * null
+	 * 
+	 * @param str
+	 *            the string to be written
+	 * @param file
+	 *            the file in which the string will be written
+	 * @return a File instance designated by {@code file} where the String
+	 *         {@code was written}
+	 */
+	public static File writeStringToFile(String str, File file) {
+		if (str == null) {
+			throw new IllegalArgumentException("String cannot be null");
 		}
+		if (file == null) {
+			throw new IllegalArgumentException("File cannot be null");
+		}
+
+		file.getParentFile().mkdirs();
 
 		FileWriter writer;
 		try {
 			writer = new FileWriter(file);
-			writer.write(dot);
+			writer.write(str);
 			writer.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -41,26 +81,64 @@ public class DebugUtil {
 		return file;
 	}
 
-	public static File exportToDotFile(DirectedGraph graph, File file) {
-		if (file == null) {
-			file = new File(System.getProperty("user.home") + File.separator + "unnamed.dot");
+	/**
+	 * Will try to create the a file named {@code fileName} in Emergo's default
+	 * directory in $HOME/.emergo/ and write the String representation of
+	 * {@code graph} to it.
+	 * 
+	 * Throws IllegalArgumentException if either {@code graph} or
+	 * {@code fileName} is null
+	 * 
+	 * @param graph
+	 *            the graph to written
+	 * @param fileName
+	 *            the file in which the string will be written
+	 * @return a File instance designated by {@code file} where the String
+	 *         {@code was written}
+	 */
+	public static File exportToDotFile(DirectedGraph graph, String fileName) {
+		if (graph == null) {
+			throw new IllegalArgumentException("The graph cannot be null");
 		}
+		if (fileName == null) {
+			throw new IllegalArgumentException("The file name cannot be null");
+		}
+		return exportToDotFile(graph, new File(System.getProperty("user.home")
+				+ File.separator + EMERGO_DIR + File.separator + fileName));
+	}
 
-		DOTExporter<?, ?> exporter = new DOTExporter<Object, Object>(new StringNameProvider<Object>() {
+	/**
+	 * Will try to write the string representation of graph by exporting it to
+	 * {@code file}.
+	 * 
+	 * Throws IllegalArgumentException if either {@code graph} or {@code file}
+	 * is null
+	 * 
+	 * @param graph
+	 *            the graph to be exported
+	 * @param file
+	 *            the file where graph is to be exported
+	 * @return the file where the graph was written to
+	 */
+	public static File exportToDotFile(DirectedGraph graph, File file) {
+		file.getParentFile().mkdirs();
+		
+		DOTExporter<?, ?> exporter = new DOTExporter<Object, Object>(
+				new StringNameProvider<Object>() {
 
-			@Override
-			public String getVertexName(Object vertex) {
-				return "\"" + vertex.toString() + "\"";
-			}
+					@Override
+					public String getVertexName(Object vertex) {
+						return "\"" + vertex.toString() + "\"";
+					}
 
-		}, null, new EdgeNameProvider<Object>() {
+				}, null, new EdgeNameProvider<Object>() {
 
-			@Override
-			public String getEdgeName(Object edge) {
-				return edge.toString();
-			}
+					@Override
+					public String getEdgeName(Object edge) {
+						return edge.toString();
+					}
 
-		});
+				});
 
 		FileWriter writer;
 		try {
