@@ -7,7 +7,6 @@ import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jface.text.ITextSelection;
 
-// TODO: Auto-generated Javadoc
 /**
  * The Class SelectionNodesVisitor is used to compute the ASTNodes contained in an ITextSelection.
  */

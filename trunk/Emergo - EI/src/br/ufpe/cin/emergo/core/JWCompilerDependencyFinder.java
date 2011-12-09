@@ -216,7 +216,7 @@ public class JWCompilerDependencyFinder {
 		 * 
 		 * XXX WARNING! This static method causes the Feature Model, among other
 		 * things, to be RESETED. It SHOULD NOT be called AFTER the parsing of
-		 * the ifdef specification file in any circustance.
+		 * the ifdef specification file in any circumstance.
 		 */
 		ClassEnvironment.init(System.getenv("CLASSPATH"), true);
 
@@ -230,8 +230,9 @@ public class JWCompilerDependencyFinder {
 		// The root point of the parsed program.
 		rootNode = parseProgram(files);
 
-		// XXX: Surprisingly, this is necessary to prevent the compiler from
-		// throwing a NPE.
+		/*
+		 *  XXX: Surprisingly, this is necessary to prevent the compiler from throwing a NPE.
+		 */
 		Main.program = rootNode;
 
 		// XXX I don't know what this is for yet...

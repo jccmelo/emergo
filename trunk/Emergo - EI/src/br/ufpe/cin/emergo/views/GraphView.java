@@ -150,7 +150,7 @@ public class GraphView extends ViewPart {
 			}
 
 			GraphConnection graphConnection = new GraphConnection(graph, ZestStyles.CONNECTIONS_DIRECTED, src, tgt);
-			// FIXME: is is the programmer responsability to free the font after use.
+			// FIXME: is is the programmer responsibility to free the font after use.
 			graphConnection.setFont(new Font(display, new FontData("Courrier", 8, SWT.BOLD)));
 			graphConnection.setText(valueContainerEdge.getValue().toString());
 		}
