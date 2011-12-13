@@ -18,9 +18,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.Range;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jgrapht.DirectedGraph;
 
+import br.ufpe.cin.emergo.core.dependencies.DependencyTypeDetectorVisitor;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.IntermediateDependencyGraphBuilder;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
@@ -296,7 +296,8 @@ public class JWCompilerDependencyFinder {
 			ex.printStackTrace();
 			throw new EmergoException("Compilation error: " + ex.getMessage());
 		}
-
+		
+		
 		// Information about the user selection.
 		/*
 		 * XXX the +1 heres indicate that there is some coupling, for this class
@@ -306,13 +307,23 @@ public class JWCompilerDependencyFinder {
 		final int selecionEndLine = selectionPosition.getEndLine() + 1;
 
 		final Set<Point> pointsInUserSelection = new HashSet<Point>();
-
+		
 		/*
 		 * Finds out in which method the user selection happened based on the
 		 * information inside the SelectionPosition instance.
 		 */
 		final AMethodDecl[] methodBox = new AMethodDecl[1];
 		final String filePath = selectionPosition.getFilePath();
+		
+		
+		//TODO ***** CÓDIGO DE TESTES - VITOR ******
+		//rootNode.apply(new ASTPrinterVisitor());
+		DependencyTypeDetectorVisitor dependencies = new DependencyTypeDetectorVisitor(filePath, selectionPosition);
+		rootNode.apply(dependencies);
+		dependencies.runVisitors(rootNode);
+		//********** FIM DO CÓDIGO DE TESTES ******
+
+		
 		rootNode.apply(new DepthFirstAdapter() {
 			private boolean found = false;
 

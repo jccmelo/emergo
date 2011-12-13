@@ -24,11 +24,10 @@ public class EmergoResultsView extends MarkerSupportView {
 
 	public static final String ID = "br.ufpe.cin.emergo.view.EmergoResultsView";
 	private static final int MAX_PATHS = 16;
-	private static List<IFile> selectedFiles;
+	private static List<IFile> selectedFiles = new ArrayList<IFile>();
 	
 	public EmergoResultsView() {
 		super("emergoResultsSupport");
-		selectedFiles = new ArrayList<IFile>();
 	}
 
 	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor, SelectionPosition spos, IFile textSelectionFile) {
