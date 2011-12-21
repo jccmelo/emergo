@@ -90,7 +90,7 @@
  	-->
 
 	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.handlers.EmergoHandler"
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.GenerateEmergentInterfaceHandler"
         		 id="br.ufpe.cin.emergo.command.generateinterface"
              	 name="Generate Interface">
 		</command>
@@ -159,7 +159,7 @@
             name="Emergo Graph View"
             icon="icons/Emergo-Logo-Blue.png" 
             category="br.ufpe.cin.emergo.view"
-            class="br.ufpe.cin.emergo.views.GraphView"
+            class="br.ufpe.cin.emergo.views.EmergoGraphView"
             id="br.ufpe.cin.emergo.view.GraphView">
       </view>
    </extension>

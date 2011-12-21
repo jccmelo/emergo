@@ -7,8 +7,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.ui.views.markers.internal.MarkerGroup;
-import org.eclipse.ui.views.markers.internal.MarkerGroupingEntry;
 
 import br.ufpe.cin.emergo.activator.Activator;
 
@@ -22,10 +20,6 @@ public class EmergoMarker {
 		MarkerContentWrapper wrapper = new MarkerContentWrapper(message, fd);
 		if (markers.add(wrapper)) {
 			try {
-				///
-				
-				///
-				
 				IMarker marker = fd.getFile().createMarker(EMERGO_MARKER_ID);
 				System.out.println("--------->Marker created: "+message);
 				marker.setAttribute(IMarker.MESSAGE, message);

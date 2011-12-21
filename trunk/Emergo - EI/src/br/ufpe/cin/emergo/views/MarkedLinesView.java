@@ -139,13 +139,13 @@ public class MarkedLinesView extends ViewPart {
 
 					}
 				}
-				actualisate(new ArrayList<LineOfCode>());
+				update(new ArrayList<LineOfCode>());
 			}
 		};
 		deleteAllAction = new Action("Delete All") {
 			public void run() {
 				baseLines = new ArrayList<LineOfCode>();
-				actualisate(new ArrayList<LineOfCode>());
+				update(new ArrayList<LineOfCode>());
 				TestView.deleteAllMarkers();
 				SelectLinesHandler.deleteAllMarkers();
 			}
@@ -173,7 +173,7 @@ public class MarkedLinesView extends ViewPart {
 		// TODO Auto-generated method stub
 	}
 
-	public void actualisate(List<LineOfCode> linesToInser) {
+	public void update(List<LineOfCode> linesToInser) {
 		for (LineOfCode lineOfCode : linesToInser) {
 			boolean insert = true;
 			for (LineOfCode baseLine : baseLines) {

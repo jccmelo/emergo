@@ -24,6 +24,7 @@ import br.ufpe.cin.emergo.core.dependencies.DependencyTypeDetectorVisitor;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.IntermediateDependencyGraphBuilder;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
+import br.ufpe.cin.emergo.util.EmergoConstants;
 import dk.au.cs.java.compiler.ErrorType;
 import dk.au.cs.java.compiler.Errors;
 import dk.au.cs.java.compiler.Flags;
@@ -176,10 +177,10 @@ public class JWCompilerDependencyFinder {
 		}
 
 		String rootpath = (String) options.get("rootpath");
-		File ifdefSpecFile = new File(rootpath + File.separator + "ifdef.txt");
+		File ifdefSpecFile = new File(rootpath + File.separator + EmergoConstants.FEATURE_MODEL_FILE_NAME);
 		if (!ifdefSpecFile.exists()) {
 			throw new RuntimeException(
-					"The ifdef.txt of the project was not found at " + rootpath);
+					"The " + EmergoConstants.FEATURE_MODEL_FILE_NAME + " of the project was not found at " + rootpath);
 		}
 
 		// Holds a the list of Files to be parsed by the compiler.

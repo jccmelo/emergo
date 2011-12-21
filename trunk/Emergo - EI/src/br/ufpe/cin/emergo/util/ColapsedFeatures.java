@@ -1,9 +1,8 @@
 package br.ufpe.cin.emergo.util;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
-import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.Position;
 
 public class ColapsedFeatures {
@@ -12,7 +11,6 @@ public class ColapsedFeatures {
 		List<Position> positions = new ArrayList<Position>();
 		Position position = new Position(85, 125);
 		positions.add(position);
-		return  positions;
-		
+		return  positions;		
 	}
 }

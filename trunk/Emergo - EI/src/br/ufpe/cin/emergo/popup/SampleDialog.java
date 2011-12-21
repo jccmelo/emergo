@@ -1,9 +1,6 @@
 package br.ufpe.cin.emergo.popup;
 
-import java.awt.Checkbox;
-
 import org.eclipse.jface.dialogs.TitleAreaDialog;
-import org.eclipse.jface.viewers.CheckboxTableViewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -12,11 +9,11 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 public class SampleDialog extends TitleAreaDialog {
+
 	public static final int OPEN = 9999;
  	public static final int DELETE = 9998;
  	
@@ -29,7 +26,6 @@ public class SampleDialog extends TitleAreaDialog {
 	Composite parent;
 	Composite top;
 	Composite composite;
-	
 	
 	public SampleDialog(Shell parentShell, String[] featuresNames, String[] choosenFeaturesArray) {
 		super(parentShell);
@@ -68,24 +64,26 @@ public class SampleDialog extends TitleAreaDialog {
 		return top;
 	}
 
-	private void validateFiels(){
+	private void validateFiels() {
 		int size = 0;
 		for (int i = 0; i < this.features.length; i++) {
-			if(this.features[i].getSelection())
+			if (this.features[i].getSelection())
 				size++;
 		}
 		this.selectedFeatures = new String[size];
 		int count =0;
 		for (int i = 0; i < this.features.length; i++) {
-			if(this.features[i].getSelection()){
+			if (this.features[i].getSelection()) {
 				this.selectedFeatures[count] = this.features[i].getText();
 				count++;
 			}
 		}
 	}
-	public String[] getSelectedFeatures(){
+
+	public String[] getSelectedFeatures() {
 		return this.selectedFeatures;
 	}
+
 	@Override
 	 protected void createButtonsForButtonBar(Composite parent) {
 	    // Create Open button
@@ -114,5 +112,6 @@ public class SampleDialog extends TitleAreaDialog {
 	        close();
 	      }
 	    });
-	  }
+	}
+
 }

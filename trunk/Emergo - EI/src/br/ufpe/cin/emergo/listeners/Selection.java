@@ -10,13 +10,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.Range;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -25,19 +24,22 @@ import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.TextSelection;
 import org.eclipse.jface.viewers.ISelection;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.ISelectionListener;
 import org.eclipse.ui.IWorkbenchPart;
-import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.texteditor.ITextEditor;
-import org.eclipse.ui.views.markers.MarkerItem;
 
+import br.ufpe.cin.emergo.core.DependencyFinder;
+import br.ufpe.cin.emergo.core.EmergoException;
+import br.ufpe.cin.emergo.core.JWCompilerDependencyFinder;
+import br.ufpe.cin.emergo.core.SelectionPosition;
+import br.ufpe.cin.emergo.editor.IfDefJavaEditor;
+import br.ufpe.cin.emergo.properties.SystemProperties;
+import br.ufpe.cin.emergo.util.EmergoConstants;
 import dk.au.cs.java.compiler.Flags;
 import dk.au.cs.java.compiler.Main;
 import dk.au.cs.java.compiler.ifdef.IfDefUtil;
@@ -47,16 +49,6 @@ import dk.au.cs.java.compiler.node.AProgram;
 import dk.au.cs.java.compiler.node.PIfdefExp;
 import dk.au.cs.java.compiler.type.environment.ClassEnvironment;
 import dk.brics.util.file.WildcardExpander;
-
-import br.ufpe.cin.emergo.core.ConfigSet;
-import br.ufpe.cin.emergo.core.DependencyFinder;
-import br.ufpe.cin.emergo.core.EmergoException;
-import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
-import br.ufpe.cin.emergo.core.JWCompilerDependencyFinder;
-import br.ufpe.cin.emergo.core.SelectionPosition;
-import br.ufpe.cin.emergo.editor.IfDefJavaEditor;
-import br.ufpe.cin.emergo.properties.SystemProperties;
-import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class Selection implements ISelectionListener{
 
@@ -314,10 +306,10 @@ public class Selection implements ISelectionListener{
 		}
 		
 		String rootpath = (String) rawLocation;//options.get("rootpath");
-		File ifdefSpecFile = new File(rootpath + File.separator + "ifdef.txt");
+		File ifdefSpecFile = new File(rootpath + File.separator + EmergoConstants.FEATURE_MODEL_FILE_NAME);
 		if (!ifdefSpecFile.exists()) {
 			throw new RuntimeException(
-					"The ifdef.txt of the project was not found at " + rootpath);
+					"The " + EmergoConstants.FEATURE_MODEL_FILE_NAME + " of the project was not found at " + rootpath);
 		}
 
 		// Holds a the list of Files to be parsed by the compiler.

@@ -201,11 +201,11 @@ public class SelectLinesHandler extends AbstractHandler {
 					.offSet(textSelection.getOffset())
 					.startLine(textSelection.getStartLine())
 					.startColumn(
-							EmergoHandler.calculateColumnFromOffset(document,
+							GenerateEmergentInterfaceHandler.calculateColumnFromOffset(document,
 									textSelection.getOffset()))
 					.endLine(textSelection.getEndLine())
 					.endColumn(
-							EmergoHandler.calculateColumnFromOffset(
+							GenerateEmergentInterfaceHandler.calculateColumnFromOffset(
 									document,
 									textSelection.getOffset()
 											+ textSelection.getLength()))
@@ -241,12 +241,12 @@ public class SelectLinesHandler extends AbstractHandler {
 		// dependencyGraph : dependencyGraphs) {
 		TestView.adaptTo(dependencyGraph, editor, textSelectionFile, false);
 		// }
-		((TestView) testView).actualisateTree();
+		((TestView) testView).updateTree();
 
 		// Updates Line view
 		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
 				.getActivePage().findView(MarkedLinesView.ID);
-		((MarkedLinesView) markedLinesView).actualisate(linesOffset);
+		((MarkedLinesView) markedLinesView).update(linesOffset);
 	}
 
 	private Object trialMethod(ExecutionEvent event) throws ExecutionException {
@@ -272,7 +272,7 @@ public class SelectLinesHandler extends AbstractHandler {
 		// Updates Line view
 		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
 				.getActivePage().findView(MarkedLinesView.ID);
-		((MarkedLinesView) markedLinesView).actualisate(linesOffset);
+		((MarkedLinesView) markedLinesView).update(linesOffset);
 		return null;
 	}
 

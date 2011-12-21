@@ -27,6 +27,7 @@ import org.eclipse.ui.texteditor.ITextEditor;
 
 import br.ufpe.cin.emergo.popup.SampleDialog;
 import br.ufpe.cin.emergo.properties.SystemProperties;
+import br.ufpe.cin.emergo.util.EmergoConstants;
 
 public class FeaturePreferencesHandler extends AbstractHandler {
 	   
@@ -44,7 +45,8 @@ public class FeaturePreferencesHandler extends AbstractHandler {
 		IJavaProject javaProject = JavaCore.create(project);
 		// For a test Purpose
 		try {
-			String[] features = this.getFeaturesFromFile(project);
+			String[] features = this.getFeaturesFromFile(javaProject);
+			
 			String choosenFeatures = javaProject.getResource().getPersistentProperty(SystemProperties.CHOOSEN_FEATURES);
 			if(choosenFeatures ==null) choosenFeatures = ";";
 			String [] choosenFeaturesArray = choosenFeatures.split(";");
@@ -91,16 +93,16 @@ public class FeaturePreferencesHandler extends AbstractHandler {
 		return null;
 	}
 
-	private String[] getFeaturesFromFile(IProject project) {
+	private String[] getFeaturesFromFile(IJavaProject javaProject) {
 		ArrayList<String> features = new ArrayList<String>();
 		
-		String rootpath = (String) project.getPathVariableManager().getURIValue("PROJECT_LOC").toASCIIString();
-		rootpath = rootpath.substring(6);
-		File ifdefSpecFile = new File(rootpath + File.separator + "ifdef.txt");
+		String rootpath = javaProject.getResource().getLocation().toFile().getAbsolutePath();
+		
+		File ifdefSpecFile = new File(rootpath + File.separator + EmergoConstants.FEATURE_MODEL_FILE_NAME);
 		try {
 			if (!ifdefSpecFile.exists()) {
 				throw new RuntimeException(
-						"The ifdef.txt of the project was not found at " + rootpath);
+						"The " + EmergoConstants.FEATURE_MODEL_FILE_NAME + " of the project was not found at " + rootpath);
 			}
 			FileInputStream ifdeffile = new FileInputStream(ifdefSpecFile);
 			DataInputStream ifdefData = new DataInputStream(ifdeffile);

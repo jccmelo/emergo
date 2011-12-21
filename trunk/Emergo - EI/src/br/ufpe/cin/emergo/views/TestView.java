@@ -78,7 +78,6 @@ public class TestView extends ViewPart{
 	private static List<IMarker> test;
 	public static final String EMERGO_MARKER_ID = Activator.PLUGIN_ID + ".emergomarker";
 	private static FeatureDependency fd;
-	private CellLabelProvider cl;
 	private static final String MARKER_FIELD = "MARKER_FIELD"; //$NON-NLS-1$
 	
 	TreeViewerColumn tc;
@@ -97,6 +96,7 @@ public class TestView extends ViewPart{
 	
 	Action addItemAction, deleteItemAction, selectAllAction;
 	private MarkedLinesAction lCustomAction;
+	private CellLabelProvider cl;
 	
 	public TestView() {
 		// TODO Auto-generated constructor stub
@@ -380,7 +380,7 @@ public class TestView extends ViewPart{
 		
 	}
 	
-	public void actualisateTree(){
+	public void updateTree() {
 		try {
 			IMarker[] markers  = fd.getFile().findMarkers(EMERGO_MARKER_ID, false, IResource.DEPTH_INFINITE);
 			test = new ArrayList<IMarker>();
@@ -608,7 +608,7 @@ public class TestView extends ViewPart{
 		for (int i = 0; i < views.length; i++) {
 			System.out.println(views);
 			if(views[i].getId().equals("br.ufpe.cin.emergo.views.TestView")){
-				((TestView) views[i].getView(true)).actualisateTree();
+				((TestView) views[i].getView(true)).updateTree();
 			}
 		}
 	}
@@ -623,7 +623,7 @@ public class TestView extends ViewPart{
 		for (int i = 0; i < views.length; i++) {
 			System.out.println(views);
 			if(views[i].getId().equals("br.ufpe.cin.emergo.views.TestView")){
-				((TestView) views[i].getView(true)).actualisateTree();
+				((TestView) views[i].getView(true)).updateTree();
 			}
 		}
 	}

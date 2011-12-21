@@ -39,7 +39,7 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.ResourceUtil;
-import br.ufpe.cin.emergo.views.GraphView;
+import br.ufpe.cin.emergo.views.EmergoGraphView;
 import br.ufpe.cin.emergo.views.TestView;
 
 /**
@@ -48,7 +48,7 @@ import br.ufpe.cin.emergo.views.TestView;
  * @author Társis
  * 
  */
-public class EmergoHandler extends AbstractHandler {
+public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 
 	private static boolean interprocedural = true;
 	
@@ -94,7 +94,7 @@ public class EmergoHandler extends AbstractHandler {
 			} else {
 				interprocedural = false;
 			}
-
+String s = javaProject.getResource().getLocation().toFile().getAbsolutePath();
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
@@ -137,21 +137,21 @@ public class EmergoHandler extends AbstractHandler {
 
 			// TODO: make this a list of things to update instead of hardcoding.
 			// Update the graph view
-			IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(GraphView.ID);
-			if (findGraphView instanceof GraphView) {
-				GraphView view = (GraphView) findGraphView;
+			IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoGraphView.ID);
+			if (findGraphView instanceof EmergoGraphView) {
+				EmergoGraphView view = (EmergoGraphView) findGraphView;
 				view.adaptTo(dependencyGraph, editor, selectionPosition);
 			}
 
 			// Update the tree view.
 			IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(TestView.ID);
 			TestView.adaptTo(dependencyGraph, editor, textSelectionFile, true);
-			((TestView) testView).actualisateTree();
+			((TestView) testView).updateTree();
 			
 			// Update the tree view.
 			//IViewPart tableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);
 			//EmergoResultsView.adaptTo(dependencyGraph, editor, selectionPosition, textSelectionFile);
-//			((tableView) testView).actualisateTree();
+//			((tableView) testView).updateTree();
 
 		} catch (Throwable e) {
 			String message = e.getMessage() == null ? "No message specified" : e.getMessage();

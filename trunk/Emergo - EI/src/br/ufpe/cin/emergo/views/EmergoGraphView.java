@@ -31,7 +31,7 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 
-public class GraphView extends ViewPart {
+public class EmergoGraphView extends ViewPart {
 	public static final String ID = "br.ufpe.cin.emergo.view.GraphView";
 	private Graph graph;
 	private ITextEditor editor;
