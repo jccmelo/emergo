@@ -7,6 +7,8 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.ui.views.markers.internal.MarkerGroup;
+import org.eclipse.ui.views.markers.internal.MarkerGroupingEntry;
 
 import br.ufpe.cin.emergo.activator.Activator;
 
@@ -20,11 +22,18 @@ public class EmergoMarker {
 		MarkerContentWrapper wrapper = new MarkerContentWrapper(message, fd);
 		if (markers.add(wrapper)) {
 			try {
+				///
+				
+				///
+				
 				IMarker marker = fd.getFile().createMarker(EMERGO_MARKER_ID);
+				System.out.println("--------->Marker created: "+message);
 				marker.setAttribute(IMarker.MESSAGE, message);
 				marker.setAttribute(IMarker.LINE_NUMBER, fd.getLineNumber());
 				marker.setAttribute(IMarker.TEXT, fd.getConfiguration());
 				marker.setAttribute(IMarker.TASK, fd.getFeature());
+				marker.setAttribute("testability", "1");
+				System.err.println(EMERGO_MARKER_ID);
 			} catch (CoreException e) {
 				e.printStackTrace();
 			} catch (Throwable t) {
@@ -41,6 +50,32 @@ public class EmergoMarker {
 			e.printStackTrace();
 		}
 	}
+	public static void clearMarkers(IFile file, String message){
+			IMarker[] allMarkers;
+			try {
+				int a = 2;
+				allMarkers = file.findMarkers(EmergoMarker.EMERGO_MARKER_ID, true, IResource.DEPTH_INFINITE);
+				Object[] auxMarkes = (Object[]) markers.toArray();
+				for (int i = 0; i < auxMarkes.length; i++) {
+					if(((MarkerContentWrapper)auxMarkes[i]).getMessage().equals(message)){
+						markers.remove(auxMarkes[i]);
+					}
+				}
+				
+				for (int i = 0; i < allMarkers.length; i++) {
+					if(allMarkers[i].getAttribute(IMarker.MESSAGE).equals(message)){
+						Set<MarkerContentWrapper> markersAux = markers;
+						boolean wasRemoved= markers.remove(allMarkers[i]);
+						
+						allMarkers[i].delete();
+					}
+					
+				}
+			} catch (CoreException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
 
 	private static class MarkerContentWrapper {
 		String msg;
@@ -50,7 +85,10 @@ public class EmergoMarker {
 			this.msg = msg;
 			this.fd = fd;
 		}
-
+		
+		public String getMessage(){
+			return msg;
+		}
 		/* (non-Javadoc)
 		 * @see java.lang.Object#hashCode()
 		 */

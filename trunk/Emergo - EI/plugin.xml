@@ -11,9 +11,19 @@
           		<command commandId="br.ufpe.cin.emergo.command.generateinterface"
                 		 style="push">
           		</command>
+          		<command commandId="br.ufpe.cin.emergo.command.choosefeatures"
+                		 style="push">
+          		</command>
+          		<command commandId="br.ufpe.cin.emergo.command.chooseLines"
+                		 style="push">
+          		</command>
+          		<command commandId="br.ufpe.cin.emergo.command.generateForLines"
+                		 style="push">
+          		</command>
        		</menu>
     	</menuContribution>
  	</extension>
+
 
 	<extension point="org.eclipse.ui.menus">
 		<menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
@@ -34,6 +44,43 @@
         	<separator name="group.hide" visible="true"/>  
 		</menuContribution>
 	</extension>
+	
+	<!-- New menu to choosing-feature -->
+	
+	<!--<extension point="org.eclipse.ui.menus">
+    	<menuContribution allPopups="false"
+          				  locationURI="popup:#CompilationUnitEditorContext">
+       		<menu id="emergofeature" label="Choose Feature" icon="icons/Emergo-Logo-Blue.png">
+          		<command commandId="br.ufpe.cin.emergo.command.choosefeatures"
+                		 style="push">
+          		</command>
+       		</menu>
+    	</menuContribution>
+ 	</extension>-->
+ 	
+	<extension point="org.eclipse.ui.commands">
+		<command defaultHandler="br.ufpe.cin.emergo.popup.ChooseFeatureHandler"
+        		 id="br.ufpe.cin.emergo.command.choosefeatures"
+             	 name="Feature Preferences">
+		</command>
+	</extension>
+	
+	<extension point="org.eclipse.ui.commands">
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.ChooseLines"
+        		 id="br.ufpe.cin.emergo.command.chooseLines"
+             	 name="Select Line">
+		</command>
+	</extension>
+
+	<extension point="org.eclipse.ui.commands">
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.ChooseLines"
+        		 id="br.ufpe.cin.emergo.command.generateForLines"
+             	 name="Generate Interface from Selected Lines">
+		</command>
+	</extension>
+	
+	
+	<!-- END OF THE choosing-feature -->
 
 	<!-- Commands / Handlers -->
 	<!--
@@ -69,6 +116,8 @@
 			</not>
 		</enabledWhen>
 	</extension>
+	
+
 
  	<!-- Shortcuts (keys) -->
  	<!--
@@ -130,14 +179,32 @@
 	<!-- View for showing Emergo results -->
 	
 	<extension point="org.eclipse.ui.views">
-
-
+		<view
+			category="br.ufpe.cin.emergo.view"
+	    	class="br.ufpe.cin.emergo.views.TestView"
+			icon="icons/Emergo-Logo-Blue.png"
+			id="br.ufpe.cin.emergo.views.TestView"
+			name="New Emergo Table View">
+		</view>
+	</extension>
+	
+	<extension point="org.eclipse.ui.views">
 		<view
 			category="br.ufpe.cin.emergo.view"
 	    	class="br.ufpe.cin.emergo.views.EmergoResultsView"
 			icon="icons/Emergo-Logo-Blue.png"
-			id="br.ufpe.cin.emergo.view.EmergoResultsView"
+			id="br.ufpe.cin.emergo.views.TableView"
 			name="Emergo Table View">
+		</view>
+	</extension>
+	
+	<extension point="org.eclipse.ui.views">
+		<view
+			category="br.ufpe.cin.emergo.view"
+	    	class="br.ufpe.cin.emergo.views.MarkedLinesView"
+			icon="icons/Emergo-Logo-Blue.png"
+			id="br.ufpe.cin.emergo.views.MarkedLinesView"
+			name="Selected Lines">
 		</view>
 	</extension>
  
@@ -145,17 +212,69 @@
 
 	<extension point="org.eclipse.core.resources.markers"
 		id="Emergo.emergomarker"
-		class="br.ufpe.cin.emergo.markers.EmergoMarker"
 		name="Emergo Marker">
 		<persistent value="false"/>
 		<super type="org.eclipse.core.resources.marker"/>
    	</extension>
 
+	<!-- beginning of marker support-->
    	<extension point="org.eclipse.ui.ide.markerSupport">
+ 		<!-- defaultMarkerGrouping="org.eclipse.ui.ide.type" -->
+     	
+		<markerContentGenerator id="emergoResultsSupport" 
+								name="Emergo Table View TEST">
+	     	<markerTypeReference id="Emergo.emergomarker"/>
+	     	<markerFieldReference 
+				id="org.eclipse.ui.ide.severityAndDescriptionField"
+				visible="true">
+	     	</markerFieldReference>
+			<markerFieldReference 
+				id="br.ufpe.cin.emergo.markers.configurationColumn"
+				visible="true">
+	     	</markerFieldReference>
+			<markerFieldReference 
+				id="org.eclipse.ui.ide.locationField"
+				visible="true">
+	     	</markerFieldReference>
+			<markerFieldReference 
+				id="br.ufpe.cin.emergo.markers.featureColumn"
+				visible="true">
+	     	</markerFieldReference>
+			<markerFieldReference 
+				id="org.eclipse.ui.ide.resourceField"
+				visible="true">
+	     	</markerFieldReference>
+	     	<markerGrouping
+	               id="Emergo.emergomarker.markerGrouping"
+	               label="TESTmarkerGrouping.type">
+	               <markerGroupingEntry
+			              id="Emergo.emergomarker.markerGroupingEntry"
+			              label="quelque chose"
+			              priority="1">
+	        	   </markerGroupingEntry>
+	        	   
+	        	    <markerGroupingEntry
+			              id="Emergo.emergomarker.markerGroupingEntry2"
+			              label="quelque chose2"
+			              priority="100">
+	        	   </markerGroupingEntry>
+	        	   
+	               <markerAttributeGrouping 
+	               			markerType="Emergo.emergomarker"
+	               			defaultGroupingEntry="message"
+	               			attribute="message">
+	               			<markerAttributeMapping
+			                    markerGroupingEntry="Emergo.emergomarker.markerGroupingEntry"
+			                    value="message">
+			              	</markerAttributeMapping>
+	               </markerAttributeGrouping>
+     		</markerGrouping>
+		</markerContentGenerator>
+
 		<markerField 
 			class="br.ufpe.cin.emergo.markers.ConfigurationColumn"
 			id="br.ufpe.cin.emergo.markers.configurationColumn" 
-			name="Configuration"> 
+			name="Configuration">
 		</markerField>
 
 		<markerField
@@ -163,15 +282,28 @@
 			id="br.ufpe.cin.emergo.markers.featureColumn" 
 			name="Feature"> 
 		</markerField>
-
-		<markerContentGenerator id="emergoResultsSupport" name="Emergo Table View" defaultMarkerGrouping="org.eclipse.ui.ide.type">
-			<markerTypeReference id="Emergo.emergomarker"/>
-			<markerFieldReference id="org.eclipse.ui.ide.severityAndDescriptionField"/>
-			<markerFieldReference id="br.ufpe.cin.emergo.markers.configurationColumn"/>
-			<markerFieldReference id="org.eclipse.ui.ide.locationField"/>
-			<markerFieldReference id="br.ufpe.cin.emergo.markers.featureColumn"/>
-			<markerFieldReference id="org.eclipse.ui.ide.resourceField"/>
-		</markerContentGenerator>
+		
+		 <markerTypeCategory
+	           name="EmergoMarker Type">
+	        <markerTypeReference
+	              id="Emergo.emergomarker">
+	        </markerTypeReference>
+    	 </markerTypeCategory>
  	</extension>
-
+ 	<!-- END OF MARKER SUPPORT -->
+ 	
+ <!-- property page -->
+ <extension point="org.eclipse.ui.propertyPages">
+       <page id="br.ufpe.cin.emergo.properties.propertyPage"
+       		 name="Emergo"
+       		 class="br.ufpe.cin.emergo.properties.propertyPage"
+       		 >
+       		<enabledWhen>
+            	<adapt
+                  type="org.eclipse.core.resources.IProject">
+            	</adapt>
+          	</enabledWhen>
+       </page>
+ </extension>
+ 
 </plugin>

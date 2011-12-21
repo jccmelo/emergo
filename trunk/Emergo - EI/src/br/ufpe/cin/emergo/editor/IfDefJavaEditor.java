@@ -14,6 +14,11 @@ import org.eclipse.jface.text.source.projection.ProjectionAnnotation;
 import org.eclipse.jface.text.source.projection.ProjectionAnnotationModel;
 import org.eclipse.jface.text.source.projection.ProjectionViewer;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.ui.IWorkbenchPartSite;
+import org.eclipse.ui.IWorkbenchWindow;
+
+import br.ufpe.cin.emergo.listeners.Selection;
+import br.ufpe.cin.emergo.util.ColapsedFeatures;
 
 public class IfDefJavaEditor extends CompilationUnitEditor {
 
@@ -26,10 +31,10 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 	public IfDefJavaEditor() {
 		this.annotationModelIfDefs = new ProjectionAnnotationModel();
 		
+		
 		/**
 		 * Steps needed for syntax highlighting
 		 */
-		
 //		IPreferenceStore preferenceStore = getPreferenceStore();
 //		JavaColorManager javaColorManager = (JavaColorManager) JavaPlugin.getDefault().getJavaTextTools().getColorManager();
 //
@@ -50,6 +55,14 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 //		 setSourceViewerConfiguration(ifDefSourceViewerConfiguration);
 //	}
 
+	public void colapseAll(){
+		/**
+		 * Lines for collapsing elements.
+		 */
+		this.updateFoldingStructure(ColapsedFeatures.getPositionsFromColapsedFeatures());
+		this.annotationModelIfDefs.collapseAll(0, getDocument().getLength());
+	}
+	
 	public void instantiatePositions() {
 		this.positionsIfDefs = new HashSet<List<Position>>();
 	}
@@ -60,6 +73,12 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 	
 	public void createPartControl(Composite parent) {
 		super.createPartControl(parent);
+		
+		//test
+		IWorkbenchPartSite site = getSite();
+		IWorkbenchWindow window = site.getWorkbenchWindow();
+		window.getSelectionService().addPostSelectionListener(new Selection());
+		//END of test
 		
 		ProjectionViewer viewer = (ProjectionViewer) getSourceViewer();
 

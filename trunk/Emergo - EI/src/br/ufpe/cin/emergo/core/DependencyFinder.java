@@ -7,6 +7,9 @@ import java.util.Map;
 import org.apache.commons.lang3.Range;
 import org.jgrapht.DirectedGraph;
 
+import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.PIfdefExp;
+
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 
@@ -39,16 +42,21 @@ public class DependencyFinder {
 	 * @param finder
 	 * @param selectionPosition
 	 * @param options
+	 * @param interprocedural 
 	 * @return
 	 * @throws EmergoException
 	 */
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options, boolean interprocedural) throws EmergoException {
 		switch (finder) {
 		case JWCOMPILER:
-			return JWCompilerDependencyFinder.generateDependencyGraph(selectionPosition, options);
+			return JWCompilerDependencyFinder.generateDependencyGraph(selectionPosition, options, interprocedural);
 		case SOOT:
 		default:
 			throw new UnsupportedOperationException("Depency finder unavailable");
 		}
+	}
+
+	public static Map<PIfdefExp, Collection<Range<Integer>>> getIfDefLineMapping(File file, AProgram rootNode) {
+		return JWCompilerDependencyFinder.ifDefBlocks(file, rootNode);
 	}
 }

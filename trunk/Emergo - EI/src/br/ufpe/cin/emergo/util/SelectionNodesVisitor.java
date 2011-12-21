@@ -50,7 +50,6 @@ public class SelectionNodesVisitor extends ASTVisitor {
 	 */
 	public void preVisit(ASTNode node) {
 		super.preVisit(node);
-		//System.out.println(node);
 		if (node.getStartPosition() >= textSelection.getOffset() && 
 				(node.getStartPosition() + node.getLength()) <= textSelection.getOffset() + textSelection.getLength()) {
 			nodes.add(node);

@@ -13,6 +13,8 @@ import org.jgrapht.DirectedGraph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.KShortestPaths;
 
+import com.sun.org.apache.bcel.internal.generic.FDIV;
+
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
@@ -26,10 +28,12 @@ public class EmergoResultsView extends MarkerSupportView {
 	private static final int MAX_PATHS = 16;
 	private static List<IFile> selectedFiles = new ArrayList<IFile>();
 	
+	
 	public EmergoResultsView() {
 		super("emergoResultsSupport");
 	}
-
+	
+	
 	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor, SelectionPosition spos, IFile textSelectionFile) {
 		
 		/*
@@ -96,8 +100,9 @@ public class EmergoResultsView extends MarkerSupportView {
 						 */
 						message = "Unknown";
 					}
-
-					EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(configAccumulator).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
+					
+					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine());
+					EmergoMarker.createMarker(message, auxFeature);
 					//EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
 				}
 			}

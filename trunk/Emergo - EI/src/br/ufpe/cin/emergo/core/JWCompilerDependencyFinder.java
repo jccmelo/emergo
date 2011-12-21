@@ -50,6 +50,7 @@ import dk.au.cs.java.compiler.node.ACompilationUnit;
 import dk.au.cs.java.compiler.node.AIfdefStm;
 import dk.au.cs.java.compiler.node.AMethodDecl;
 import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.PIfdefExp;
 import dk.au.cs.java.compiler.node.Start;
 import dk.au.cs.java.compiler.node.TEndif;
 import dk.au.cs.java.compiler.node.TIdentifier;
@@ -121,6 +122,11 @@ public class JWCompilerDependencyFinder {
 						
 						public void caseAIfdefStm(AIfdefStm node) {
 							IfDefVarSet varSet = node.getOnTrueSet();
+							System.out.println("JWCompiler1: "+node.getToken());
+							System.out.println("JWCompiler2: "+node.getVarSet());
+							System.out.println("JWCompiler2: "+node.getExp());
+							System.out.println("JWCompiler2: "+node.getThenBody());
+							System.out.println("JWCompiler3: "+node);
 							
 							
 							int startLine = node.getToken().getLine();
@@ -141,12 +147,15 @@ public class JWCompilerDependencyFinder {
 							}
 							
 							ConfigSet configSet = JWCompilerConfigSet.of(varSet);
+							System.out.println("JWCompiler: "+varSet);
+							//System.out.println("JWCompiler: "+configSet);
 							Range<Integer> blockRange = Range.between(startLine, endLine);
 							if (configMapping.containsKey(configSet)){
 								configMapping.get(configSet).add(blockRange);
 							} else {
 								HashSet<Range<Integer>> collectionOfBlocks = new HashSet<Range<Integer>>();
 								collectionOfBlocks.add(blockRange);
+								
 								configMapping.put(configSet, collectionOfBlocks);
 							}
 						}
@@ -160,7 +169,7 @@ public class JWCompilerDependencyFinder {
 
 	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateDependencyGraph(
 			final SelectionPosition selectionPosition,
-			Map<Object, Object> options) throws EmergoException {
+			Map<Object, Object> options, boolean interprocedural2) throws EmergoException {
 		// Resets compiler status.
 		Main.resetCompiler();
 		useDefWeb = null;
@@ -346,7 +355,6 @@ public class JWCompilerDependencyFinder {
 							}
 						}
 					});
-
 					methodBox[0] = tokenBox[0].getAncestor(AMethodDecl.class);
 					found = true;
 				}
@@ -384,7 +392,7 @@ public class JWCompilerDependencyFinder {
 		 * have been generated, create the intermediate dependency graph.
 		 */
 		boolean interprocedural = true;
-		if (interprocedural) {
+		if (interprocedural2) {
 			useDefWeb = IntermediateDependencyGraphBuilder
 					.buildInterproceduralGraph(rootNode, cfg, selectionPosition);
 		} else {
@@ -397,7 +405,7 @@ public class JWCompilerDependencyFinder {
 	}
 
 	// XXX this method was copied from dk...compiler.Main. Go through it again.
-	private static AProgram parseProgram(List<File> sourceFiles) {
+	public static AProgram parseProgram(List<File> sourceFiles) {
 		final List<ACompilationUnit> sources = new ArrayList<ACompilationUnit>();
 
 		for (final File file : sourceFiles) {
@@ -437,5 +445,83 @@ public class JWCompilerDependencyFinder {
 		// enables the runtime tree invariant
 		node.setOptionalInvariant(true);
 		return node;
+	}
+
+	public static Map<PIfdefExp, Collection<Range<Integer>>> ifDefBlocks(File file, AProgram rootNode2) {
+		rootNode = rootNode2;
+		return ifDefBlocksWithFeaturesTags(file);
+	}
+	public static Map<PIfdefExp, Collection<Range<Integer>>> ifDefBlocksWithFeaturesTags(File file) {
+		if (rootNode == null) {
+			throw new IllegalStateException("Program has not been parsed yet");
+		}
+
+		// The mapping to be returned later.
+		// final Map<ConfigSet, Collection<Integer>> configSetMapping = new HashMap<ConfigSet, Collection<Integer>>();
+		final Map<PIfdefExp, Collection<Range<Integer>>> configMapping = new HashMap<PIfdefExp, Collection<Range<Integer>>>();
+
+		// A stack for stacking up nested ifdef statements.
+		final Deque<IfDefVarSet> stack = new ArrayDeque<IfDefVarSet>();
+
+		final String filePath = file.getAbsolutePath();
+		rootNode.apply(new DepthFirstAdapter() {
+
+			@Override
+			public void caseACompilationUnit(ACompilationUnit compilationUnit) {
+				String file = compilationUnit.getFile().getPath();
+
+				// Iterate over all compilation units looking for the one we are
+				// interested (see file argument).
+				if (file.equals(filePath)) {
+
+					// If there is a match, iterate over the nodes in this
+					// compilation unit.
+					compilationUnit.apply(new DepthFirstAdapter() {
+						
+						public void caseAIfdefStm(AIfdefStm node) {
+							IfDefVarSet varSet = node.getOnTrueSet();
+							System.out.println("JWCompiler1: "+node.getToken());
+							System.out.println("JWCompiler2: "+node.getVarSet());
+							System.out.println("JWCompiler2: "+node.getExp());
+							System.out.println("JWCompiler2: "+node.getThenBody());
+							System.out.println("JWCompiler3: "+node);
+							
+							
+							int startLine = node.getToken().getLine();
+							int endLine = startLine;
+
+							/*
+							 * In case of a #ifdef .. #elif .. #endif sequence,
+							 * then the #endif token belongs to the #elif
+							 * statement. In this case, getEndToken will return
+							 * null.
+							 */
+							TEndif endToken = node.getEndToken();
+							if (endToken != null) {
+								endLine = endToken.getLine();
+							} else {
+								// what do?
+								assert false;
+							}
+							
+							ConfigSet configSet = JWCompilerConfigSet.of(varSet);
+							System.out.println("JWCompiler: "+varSet);
+							//System.out.println("JWCompiler: "+configSet);
+							Range<Integer> blockRange = Range.between(startLine, endLine);
+							if (configMapping.containsKey(configSet)){
+								configMapping.get(configSet).add(blockRange);
+							} else {
+								HashSet<Range<Integer>> collectionOfBlocks = new HashSet<Range<Integer>>();
+								collectionOfBlocks.add(blockRange);
+								
+								configMapping.put(node.getExp(), collectionOfBlocks);
+							}
+						}
+					});
+				}
+			}
+		});
+
+		return configMapping;
 	}
 }

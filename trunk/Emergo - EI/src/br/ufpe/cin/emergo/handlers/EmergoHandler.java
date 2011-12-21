@@ -34,9 +34,11 @@ import br.ufpe.cin.emergo.core.DependencyFinderID;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
+import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 import br.ufpe.cin.emergo.views.EmergoResultsView;
 import br.ufpe.cin.emergo.views.GraphView;
+import br.ufpe.cin.emergo.views.TestView;
 
 /**
  * Handler for the br.ufal.cideei.commands.DoCompute extension command.
@@ -48,8 +50,9 @@ public class EmergoHandler extends AbstractHandler {
 
 	// private ICompilationUnit compilationUnit;
 	// private CompilationUnit jdtCompilationUnit;
-
+	private static boolean interprocedural = true;
 	public Object execute(ExecutionEvent event) throws ExecutionException {
+		
 		ISelection selection = HandlerUtil.getCurrentSelectionChecked(event);
 		Shell shell = HandlerUtil.getActiveShellChecked(event);
 
@@ -83,7 +86,10 @@ public class EmergoHandler extends AbstractHandler {
 			 * folder, or an archive like a jar.
 			 */
 			IJavaProject javaProject = JavaCore.create(project);
-
+			// For a test Purpose
+			System.out.println("Test:"+ javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY));
+			interprocedural = javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY).toString().equals("true");
+			// End of it
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
@@ -107,7 +113,7 @@ public class EmergoHandler extends AbstractHandler {
 			String selectionFileString = textSelectionFile.getLocation().toOSString();
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 
-			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
+			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options, interprocedural);
 
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
@@ -128,7 +134,14 @@ public class EmergoHandler extends AbstractHandler {
 			}
 
 			// Update the tree view.
-			EmergoResultsView.adaptTo(dependencyGraph, editor, selectionPosition, textSelectionFile);
+			IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(TestView.ID);
+			TestView.adaptTo(dependencyGraph, editor, textSelectionFile, true);
+			((TestView) testView).actualisateTree();
+			
+			// Update the tree view.
+			//IViewPart tableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);
+			//EmergoResultsView.adaptTo(dependencyGraph, editor, selectionPosition, textSelectionFile);
+//			((tableView) testView).actualisateTree();
 
 		} catch (Throwable e) {
 			String message = e.getMessage() == null ? "No message specified" : e.getMessage();
@@ -147,7 +160,7 @@ public class EmergoHandler extends AbstractHandler {
 	 * @param offset
 	 * @return the column number
 	 */
-	public int calculateColumnFromOffset(IDocument doc, int offset) {
+	public static int calculateColumnFromOffset(IDocument doc, int offset) {
 		int sumpos = 0;
 		int i = 0;
 		try {
