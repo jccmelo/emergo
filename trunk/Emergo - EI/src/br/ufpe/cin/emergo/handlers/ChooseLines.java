@@ -11,7 +11,10 @@ import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
@@ -27,7 +30,6 @@ import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.jgrapht.DirectedGraph;
 
-
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DependencyFinder;
 import br.ufpe.cin.emergo.core.DependencyFinderID;
@@ -42,21 +44,19 @@ import br.ufpe.cin.emergo.views.MarkedLinesView;
 import br.ufpe.cin.emergo.views.TestView;
 import br.ufpe.cin.emergo.views.LineOfCode;
 
-public class ChooseLines extends AbstractHandler{
+public class ChooseLines extends AbstractHandler {
 	public static String chooseID = "br.ufpe.cin.emergo.command.chooseLines";
 	public static String generateFromID = "br.ufpe.cin.emergo.command.generateForLines";
-	
-	
+
 	static List<LineOfCode> linesOffset;
 	static List<Map<Object, Object>> allOptions;
 	static boolean interprocedural = true;
+
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		emergoHandlerMethod(event);
 		return trialMethod(event);
 	}
-
-
 
 	private Object emergoHandlerMethod(ExecutionEvent event)
 			throws ExecutionException {
@@ -66,48 +66,63 @@ public class ChooseLines extends AbstractHandler{
 		// XXX Try block for debugging only.
 		try {
 			/*
-			 * Mechanism for passing through information that could make the dependency finder easier/faster to
-			 * implement.
+			 * Mechanism for passing through information that could make the
+			 * dependency finder easier/faster to implement.
 			 */
-			if(allOptions ==null){
-				allOptions = new ArrayList<Map<Object,Object>>();
+			if (allOptions == null) {
+				allOptions = new ArrayList<Map<Object, Object>>();
 			}
-			if(linesOffset == null){
-				linesOffset = new ArrayList<LineOfCode>();	
+			if (linesOffset == null) {
+				linesOffset = new ArrayList<LineOfCode>();
 			}
 			final Map<Object, Object> options = new HashMap<Object, Object>();
 
 			if (!(selection instanceof ITextSelection))
 				throw new ExecutionException("Not a textual selection");
 
-			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
-			IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
+			ITextEditor editor = (ITextEditor) HandlerUtil
+					.getActiveEditorChecked(event);
+			IFile textSelectionFile = (IFile) editor.getEditorInput()
+					.getAdapter(IFile.class);
 
 			IDocumentProvider provider = editor.getDocumentProvider();
 			IDocument document = provider.getDocument(editor.getEditorInput());
-			ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
+			ITextSelection textSelection = (ITextSelection) editor.getSite()
+					.getSelectionProvider().getSelection();
 
 			if (textSelection.getLength() == -1) {
-				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "The selection is invalid.", MessageDialog.WARNING, new String[] { "Ok" }, 0).open();
+				new MessageDialog(shell, "Emergo Message",
+						ResourceUtil.getEmergoIcon(),
+						"The selection is invalid.", MessageDialog.WARNING,
+						new String[] { "Ok" }, 0).open();
 			}
 
-			// The project that contains the file in which the selection happened.
+			// The project that contains the file in which the selection
+			// happened.
 			IProject project = textSelectionFile.getProject();
 
 			/*
-			 * Finds out the (partial) project's classpath as a list of Files. Each File either points to a source
-			 * folder, or an archive like a jar.
+			 * Finds out the (partial) project's classpath as a list of Files.
+			 * Each File either points to a source folder, or an archive like a
+			 * jar.
 			 */
 			IJavaProject javaProject = JavaCore.create(project);
 			// For a test Purpose
-			System.out.println("Test:"+ javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY));
-			interprocedural = javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY).toString().equals("true");
-			System.out.println("interprocedural: "+interprocedural);
+			System.out.println("Test:"
+					+ javaProject.getResource().getPersistentProperty(
+							SystemProperties.INTERPROCEDURAL_PROPKEY));
+			interprocedural = javaProject
+					.getResource()
+					.getPersistentProperty(
+							SystemProperties.INTERPROCEDURAL_PROPKEY)
+					.toString().equals("true");
+			System.out.println("interprocedural: " + interprocedural);
 			// End of it
-			
-			
-			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
-			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
+
+			options.put("rootpath", javaProject.getResource().getLocation()
+					.toFile().getAbsolutePath());
+			IClasspathEntry[] resolvedClasspath = javaProject
+					.getResolvedClasspath(true);
 			List<File> classpath = new ArrayList<File>();
 			for (IClasspathEntry cpEntry : resolvedClasspath) {
 				switch (cpEntry.getEntryKind()) {
@@ -115,44 +130,57 @@ public class ChooseLines extends AbstractHandler{
 					classpath.add(cpEntry.getPath().makeAbsolute().toFile());
 					break;
 				case IClasspathEntry.CPE_SOURCE:
-					classpath.add(ResourcesPlugin.getWorkspace().getRoot().getFolder(cpEntry.getPath()).getLocation().toFile());
+					classpath.add(ResourcesPlugin.getWorkspace().getRoot()
+							.getFolder(cpEntry.getPath()).getLocation()
+							.toFile());
+					break;
+				case IClasspathEntry.CPE_LIBRARY:
+					IPath ipath = makePathAbsolute(cpEntry.getPath());
+					classpath.add(ipath.toFile());
+					break;
 				}
 			}
-			
-			if(event.getCommand().getId().equals(ChooseLines.chooseID)){
+
+			if (event.getCommand().getId().equals(ChooseLines.chooseID)) {
 				options.put("classpath", classpath);
 				allOptions.add(options);
-				
+
 				/*
-				 * This instance of SelectionPosition holds the textual selection information that needs to br passed along
-				 * to the underlying compiler infrastructure
+				 * This instance of SelectionPosition holds the textual
+				 * selection information that needs to br passed along to the
+				 * underlying compiler infrastructure
 				 */
-				if(this.linesOffset==null){
+				if (this.linesOffset == null) {
 					System.out.println("es ist immer null");
 					this.linesOffset = new ArrayList<LineOfCode>();
 				}
-				LineOfCode lineArguments = new LineOfCode(textSelection, textSelectionFile);
+				LineOfCode lineArguments = new LineOfCode(textSelection,
+						textSelectionFile);
 				linesOffset.add(lineArguments);
 			}
-			
-			if(event.getCommand().getId().equals(ChooseLines.generateFromID)){
-				callDependendyGraphs(event, options, editor, document);				
+
+			if (event.getCommand().getId().equals(ChooseLines.generateFromID)) {
+				callDependendyGraphs(event, options, editor, document);
 			}
 			/*
-			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
+			 * There is not enough information on the graph to be shown.
+			 * Instead, show an alert message to the user.
 			 */
-			/*if (dependencyGraph == null || dependencyGraph.vertexSet().size() < 2) {
-				// XXX cannot find path to icon!
-				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
-				// TODO clear the views!
-				return null;
-			}*/
-
-			
+			/*
+			 * if (dependencyGraph == null || dependencyGraph.vertexSet().size()
+			 * < 2) { // XXX cannot find path to icon! new MessageDialog(shell,
+			 * "Emergo Message", ResourceUtil.getEmergoIcon(),
+			 * "No dependencies found!", MessageDialog.INFORMATION, new String[]
+			 * { "Ok" }, 0).open(); // TODO clear the views! return null; }
+			 */
 
 		} catch (Throwable e) {
-			String message = e.getMessage() == null ? "No message specified" : e.getMessage();
-			InternalErrorDialog internalErrorDialog = new InternalErrorDialog(shell, "An error has occurred", ResourceUtil.getEmergoIcon(), message, e, MessageDialog.ERROR, new String[] { "Ok", "Details" }, 0);
+			String message = e.getMessage() == null ? "No message specified"
+					: e.getMessage();
+			InternalErrorDialog internalErrorDialog = new InternalErrorDialog(
+					shell, "An error has occurred",
+					ResourceUtil.getEmergoIcon(), message, e,
+					MessageDialog.ERROR, new String[] { "Ok", "Details" }, 0);
 			internalErrorDialog.setDetailButton(1);
 			internalErrorDialog.open();
 			e.printStackTrace();
@@ -160,25 +188,45 @@ public class ChooseLines extends AbstractHandler{
 		return null;
 	}
 
-
-
 	public static void callDependendyGraphs(ExecutionEvent event,
-			final Map<Object, Object> options, ITextEditor editor, IDocument document) throws EmergoException {
-		List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs = new ArrayList<DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>>>();
+			final Map<Object, Object> options, ITextEditor editor,
+			IDocument document) throws EmergoException {
+		List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs = new ArrayList<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>>();
 		for (int i = 0; i < linesOffset.size(); i++) {
-			ITextSelection textSelection = linesOffset.get(i).getTextSelection();
-			System.out.println("------------> Es ist nicht null"+linesOffset.get(i));
-			String selectionFileString = linesOffset.get(i).getTextSelectionFile().getLocation().toOSString();
-			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(EmergoHandler.calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(EmergoHandler.calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
-			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, allOptions.get(i), interprocedural );
+			ITextSelection textSelection = linesOffset.get(i)
+					.getTextSelection();
+			System.out.println("------------> Es ist nicht null"
+					+ linesOffset.get(i));
+			String selectionFileString = linesOffset.get(i)
+					.getTextSelectionFile().getLocation().toOSString();
+			final SelectionPosition selectionPosition = SelectionPosition
+					.builder()
+					.length(textSelection.getLength())
+					.offSet(textSelection.getOffset())
+					.startLine(textSelection.getStartLine())
+					.startColumn(
+							EmergoHandler.calculateColumnFromOffset(document,
+									textSelection.getOffset()))
+					.endLine(textSelection.getEndLine())
+					.endColumn(
+							EmergoHandler.calculateColumnFromOffset(
+									document,
+									textSelection.getOffset()
+											+ textSelection.getLength()))
+					.filePath(selectionFileString).build();
+			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder
+					.findFromSelection(DependencyFinderID.JWCOMPILER,
+							selectionPosition, allOptions.get(i),
+							interprocedural);
 			dependencyGraphs.add(dependencyGraph);
-			
-			actualisateViews(event, editor, linesOffset.get(i).getTextSelectionFile(), dependencyGraph);
+
+			actualisateViews(event, editor, linesOffset.get(i)
+					.getTextSelectionFile(), dependencyGraph);
 		}
 		for (LineOfCode lines : linesOffset) {
-			
+
 		}
-		
+
 	}
 
 	private static void actualisateViews(
@@ -189,75 +237,91 @@ public class ChooseLines extends AbstractHandler{
 		// TODO: make this a list of things to update instead of hardcoding.
 		// Update the graph view
 		/*
-		IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(GraphView.ID);
-		if (findGraphView instanceof GraphView) {
-			GraphView view = (GraphView) findGraphView;
-			view.adaptTo(dependencyGraph, editor, selectionPosition);
-		}*/
+		 * IViewPart findGraphView =
+		 * HandlerUtil.getActiveWorkbenchWindow(event).
+		 * getActivePage().findView(GraphView.ID); if (findGraphView instanceof
+		 * GraphView) { GraphView view = (GraphView) findGraphView;
+		 * view.adaptTo(dependencyGraph, editor, selectionPosition); }
+		 */
 
 		// Update the tree view.
-		
-		IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(TestView.ID);
-		//for (DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph : dependencyGraphs) {
-			TestView.adaptTo(dependencyGraph, editor, textSelectionFile, false);
-		//}
+
+		IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event)
+				.getActivePage().findView(TestView.ID);
+		// for (DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>
+		// dependencyGraph : dependencyGraphs) {
+		TestView.adaptTo(dependencyGraph, editor, textSelectionFile, false);
+		// }
 		((TestView) testView).actualisateTree();
-		
+
 		// Updates Line view
-		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(MarkedLinesView.ID);
+		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
+				.getActivePage().findView(MarkedLinesView.ID);
 		((MarkedLinesView) markedLinesView).actualisate(linesOffset);
 	}
 
-	
-	
 	private Object trialMethod(ExecutionEvent event) throws ExecutionException {
-		
+
 		final Shell s = HandlerUtil.getActiveShellChecked(event);
-		ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
-		IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
+		ITextEditor editor = (ITextEditor) HandlerUtil
+				.getActiveEditorChecked(event);
+		IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(
+				IFile.class);
 		IDocumentProvider provider = editor.getDocumentProvider();
 		IDocument document = provider.getDocument(editor.getEditorInput());
-		ITextSelection textSelection = (ITextSelection) editor.getSite().getSelectionProvider().getSelection();
+		ITextSelection textSelection = (ITextSelection) editor.getSite()
+				.getSelectionProvider().getSelection();
 
 		System.out.println("Begin of execution");
 		System.out.println(textSelection.getText());
-		
+
 		System.out.println("End of execution");
 		IProject project = textSelectionFile.getProject();
-		
-//		linesOffset.add(new LineOfCode(textSelection, textSelectionFile));
+
+		// linesOffset.add(new LineOfCode(textSelection, textSelectionFile));
 		editor.getTitle();
 		// Updates Line view
-		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(MarkedLinesView.ID);
+		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
+				.getActivePage().findView(MarkedLinesView.ID);
 		((MarkedLinesView) markedLinesView).actualisate(linesOffset);
 		return null;
 	}
-	
-	public Map getLines(){
+
+	public Map getLines() {
 		return this.getLines();
 	}
 
-	public static void deleteAllMarkers(){
-		allOptions = new ArrayList<Map<Object,Object>>();
+	public static void deleteAllMarkers() {
+		allOptions = new ArrayList<Map<Object, Object>>();
 		linesOffset = new ArrayList<LineOfCode>();
 	}
-	public static void deleteMarkers(String message){
+
+	public static void deleteMarkers(String message) {
 		List<Map<Object, Object>> allOptionsAux = allOptions;
 		for (Map<Object, Object> map : allOptionsAux) {
 			System.out.println(map);
 		}
 		int removePosition = 0;
-		boolean found= false;
+		boolean found = false;
 		for (int i = 0; i < linesOffset.size(); i++) {
 			String one = linesOffset.get(i).toString().trim();
-			if(linesOffset.get(i).toString().trim().equals(message)){
-				removePosition=i;
-				found=true;
+			if (linesOffset.get(i).toString().trim().equals(message)) {
+				removePosition = i;
+				found = true;
 			}
 		}
-		if(found){
+		if (found) {
 			linesOffset.remove(removePosition);
 			allOptions.remove(removePosition);
 		}
+	}
+
+	private IPath makePathAbsolute(IPath path) {
+		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+		IResource workspaceResource = root.findMember(path);
+		if (workspaceResource != null) {
+			path = workspaceResource.getRawLocation();
+		}
+		return path;
 	}
 }

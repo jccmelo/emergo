@@ -11,7 +11,10 @@ import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
@@ -48,9 +51,8 @@ import br.ufpe.cin.emergo.views.TestView;
  */
 public class EmergoHandler extends AbstractHandler {
 
-	// private ICompilationUnit compilationUnit;
-	// private CompilationUnit jdtCompilationUnit;
 	private static boolean interprocedural = true;
+	
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		
 		ISelection selection = HandlerUtil.getCurrentSelectionChecked(event);
@@ -96,11 +98,16 @@ public class EmergoHandler extends AbstractHandler {
 			List<File> classpath = new ArrayList<File>();
 			for (IClasspathEntry cpEntry : resolvedClasspath) {
 				switch (cpEntry.getEntryKind()) {
-				case IClasspathEntry.CPE_CONTAINER:
-					classpath.add(cpEntry.getPath().makeAbsolute().toFile());
-					break;
-				case IClasspathEntry.CPE_SOURCE:
-					classpath.add(ResourcesPlugin.getWorkspace().getRoot().getFolder(cpEntry.getPath()).getLocation().toFile());
+					case IClasspathEntry.CPE_CONTAINER:
+						classpath.add(cpEntry.getPath().makeAbsolute().toFile());
+						break;
+					case IClasspathEntry.CPE_SOURCE:
+						classpath.add(ResourcesPlugin.getWorkspace().getRoot().getFolder(cpEntry.getPath()).getLocation().toFile());
+						break;
+					case IClasspathEntry.CPE_LIBRARY:
+						IPath ipath = makePathAbsolute(cpEntry.getPath());
+						classpath.add(ipath.toFile());
+						break;
 				}
 			}
 
@@ -175,4 +182,14 @@ public class EmergoHandler extends AbstractHandler {
 
 		return offset - sumpos + 1;
 	}
+
+    private IPath makePathAbsolute(IPath path) {
+        IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+        IResource workspaceResource = root.findMember(path);
+        if (workspaceResource != null) {
+            path = workspaceResource.getRawLocation();
+        }
+        return path;
+    }
+
 }

@@ -56,6 +56,7 @@ public class DependencyFinder {
 		}
 	}
 
+	//XXX It should not be coupled to JW-Compiler
 	public static Map<PIfdefExp, Collection<Range<Integer>>> getIfDefLineMapping(File file, AProgram rootNode) {
 		return JWCompilerDependencyFinder.ifDefBlocks(file, rootNode);
 	}

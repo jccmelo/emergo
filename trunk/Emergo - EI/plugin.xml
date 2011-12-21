@@ -11,19 +11,21 @@
           		<command commandId="br.ufpe.cin.emergo.command.generateinterface"
                 		 style="push">
           		</command>
+
           		<command commandId="br.ufpe.cin.emergo.command.choosefeatures"
                 		 style="push">
           		</command>
+
           		<command commandId="br.ufpe.cin.emergo.command.chooseLines"
                 		 style="push">
           		</command>
+
           		<command commandId="br.ufpe.cin.emergo.command.generateForLines"
                 		 style="push">
           		</command>
        		</menu>
     	</menuContribution>
  	</extension>
-
 
 	<extension point="org.eclipse.ui.menus">
 		<menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
@@ -79,7 +81,6 @@
 		</command>
 	</extension>
 	
-	
 	<!-- END OF THE choosing-feature -->
 
 	<!-- Commands / Handlers -->
@@ -116,8 +117,6 @@
 			</not>
 		</enabledWhen>
 	</extension>
-	
-
 
  	<!-- Shortcuts (keys) -->
  	<!--
@@ -164,6 +163,7 @@
             id="br.ufpe.cin.emergo.view.GraphView">
       </view>
    </extension>
+   
    <extension point="org.eclipse.ui.perspectiveExtensions">
       <perspectiveExtension
             targetID="org.eclipse.jdt.ui.JavaPerspective">

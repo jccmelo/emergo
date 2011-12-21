@@ -75,7 +75,7 @@ import dk.brics.util.file.WildcardExpander;
  * This class uses the Experimental Java Compiler, by Johnni Winther, as the
  * flow analysis framework.
  * 
- * @author TÔøΩrsis
+ * @author Tarsis
  * 
  */
 public class JWCompilerDependencyFinder {
@@ -122,12 +122,6 @@ public class JWCompilerDependencyFinder {
 						
 						public void caseAIfdefStm(AIfdefStm node) {
 							IfDefVarSet varSet = node.getOnTrueSet();
-							System.out.println("JWCompiler1: "+node.getToken());
-							System.out.println("JWCompiler2: "+node.getVarSet());
-							System.out.println("JWCompiler2: "+node.getExp());
-							System.out.println("JWCompiler2: "+node.getThenBody());
-							System.out.println("JWCompiler3: "+node);
-							
 							
 							int startLine = node.getToken().getLine();
 							int endLine = startLine;
@@ -142,13 +136,11 @@ public class JWCompilerDependencyFinder {
 							if (endToken != null) {
 								endLine = endToken.getLine();
 							} else {
-								// what do?
+								//TODO what to do?
 								assert false;
 							}
 							
 							ConfigSet configSet = JWCompilerConfigSet.of(varSet);
-							System.out.println("JWCompiler: "+varSet);
-							//System.out.println("JWCompiler: "+configSet);
 							Range<Integer> blockRange = Range.between(startLine, endLine);
 							if (configMapping.containsKey(configSet)){
 								configMapping.get(configSet).add(blockRange);
@@ -169,7 +161,7 @@ public class JWCompilerDependencyFinder {
 
 	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateDependencyGraph(
 			final SelectionPosition selectionPosition,
-			Map<Object, Object> options, boolean interprocedural2) throws EmergoException {
+			Map<Object, Object> options, boolean interprocedural) throws EmergoException {
 		// Resets compiler status.
 		Main.resetCompiler();
 		useDefWeb = null;
@@ -191,7 +183,10 @@ public class JWCompilerDependencyFinder {
 		}
 
 		// Holds a the list of Files to be parsed by the compiler.
-		List<File> files = new ArrayList<File>();
+		List<File> javaFiles = new ArrayList<File>();
+		
+		// Holds a the list of jar Files to be parsed by the compiler.
+		List<File> jarFiles = new ArrayList<File>();
 
 		/*
 		 * Builds the classpath in the format needed on Johnni Winther's
@@ -205,29 +200,28 @@ public class JWCompilerDependencyFinder {
 		 * (Ignore the '|' above)
 		 */
 		@SuppressWarnings("unchecked")
-		List<File> classpath = (List<File>) options.get("classpath");
+		List<File> sources = (List<File>) options.get("classpath");
 
-		for (File file : classpath) {
+		for (File file : sources) {
 			if (file.isDirectory()) {
 				String filepath = file.getPath() + File.separator + "**"
 						+ File.separator + "*.java";
 				List<File> expandWildcards = WildcardExpander
 						.expandWildcards(filepath);
-				files.addAll(expandWildcards);
-
+				javaFiles.addAll(expandWildcards);
 			} else if (file.isFile() && file.exists()) {
-				// XXX also include .jar files.
+				jarFiles.add(file);
 			}
 		}
 
+		String classpath = generateClassPath(jarFiles); 
+		
 		/*
-		 * XXX find out classpath
-		 * 
 		 * XXX WARNING! This static method causes the Feature Model, among other
 		 * things, to be RESETED. It SHOULD NOT be called AFTER the parsing of
 		 * the ifdef specification file in any circumstance.
 		 */
-		ClassEnvironment.init(System.getenv("CLASSPATH"), true);
+		ClassEnvironment.init(classpath, false);
 
 		EnumSet<Flags> flags = (EnumSet<Flags>) Main.FLAGS;
 		flags.add(Flags.IFDEF);
@@ -237,7 +231,7 @@ public class JWCompilerDependencyFinder {
 		IfDefVarSet.getIfDefBDDFactory();
 
 		// The root point of the parsed program.
-		rootNode = parseProgram(files);
+		rootNode = parseProgram(javaFiles);
 
 		/*
 		 *  XXX: Surprisingly, this is necessary to prevent the compiler from throwing a NPE.
@@ -306,7 +300,6 @@ public class JWCompilerDependencyFinder {
 			throw new EmergoException("Compilation error: " + ex.getMessage());
 		}
 		
-		
 		// Information about the user selection.
 		/*
 		 * XXX the +1 heres indicate that there is some coupling, for this class
@@ -323,15 +316,6 @@ public class JWCompilerDependencyFinder {
 		 */
 		final AMethodDecl[] methodBox = new AMethodDecl[1];
 		final String filePath = selectionPosition.getFilePath();
-		
-		
-		//TODO ***** CÓDIGO DE TESTES - VITOR ******
-		//rootNode.apply(new ASTPrinterVisitor());
-		DependencyTypeDetectorVisitor dependencies = new DependencyTypeDetectorVisitor(filePath, selectionPosition);
-		rootNode.apply(dependencies);
-		dependencies.runVisitors(rootNode);
-		//********** FIM DO CÓDIGO DE TESTES ******
-
 		
 		rootNode.apply(new DepthFirstAdapter() {
 			private boolean found = false;
@@ -391,8 +375,7 @@ public class JWCompilerDependencyFinder {
 		 * Now that there is enough information about the selection and the CFGs
 		 * have been generated, create the intermediate dependency graph.
 		 */
-		boolean interprocedural = true;
-		if (interprocedural2) {
+		if (interprocedural) {
 			useDefWeb = IntermediateDependencyGraphBuilder
 					.buildInterproceduralGraph(rootNode, cfg, selectionPosition);
 		} else {
@@ -447,10 +430,20 @@ public class JWCompilerDependencyFinder {
 		return node;
 	}
 
+	private static String generateClassPath(Collection<File> jarFiles) {
+		StringBuilder classpath = new StringBuilder();
+		for (File file : jarFiles) {
+			classpath.append(file.getAbsolutePath() + File.pathSeparator);
+		}
+		String result = classpath.toString();
+		return result.substring(0, result.length() - 1);
+	}
+
 	public static Map<PIfdefExp, Collection<Range<Integer>>> ifDefBlocks(File file, AProgram rootNode2) {
 		rootNode = rootNode2;
 		return ifDefBlocksWithFeaturesTags(file);
 	}
+
 	public static Map<PIfdefExp, Collection<Range<Integer>>> ifDefBlocksWithFeaturesTags(File file) {
 		if (rootNode == null) {
 			throw new IllegalStateException("Program has not been parsed yet");
@@ -480,12 +473,6 @@ public class JWCompilerDependencyFinder {
 						
 						public void caseAIfdefStm(AIfdefStm node) {
 							IfDefVarSet varSet = node.getOnTrueSet();
-							System.out.println("JWCompiler1: "+node.getToken());
-							System.out.println("JWCompiler2: "+node.getVarSet());
-							System.out.println("JWCompiler2: "+node.getExp());
-							System.out.println("JWCompiler2: "+node.getThenBody());
-							System.out.println("JWCompiler3: "+node);
-							
 							
 							int startLine = node.getToken().getLine();
 							int endLine = startLine;
@@ -500,13 +487,11 @@ public class JWCompilerDependencyFinder {
 							if (endToken != null) {
 								endLine = endToken.getLine();
 							} else {
-								// what do?
+								//TODO what to do?
 								assert false;
 							}
 							
 							ConfigSet configSet = JWCompilerConfigSet.of(varSet);
-							System.out.println("JWCompiler: "+varSet);
-							//System.out.println("JWCompiler: "+configSet);
 							Range<Integer> blockRange = Range.between(startLine, endLine);
 							if (configMapping.containsKey(configSet)){
 								configMapping.get(configSet).add(blockRange);

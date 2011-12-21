@@ -1,6 +1,5 @@
 package br.ufpe.cin.emergo.properties;
 
-
 import java.util.ArrayList;
 
 import org.eclipse.core.resources.IFile;
@@ -33,246 +32,249 @@ import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 
 public class PropertyManagerView extends ViewPart {
-		
-	   private TreeViewer viewer;
-	   private TreeParent invisibleRoot;
 
-	   class TreeObject implements IAdaptable {
+	private TreeViewer viewer;
+	private TreeParent invisibleRoot;
 
-		   private String name;
-		   private TreeParent parent;
-		   private IResource resouce;
+	class TreeObject implements IAdaptable {
 
-          public TreeObject(String name) {
-                    this.name = name;
-          }
+		private String name;
+		private TreeParent parent;
+		private IResource resouce;
 
-          public String getName() {
-                    return name;
-          }
+		public TreeObject(String name) {
+			this.name = name;
+		}
 
-          public void setParent(TreeParent parent) {
-                    this.parent = parent;
-          }
+		public String getName() {
+			return name;
+		}
 
+		public void setParent(TreeParent parent) {
+			this.parent = parent;
+		}
 
-          public TreeParent getParent() {
-                    return parent;
-          }
+		public TreeParent getParent() {
+			return parent;
+		}
 
+		public String toString() {
 
-          public String toString() {
+			return getName();
 
-                    return getName();
+		}
 
-          }
+		public Object getAdapter(Class key) {
+			return null;
+		}
 
+		protected IResource getResouce() {
+			return resouce;
+		}
 
-          public Object getAdapter(Class key) {
-                    return null;
-          }
-          protected IResource getResouce() {
-                    return resouce;
-          }
-          protected void setResouce(IResource resouce) {
-                    this.resouce = resouce;
-          }
-    }
-    class TreeParent extends TreeObject {
-          private ArrayList children;
-          public TreeParent(String name) {
-                    super(name);
-                    children = new ArrayList();
-          }
+		protected void setResouce(IResource resouce) {
+			this.resouce = resouce;
+		}
+	}
 
-          public void addChild(TreeObject child) {
-                    children.add(child);
-                    child.setParent(this);
-          }
+	class TreeParent extends TreeObject {
+		private ArrayList children;
 
-          public void removeChild(TreeObject child) {
-                    children.remove(child);
-                    child.setParent(null);
-          }
+		public TreeParent(String name) {
+			super(name);
+			children = new ArrayList();
+		}
 
-          public TreeObject[] getChildren() {
-                    return (TreeObject[]) children.toArray(new TreeObject[children.size()]);
-          }
+		public void addChild(TreeObject child) {
+			children.add(child);
+			child.setParent(this);
+		}
 
-          public boolean hasChildren() {
-                    return children.size() > 0;
-          }
+		public void removeChild(TreeObject child) {
+			children.remove(child);
+			child.setParent(null);
+		}
 
-   }
-   class ViewContentProvider implements ITreeContentProvider {
+		public TreeObject[] getChildren() {
+			return (TreeObject[]) children.toArray(new TreeObject[children
+					.size()]);
+		}
 
-          public void inputChanged(Viewer v, Object oldInput, Object newInput) {
-          }
+		public boolean hasChildren() {
+			return children.size() > 0;
+		}
 
-          public void dispose() {
-          }
+	}
 
-          public Object[] getElements(Object parent) {
-                    if (parent.equals(getViewSite())) {
-                             if (invisibleRoot == null)
-                                       initialize();
+	class ViewContentProvider implements ITreeContentProvider {
 
-                             return getChildren(invisibleRoot);
-                    }
+		public void inputChanged(Viewer v, Object oldInput, Object newInput) {
+		}
 
-                    return getChildren(parent);
-          }
+		public void dispose() {
+		}
 
-          public Object getParent(Object child) {
-                    if (child instanceof TreeObject) {
-                             return ((TreeObject) child).getParent();
-                            }
+		public Object[] getElements(Object parent) {
+			if (parent.equals(getViewSite())) {
+				if (invisibleRoot == null)
+					initialize();
 
-                            return null;
-                  }
+				return getChildren(invisibleRoot);
+			}
 
-                  public Object[] getChildren(Object parent) {
+			return getChildren(parent);
+		}
 
-                            if (parent instanceof TreeParent) {
-                                     return ((TreeParent) parent).getChildren();
-                            }
+		public Object getParent(Object child) {
+			if (child instanceof TreeObject) {
+				return ((TreeObject) child).getParent();
+			}
 
-                            return new Object[0];
-                  }
+			return null;
+		}
 
-                  public boolean hasChildren(Object parent) {
-                            if (parent instanceof TreeParent)
-                                     return ((TreeParent) parent).hasChildren();
-                            return false;
-                  }
+		public Object[] getChildren(Object parent) {
 
-         }
+			if (parent instanceof TreeParent) {
+				return ((TreeParent) parent).getChildren();
+			}
 
-         class ViewLabelProvider extends LabelProvider {
-                  public String getText(Object obj) {
-                            return obj.toString();
-                  }
+			return new Object[0];
+		}
 
-                  public Image getImage(Object obj) {
-                       String imageKey = ISharedImages.IMG_OBJ_ELEMENT;
+		public boolean hasChildren(Object parent) {
+			if (parent instanceof TreeParent)
+				return ((TreeParent) parent).hasChildren();
+			return false;
+		}
 
-                       if (obj instanceof TreeParent)
-                         imageKey = ISharedImages.IMG_OBJ_FOLDER;
-                         return PlatformUI.getWorkbench().getSharedImages().getImage(imageKey);
-                  }
+	}
 
-         }
+	class ViewLabelProvider extends LabelProvider {
+		public String getText(Object obj) {
+			return obj.toString();
+		}
 
-         public void initialize() {
-                  TreeParent root = new TreeParent("WorkSpace Property Files");
-                  try {
-                      IWorkspace workspace = ResourcesPlugin.getWorkspace();
+		public Image getImage(Object obj) {
+			String imageKey = ISharedImages.IMG_OBJ_ELEMENT;
 
-                      IProject[] projects = workspace.getRoot().getProjects();
+			if (obj instanceof TreeParent)
+				imageKey = ISharedImages.IMG_OBJ_FOLDER;
+			return PlatformUI.getWorkbench().getSharedImages()
+					.getImage(imageKey);
+		}
 
-                      for (int i = 0; i < projects.length; i++) {
-                           IResource[] folderResources = projects[i].members();
+	}
 
-                           for (int j = 0; j < folderResources.length; j++) {
+	public void initialize() {
+		TreeParent root = new TreeParent("WorkSpace Property Files");
+		try {
+			IWorkspace workspace = ResourcesPlugin.getWorkspace();
 
-                               if (folderResources[j] instanceof IFolder) {
-                                  IFolder resource = (IFolder) folderResources[j];
-                                 if (resource.getName().equalsIgnoreCase("Property Files")) {
-                                     IResource[] fileResources = resource.members();
-                                     for (int k = 0; k < fileResources.length; k++) {
-                                        if (fileResources[k] instanceof IFile &&           
-	                                                  fileResources[k].getName().endsWith(".properties")){
-                                           TreeObject obj = new TreeObject(fileResources[k]
-	   									.getName());
-                                            obj.setResouce(fileResources[k]);
-                                            root.addChild(obj);
-                                         }
-                                      }
-                                	 }
-                               }
-                           }
-                       }
-                  }catch (Exception e) {
-	                           // log exception
-                	  System.err.println("exception");
-                	  e.printStackTrace();
-                  }
-                  invisibleRoot = new TreeParent("");
-                  invisibleRoot.addChild(root);
-         }
+			IProject[] projects = workspace.getRoot().getProjects();
 
+			for (int i = 0; i < projects.length; i++) {
+				IResource[] folderResources = projects[i].members();
 
-         public PropertyManagerView() {
-         }
+				for (int j = 0; j < folderResources.length; j++) {
 
-         public void createPartControl(Composite parent) {
-                  viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
-                  viewer.setContentProvider(new ViewContentProvider());
-                  viewer.setLabelProvider(new ViewLabelProvider());
-                  viewer.setInput(getViewSite());
-                  hookContextMenu();
-                  hookDoubleCLickAction();
-         }
+					if (folderResources[j] instanceof IFolder) {
+						IFolder resource = (IFolder) folderResources[j];
+						if (resource.getName().equalsIgnoreCase(
+								"Property Files")) {
+							IResource[] fileResources = resource.members();
+							for (int k = 0; k < fileResources.length; k++) {
+								if (fileResources[k] instanceof IFile
+										&& fileResources[k].getName().endsWith(
+												".properties")) {
+									TreeObject obj = new TreeObject(
+											fileResources[k].getName());
+									obj.setResouce(fileResources[k]);
+									root.addChild(obj);
+								}
+							}
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			// log exception
+			System.err.println("exception");
+			e.printStackTrace();
+		}
+		invisibleRoot = new TreeParent("");
+		invisibleRoot.addChild(root);
+	}
 
+	public PropertyManagerView() {
+	}
 
-         private void hookDoubleCLickAction() {
-                  viewer.addDoubleClickListener(new IDoubleClickListener() {
-                       public void doubleClick(DoubleClickEvent event) {
-                    	   ISelection selection = event.getSelection();
-                            Object obj = ((IStructuredSelection) selection).getFirstElement();
-                            if (!(obj instanceof TreeObject)) {
-                                  return;
-                            }else {
-                                 TreeObject tempObj = (TreeObject) obj;
-                                 IFile ifile = ResourcesPlugin.getWorkspace().getRoot().
-	   					      getFile(tempObj.getResouce().getFullPath());
-                                 IWorkbenchPage dpage =
-	                                                       PropertyManagerView.this.getViewSite()
-	          							  .getWorkbenchWindow().getActivePage();
-                                 if (dpage != null) {
-                                     try {
-                                           IDE.openEditor(dpage, ifile,true);
-                                     }catch (Exception e) {
-                                                      // log exception
-                                  }
-                             }
-                        }
-                    };
-              });
-         }
+	public void createPartControl(Composite parent) {
+		viewer = new TreeViewer(parent, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		viewer.setContentProvider(new ViewContentProvider());
+		viewer.setLabelProvider(new ViewLabelProvider());
+		viewer.setInput(getViewSite());
+		hookContextMenu();
+		hookDoubleCLickAction();
+	}
 
-         private void hookContextMenu() {
-//        	 MenuManager menuMgr = new MenuManager("#PopupMenu");
-//                  Menu menu = menuMgr.createContextMenu(viewer.getControl());
-//                  viewer.getControl().setMenu(menu);
-//                  Action refresh =new Action() {
-//                            public void run() {
-//                                 initialize();
-//                                 viewer.refresh();
-//                            }
-//                  };
-//                  refresh.setText("Refresh");
-//                  menuMgr.add(refresh);
-//                   MenuManager menuMgr = new MenuManager("#PopupMenu");
-        	 //<!--objectClass="br.ufal.cideei.property.PropertyManagerView$TreeObject"-->
-        	 MenuManager menuMgr = new MenuManager("#PopupMenu");
-             Menu menu = menuMgr.createContextMenu(viewer.getControl());
-             viewer.getControl().setMenu(menu);
-             Action refresh =new Action() {
-                       public void run() {
-                                 initialize();
-                                 viewer.refresh();
-                       }
-             };
-             refresh.setText("Refresh");
-             menuMgr.add(refresh);
-             menuMgr.add(new Separator());
-             menuMgr.add(new PropertyDialogAction(getSite(), viewer));
-         }
-	        
-         public void setFocus() {
-                  viewer.getControl().setFocus();
-         }
- 
+	private void hookDoubleCLickAction() {
+		viewer.addDoubleClickListener(new IDoubleClickListener() {
+			public void doubleClick(DoubleClickEvent event) {
+				ISelection selection = event.getSelection();
+				Object obj = ((IStructuredSelection) selection)
+						.getFirstElement();
+				if (!(obj instanceof TreeObject)) {
+					return;
+				} else {
+					TreeObject tempObj = (TreeObject) obj;
+					IFile ifile = ResourcesPlugin.getWorkspace().getRoot()
+							.getFile(tempObj.getResouce().getFullPath());
+					IWorkbenchPage dpage = PropertyManagerView.this
+							.getViewSite().getWorkbenchWindow().getActivePage();
+					if (dpage != null) {
+						try {
+							IDE.openEditor(dpage, ifile, true);
+						} catch (Exception e) {
+							// log exception
+						}
+					}
+				}
+			};
+		});
+	}
+
+	private void hookContextMenu() {
+		// MenuManager menuMgr = new MenuManager("#PopupMenu");
+		// Menu menu = menuMgr.createContextMenu(viewer.getControl());
+		// viewer.getControl().setMenu(menu);
+		// Action refresh =new Action() {
+		// public void run() {
+		// initialize();
+		// viewer.refresh();
+		// }
+		// };
+		// refresh.setText("Refresh");
+		// menuMgr.add(refresh);
+		// MenuManager menuMgr = new MenuManager("#PopupMenu");
+		// <!--objectClass="br.ufal.cideei.property.PropertyManagerView$TreeObject"-->
+		MenuManager menuMgr = new MenuManager("#PopupMenu");
+		Menu menu = menuMgr.createContextMenu(viewer.getControl());
+		viewer.getControl().setMenu(menu);
+		Action refresh = new Action() {
+			public void run() {
+				initialize();
+				viewer.refresh();
+			}
+		};
+		refresh.setText("Refresh");
+		menuMgr.add(refresh);
+		menuMgr.add(new Separator());
+		menuMgr.add(new PropertyDialogAction(getSite(), viewer));
+	}
+
+	public void setFocus() {
+		viewer.getControl().setFocus();
+	}
+
 }
-	
