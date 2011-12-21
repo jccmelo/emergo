@@ -39,12 +39,12 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.ResourceUtil;
-import br.ufpe.cin.emergo.views.GraphView;
+import br.ufpe.cin.emergo.views.LineOfCode;
 import br.ufpe.cin.emergo.views.MarkedLinesView;
 import br.ufpe.cin.emergo.views.TestView;
-import br.ufpe.cin.emergo.views.LineOfCode;
 
-public class ChooseLines extends AbstractHandler {
+public class SelectLinesHandler extends AbstractHandler {
+
 	public static String chooseID = "br.ufpe.cin.emergo.command.chooseLines";
 	public static String generateFromID = "br.ufpe.cin.emergo.command.generateForLines";
 
@@ -107,18 +107,14 @@ public class ChooseLines extends AbstractHandler {
 			 * jar.
 			 */
 			IJavaProject javaProject = JavaCore.create(project);
-			// For a test Purpose
-			System.out.println("Test:"
-					+ javaProject.getResource().getPersistentProperty(
-							SystemProperties.INTERPROCEDURAL_PROPKEY));
-			interprocedural = javaProject
-					.getResource()
-					.getPersistentProperty(
-							SystemProperties.INTERPROCEDURAL_PROPKEY)
-					.toString().equals("true");
-			System.out.println("interprocedural: " + interprocedural);
-			// End of it
-
+			
+			if (javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY) != null) {
+				interprocedural = javaProject.getResource().getPersistentProperty(
+						SystemProperties.INTERPROCEDURAL_PROPKEY).toString().equals("true");
+			} else {
+				interprocedural = false;
+			}
+			
 			options.put("rootpath", javaProject.getResource().getLocation()
 					.toFile().getAbsolutePath());
 			IClasspathEntry[] resolvedClasspath = javaProject
@@ -141,7 +137,7 @@ public class ChooseLines extends AbstractHandler {
 				}
 			}
 
-			if (event.getCommand().getId().equals(ChooseLines.chooseID)) {
+			if (event.getCommand().getId().equals(SelectLinesHandler.chooseID)) {
 				options.put("classpath", classpath);
 				allOptions.add(options);
 
@@ -159,7 +155,7 @@ public class ChooseLines extends AbstractHandler {
 				linesOffset.add(lineArguments);
 			}
 
-			if (event.getCommand().getId().equals(ChooseLines.generateFromID)) {
+			if (event.getCommand().getId().equals(SelectLinesHandler.generateFromID)) {
 				callDependendyGraphs(event, options, editor, document);
 			}
 			/*
@@ -220,19 +216,12 @@ public class ChooseLines extends AbstractHandler {
 							interprocedural);
 			dependencyGraphs.add(dependencyGraph);
 
-			actualisateViews(event, editor, linesOffset.get(i)
+			updateViews(event, editor, linesOffset.get(i)
 					.getTextSelectionFile(), dependencyGraph);
 		}
-		for (LineOfCode lines : linesOffset) {
-
-		}
-
 	}
 
-	private static void actualisateViews(
-			ExecutionEvent event,
-			ITextEditor editor,
-			IFile textSelectionFile,
+	private static void updateViews(ExecutionEvent event, ITextEditor editor, IFile textSelectionFile,
 			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		// TODO: make this a list of things to update instead of hardcoding.
 		// Update the graph view

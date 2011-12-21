@@ -61,21 +61,21 @@
  	</extension>-->
  	
 	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.popup.ChooseFeatureHandler"
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.FeaturePreferencesHandler"
         		 id="br.ufpe.cin.emergo.command.choosefeatures"
              	 name="Feature Preferences">
 		</command>
 	</extension>
 	
 	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.handlers.ChooseLines"
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.SelectLinesHandler"
         		 id="br.ufpe.cin.emergo.command.chooseLines"
              	 name="Select Line">
 		</command>
 	</extension>
 
 	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.handlers.ChooseLines"
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.SelectLinesHandler"
         		 id="br.ufpe.cin.emergo.command.generateForLines"
              	 name="Generate Interface from Selected Lines">
 		</command>
@@ -296,7 +296,7 @@
  <extension point="org.eclipse.ui.propertyPages">
        <page id="br.ufpe.cin.emergo.properties.propertyPage"
        		 name="Emergo"
-       		 class="br.ufpe.cin.emergo.properties.propertyPage"
+       		 class="br.ufpe.cin.emergo.properties.EmergoPropertyPage"
        		 >
        		<enabledWhen>
             	<adapt

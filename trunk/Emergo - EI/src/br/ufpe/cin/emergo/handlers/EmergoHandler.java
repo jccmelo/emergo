@@ -39,7 +39,6 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.ResourceUtil;
-import br.ufpe.cin.emergo.views.EmergoResultsView;
 import br.ufpe.cin.emergo.views.GraphView;
 import br.ufpe.cin.emergo.views.TestView;
 
@@ -88,10 +87,14 @@ public class EmergoHandler extends AbstractHandler {
 			 * folder, or an archive like a jar.
 			 */
 			IJavaProject javaProject = JavaCore.create(project);
-			// For a test Purpose
-			System.out.println("Test:"+ javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY));
-			interprocedural = javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY).toString().equals("true");
-			// End of it
+
+			if (javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY) != null) {
+				interprocedural = javaProject.getResource().getPersistentProperty(
+						SystemProperties.INTERPROCEDURAL_PROPKEY).toString().equals("true");
+			} else {
+				interprocedural = false;
+			}
+
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);

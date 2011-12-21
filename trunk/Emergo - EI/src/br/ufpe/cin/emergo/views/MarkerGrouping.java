@@ -4,59 +4,66 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.ui.internal.views.markers.MarkerGoToHandler;
 
 public class MarkerGrouping {
+
 	private String name;
 	private List<IMarker> children;
-	private int position = 0;
-	
+
 	public MarkerGrouping() {
 		this.children = new ArrayList<IMarker>();
 	}
-	public MarkerGrouping(List<IMarker> children){
+
+	public MarkerGrouping(List<IMarker> children) {
 		this.children = children;
 	}
-	public MarkerGrouping(String name){
+
+	public MarkerGrouping(String name) {
 		this.name = name;
 		this.children = new ArrayList<IMarker>();
 	}
-	public void addChildren(IMarker marker){
+
+	public void addChildren(IMarker marker) {
 		this.children.add(marker);
 	}
-	public void removeChildren(IMarker marker){
+
+	public void removeChildren(IMarker marker) {
 		this.children.remove(marker);
 	}
-	public void removeChildren(int index){
+
+	public void removeChildren(int index) {
 		this.children.remove(index);
 	}
-	
+
 	public void setName(String name) {
 		this.name = name;
 	}
+
 	public String getName() {
 		return name;
 	}
+
 	public void setChildren(List<IMarker> children) {
 		this.children = children;
 	}
+
 	public List<IMarker> getChildren() {
 		return children;
 	}
-	
-	public String toString(){
+
+	public String toString() {
 		return this.name;
 	}
-	
+
 	@Override
-	public boolean equals(Object other){
+	public boolean equals(Object other) {
 		// All markergroupings have only one name
-		if(other instanceof MarkerGrouping){
-			return this.getName().equals(((MarkerGrouping)other).getName());			
+		if (other instanceof MarkerGrouping) {
+			return this.getName().equals(((MarkerGrouping) other).getName());
 		}
 		return false;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 41;
@@ -65,5 +72,4 @@ public class MarkerGrouping {
 		return result;
 	}
 
-	
 }

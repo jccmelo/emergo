@@ -1,4 +1,4 @@
-package br.ufpe.cin.emergo.popup;
+package br.ufpe.cin.emergo.handlers;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -7,37 +7,28 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URI;
 import java.util.ArrayList;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.handlers.HandlerUtil;
-import org.eclipse.ui.texteditor.AbstractTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 
-import com.sun.xml.internal.fastinfoset.sax.Features;
-
-import br.ufpe.cin.emergo.activator.Activator;
+import br.ufpe.cin.emergo.popup.SampleDialog;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 
-public class ChooseFeatureHandler extends AbstractHandler{
+public class FeaturePreferencesHandler extends AbstractHandler {
 	   
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -103,8 +94,6 @@ public class ChooseFeatureHandler extends AbstractHandler{
 	private String[] getFeaturesFromFile(IProject project) {
 		ArrayList<String> features = new ArrayList<String>();
 		
-		String[] variables2 = project.getPathVariableManager().getPathVariableNames();
-		
 		String rootpath = (String) project.getPathVariableManager().getURIValue("PROJECT_LOC").toASCIIString();
 		rootpath = rootpath.substring(6);
 		File ifdefSpecFile = new File(rootpath + File.separator + "ifdef.txt");
@@ -140,11 +129,11 @@ public class ChooseFeatureHandler extends AbstractHandler{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		String[] retorno = new String[features.size()];
+		String[] result = new String[features.size()];
 		for (int i = 0; i < features.size(); i++) {
-			retorno[i] = features.get(i);
+			result[i] = features.get(i);
 		}
-		return retorno;
+		return result;
 	}
 
 }
