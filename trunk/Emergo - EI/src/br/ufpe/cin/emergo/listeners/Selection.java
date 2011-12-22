@@ -64,7 +64,6 @@ public class Selection implements ISelectionListener{
 		if(part instanceof IfDefJavaEditor && selection instanceof TextSelection 
 				&& ((TextSelection)selection).getEndLine() ==0 && ((TextSelection)selection).getStartLine() ==0){
 			IDocument d = ((IfDefJavaEditor) part).getDocument();
-			IFile textSelectionFile = (IFile) part.getAdapter(IFile.class);
 			ITextEditor  te= (ITextEditor) part;
 			IFile textSelectionFile2 = (IFile) te.getEditorInput().getAdapter(IFile.class);
 			textSelectionFile2.getFullPath();
@@ -75,7 +74,6 @@ public class Selection implements ISelectionListener{
 	//		Map<ConfigSet, Collection<Range<Integer>>> ifDefLineMapping = DependencyFinder.getIfDefLineMapping(textSelectionFile2.getRawLocation().toFile());
 	//		Set<Entry<ConfigSet, Collection<Range<Integer>>>> configSets = ifDefLineMapping.entrySet();
 	//		for (Entry<ConfigSet, Collection<Range<Integer>>> entry : configSets) {
-	//			System.out.println(entry);
 	//		}
 			
 			IProject project = textSelectionFile2.getProject();
@@ -125,13 +123,11 @@ public class Selection implements ISelectionListener{
 		}
 		Map<PIfdefExp, Collection<Range<Integer>>> test = DependencyFinder.getIfDefLineMapping(file.getRawLocation().toFile(), rootNode);
 		Set<Entry<PIfdefExp, Collection<Range<Integer>>>> testSet = test.entrySet();
-		int lastSourceLineNumber2 = 0;
 		
 		Map<PIfdefExp, Collection<Integer>> ifDefLineMapping = new HashMap();
 		
 		for (Entry<PIfdefExp, Collection<Range<Integer>>> entry : testSet) {
 			Collection<Range<Integer>> tt = entry.getValue();
-			Object[] arrayTest = tt.toArray();
 			Iterator<Range<Integer>> iterator = tt.iterator();
 			Range<Integer> range = iterator.next();
 			List<Integer> aux = new ArrayList<Integer>();
@@ -326,7 +322,6 @@ public class Selection implements ISelectionListener{
 		 * 
 		 * (Ignore the '|' above)
 		 */
-		@SuppressWarnings("unchecked")
 		
 		IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
 			List<File> classpath = new ArrayList<File>();

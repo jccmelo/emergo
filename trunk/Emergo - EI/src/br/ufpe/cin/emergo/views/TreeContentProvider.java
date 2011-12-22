@@ -10,26 +10,13 @@ public class TreeContentProvider extends ArrayContentProvider implements
 		ITreeContentProvider {
 
 	@Override
-	public void dispose() {
-		System.out.println("Dispose Was Called");
-	}
+	public void dispose(){}
 
 	@Override
-	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-		System.out.println("Beggining of Input Change");
-		System.out.println(viewer);
-		System.out.println(oldInput);
-		System.out.println(newInput);
-		System.out.println("END");
-
-	}
+	public void inputChanged(Viewer viewer, Object oldInput, Object newInput){}
 
 	@Override
 	public Object[] getElements(Object inputElement) {
-		System.out.println("getElementsBegin");
-		System.out.println(inputElement);
-		System.out.println(inputElement.getClass());
-		System.out.println("getElementsEnd");
 		return ((ArrayList) inputElement).toArray();
 	}
 
@@ -42,7 +29,6 @@ public class TreeContentProvider extends ArrayContentProvider implements
 
 	@Override
 	public Object getParent(Object element) {
-		System.out.println("getParent");
 		return null;
 	}
 

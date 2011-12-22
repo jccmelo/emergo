@@ -29,7 +29,6 @@ public class MarkedLinesView extends ViewPart {
 	public static final String ID = "br.ufpe.cin.emergo.views.MarkedLinesView";
 	private TreeViewer viewer;
 	private List<LineOfCode> baseLines;
-	private MarkedLinesAction lCustomAction;
 	Action deleteItemAction, deleteAllAction;
 
 	@Override
@@ -38,7 +37,6 @@ public class MarkedLinesView extends ViewPart {
 		viewer = new TreeViewer(parent, SWT.FULL_SELECTION);
 		if (baseLines == null)
 			baseLines = new ArrayList<LineOfCode>();
-		List<Integer> lineNumbers = new ArrayList<Integer>();
 		viewer.setContentProvider(new ITreeContentProvider() {
 
 			@Override
@@ -62,7 +60,6 @@ public class MarkedLinesView extends ViewPart {
 
 			@Override
 			public Object[] getElements(Object inputElement) {
-				System.out.println("input Element");
 				return ((ArrayList) inputElement).toArray();
 			}
 
@@ -71,7 +68,6 @@ public class MarkedLinesView extends ViewPart {
 				return null;
 			}
 		});
-		createAction();
 		createActions();
 		createContextMenu();
 
@@ -92,11 +88,9 @@ public class MarkedLinesView extends ViewPart {
 				mgr.add(deleteAllAction);
 			}
 		});
-
 		// Create menu.
 		Menu menu = menuMgr.createContextMenu(viewer.getControl());
 		viewer.getControl().setMenu(menu);
-
 		// Register menu for extension.
 		getSite().registerContextMenu(menuMgr, viewer);
 	}
@@ -104,16 +98,11 @@ public class MarkedLinesView extends ViewPart {
 	public void createActions() {
 		deleteItemAction = new Action("Delete") {
 			public void run() {
-				System.out.println("DELETE ADD");
-				System.out.println(viewer.getSelection());
 				ISelection selection = viewer.getSelection();
 				String auxSelectionText = selection.toString().substring(1);
 				auxSelectionText = auxSelectionText.substring(0,
 						auxSelectionText.length() - 1);
 				String[] strings = auxSelectionText.split(";");
-				for (int i = 0; i < strings.length; i++) {
-					System.out.println(strings[i]);
-				}
 				String lineText = "";
 				boolean begin = false;
 				for (int j = 0; j < strings[0].length(); j++) {
@@ -121,15 +110,12 @@ public class MarkedLinesView extends ViewPart {
 						lineText = lineText + strings[0].charAt(j);
 
 					}
-					System.out.println(strings[0].charAt(j));
 					if (strings[0].charAt(j) == '(') {
 						begin = true;
-						System.out.println("Begun");
 					}
 				}
 				lineText = lineText + ";";
-				System.out.println(lineText);
-				TestView.deleteMarkers(lineText);
+				EmergoView.deleteMarkers(lineText);
 				SelectLinesHandler.deleteMarkers(auxSelectionText);
 				Object[] baseLinesClone = baseLines.toArray();
 				for (int i = 0; i < baseLinesClone.length; i++) {
@@ -146,11 +132,10 @@ public class MarkedLinesView extends ViewPart {
 			public void run() {
 				baseLines = new ArrayList<LineOfCode>();
 				update(new ArrayList<LineOfCode>());
-				TestView.deleteAllMarkers();
+				EmergoView.deleteAllMarkers();
 				SelectLinesHandler.deleteAllMarkers();
 			}
 		};
-
 		// Add selection listener.
 		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -159,14 +144,6 @@ public class MarkedLinesView extends ViewPart {
 		});
 	}
 
-	public void createAction() {
-		lCustomAction = new MarkedLinesAction();
-		lCustomAction.setText("Open Dialog Box");
-		getViewSite().getActionBars().getMenuManager().add(lCustomAction);
-		getViewSite().getActionBars().getMenuManager().add(new Separator()); // Add a horizontal separator
-		// getViewSite().getActionBars().getMenuManager().add(lCustomAction);
-		// getViewSite().getActionBars().getMenuManager().add(lCustomAction);
-	}
 
 	@Override
 	public void setFocus() {
@@ -184,11 +161,8 @@ public class MarkedLinesView extends ViewPart {
 			if (insert) {
 				baseLines.add(lineOfCode);
 			}
-			this.lCustomAction.setLinesOfCode(this.baseLines);
 		}
-
 		Collections.sort(baseLines, new LineComparator());
-
 		viewer.setInput(baseLines);
 		viewer.refresh();
 	}

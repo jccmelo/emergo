@@ -40,7 +40,7 @@ import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 import br.ufpe.cin.emergo.views.EmergoGraphView;
-import br.ufpe.cin.emergo.views.TestView;
+import br.ufpe.cin.emergo.views.EmergoView;
 
 /**
  * Handler for the br.ufal.cideei.commands.DoCompute extension command.
@@ -144,9 +144,9 @@ String s = javaProject.getResource().getLocation().toFile().getAbsolutePath();
 			}
 
 			// Update the tree view.
-			IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(TestView.ID);
-			TestView.adaptTo(dependencyGraph, editor, textSelectionFile, true);
-			((TestView) testView).updateTree();
+			IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
+			EmergoView.adaptTo(dependencyGraph, editor, textSelectionFile, true);
+			((EmergoView) testView).updateTree();
 			
 			// Update the tree view.
 			//IViewPart tableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);

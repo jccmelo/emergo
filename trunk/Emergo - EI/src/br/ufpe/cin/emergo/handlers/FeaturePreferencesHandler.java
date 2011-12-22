@@ -64,15 +64,10 @@ public class FeaturePreferencesHandler extends AbstractHandler {
 					allFeatures= allFeatures + features[i]+";";
 				}
 				javaProject.getResource().setPersistentProperty(SystemProperties.CHOOSEN_FEATURES, allFeatures);
-				//IWorkbenchPage page = getSite().getPage();
-    			//IEditorPart part = page.getActiveEditor();
-    			// if (!(part instanceof AbstractTextEditor))
-    			//	      return;
-    			 //ITextEditor editor = (ITextEditor)part;
-    			   IDocumentProvider dp = editor.getDocumentProvider();
-    			   IDocument doc = dp.getDocument(editor.getEditorInput());
-    			   IRegion lineInfo;
-    			   lineInfo = null;
+				IDocumentProvider dp = editor.getDocumentProvider();
+				IDocument doc = dp.getDocument(editor.getEditorInput());
+				IRegion lineInfo;
+				lineInfo = null;
     			try {
     				int line = 1;
 					lineInfo = doc.getLineInformation(line - 1);

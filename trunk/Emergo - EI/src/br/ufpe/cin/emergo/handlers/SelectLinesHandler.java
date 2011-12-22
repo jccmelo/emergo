@@ -41,7 +41,7 @@ import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 import br.ufpe.cin.emergo.views.LineOfCode;
 import br.ufpe.cin.emergo.views.MarkedLinesView;
-import br.ufpe.cin.emergo.views.TestView;
+import br.ufpe.cin.emergo.views.EmergoView;
 
 public class SelectLinesHandler extends AbstractHandler {
 
@@ -159,21 +159,24 @@ public class SelectLinesHandler extends AbstractHandler {
 				((MarkedLinesView) markedLinesView).update(linesOffset);
 			}
 
+			List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs = null;
 			if (event.getCommand().getId().equals(SelectLinesHandler.generateFromID)) {
-				Map<Object, Object> allOptionsAux = lineOptions;
-				callDependendyGraphs(event, options, editor, document);
+				dependencyGraphs = getDependencyGraphs(event, options, editor, document);
+				/*
+				 * There is not enough information on the graph to be shown.
+				 * Instead, show an alert message to the user.
+				 */
+				for(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dGraph: dependencyGraphs){
+				if (dGraph == null || dGraph.vertexSet().size()
+						< 2) { // XXX cannot find path to icon! 
+					new MessageDialog(shell,
+							"Emergo Message", ResourceUtil.getEmergoIcon(),
+							"No dependencies found!", MessageDialog.INFORMATION, new String[]
+							 { "Ok" }, 0).open(); // TODO clear the views! 
+					}
+				}
 			}
-			/*
-			 * There is not enough information on the graph to be shown.
-			 * Instead, show an alert message to the user.
-			 */
-			/*
-			 * if (dependencyGraph == null || dependencyGraph.vertexSet().size()
-			 * < 2) { // XXX cannot find path to icon! new MessageDialog(shell,
-			 * "Emergo Message", ResourceUtil.getEmergoIcon(),
-			 * "No dependencies found!", MessageDialog.INFORMATION, new String[]
-			 * { "Ok" }, 0).open(); // TODO clear the views! return null; }
-			 */
+			 
 
 		} catch (Throwable e) {
 			String message = e.getMessage() == null ? "No message specified"
@@ -191,7 +194,7 @@ public class SelectLinesHandler extends AbstractHandler {
 		return null;
 	}
 
-	public static void callDependendyGraphs(ExecutionEvent event,
+	public static List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> getDependencyGraphs(ExecutionEvent event,
 			final Map<Object, Object> options, ITextEditor editor,
 			IDocument document) throws EmergoException {
 		List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs = new ArrayList<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>>();
@@ -225,6 +228,7 @@ public class SelectLinesHandler extends AbstractHandler {
 			updateViews(event, editor, linesOffset.get(i)
 					.getTextSelectionFile(), dependencyGraph);
 		}
+		return dependencyGraphs;
 	}
 
 	private static void updateViews(ExecutionEvent event, ITextEditor editor, IFile textSelectionFile,
@@ -241,12 +245,12 @@ public class SelectLinesHandler extends AbstractHandler {
 
 		// Update the tree view.
 		IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event)
-				.getActivePage().findView(TestView.ID);
+				.getActivePage().findView(EmergoView.ID);
 		// for (DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>
 		// dependencyGraph : dependencyGraphs) {
-		TestView.adaptTo(dependencyGraph, editor, textSelectionFile, false);
+		EmergoView.adaptTo(dependencyGraph, editor, textSelectionFile, false);
 		// }
-		((TestView) testView).updateTree();
+		((EmergoView) testView).updateTree();
 
 		// Updates Line view
 		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
@@ -264,12 +268,10 @@ public class SelectLinesHandler extends AbstractHandler {
 	}
 
 	public static void deleteMarkers(String message) {
-		Map<Object, Object> lineOptionsAux = lineOptions;
 		
 		int removePosition = 0;
 		boolean found = false;
 		for (int i = 0; i < linesOffset.size(); i++) {
-			String one = linesOffset.get(i).toString().trim();
 			if (linesOffset.get(i).toString().trim().equals(message)) {
 				removePosition = i;
 				found = true;

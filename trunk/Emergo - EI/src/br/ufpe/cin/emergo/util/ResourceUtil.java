@@ -25,7 +25,6 @@ public class ResourceUtil {
 			//However, this is OK, since clients of this method will automatically take the default eclipse icon into consideration.
 			e.printStackTrace();
 		}
-
 		return ImageDescriptor.createFromURL(url).createImage();
 	}
 

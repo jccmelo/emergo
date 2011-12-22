@@ -21,7 +21,6 @@ public class EmergoMarker {
 		if (markers.add(wrapper)) {
 			try {
 				IMarker marker = fd.getFile().createMarker(EMERGO_MARKER_ID);
-				System.out.println("--------->Marker created: "+message);
 				marker.setAttribute(IMarker.MESSAGE, message);
 				marker.setAttribute(IMarker.LINE_NUMBER, fd.getLineNumber());
 				marker.setAttribute(IMarker.TEXT, fd.getConfiguration());

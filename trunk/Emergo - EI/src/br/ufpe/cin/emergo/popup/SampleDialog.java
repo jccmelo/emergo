@@ -10,14 +10,12 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 public class SampleDialog extends TitleAreaDialog {
 
 	public static final int OPEN = 9999;
  	public static final int DELETE = 9998;
  	
-	private Text mytext;
 	private Button[] features;
 	private String[] featuresNames;
 	private String[] selectedFeatures;

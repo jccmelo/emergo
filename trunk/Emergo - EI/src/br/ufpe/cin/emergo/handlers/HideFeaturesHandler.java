@@ -94,7 +94,6 @@ public class HideFeaturesHandler extends AbstractHandler {
 								maximum));
 					}
 
-					System.out.println(lineNumbers + "    " + entry.getKey());
 					ifDefLineMapping.put(entry.getKey(), lineNumbers);
 				}
 

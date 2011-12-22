@@ -181,14 +181,14 @@
 	<extension point="org.eclipse.ui.views">
 		<view
 			category="br.ufpe.cin.emergo.view"
-	    	class="br.ufpe.cin.emergo.views.TestView"
+	    	class="br.ufpe.cin.emergo.views.EmergoView"
 			icon="icons/Emergo-Logo-Blue.png"
-			id="br.ufpe.cin.emergo.views.TestView"
-			name="New Emergo Table View">
+			id="br.ufpe.cin.emergo.views.EmergoView"
+			name="Emergo Table View">
 		</view>
 	</extension>
 	
-	<extension point="org.eclipse.ui.views">
+	<!--<extension point="org.eclipse.ui.views">
 		<view
 			category="br.ufpe.cin.emergo.view"
 	    	class="br.ufpe.cin.emergo.views.EmergoResultsView"
@@ -196,7 +196,7 @@
 			id="br.ufpe.cin.emergo.views.TableView"
 			name="Emergo Table View">
 		</view>
-	</extension>
+	</extension>-->
 	
 	<extension point="org.eclipse.ui.views">
 		<view

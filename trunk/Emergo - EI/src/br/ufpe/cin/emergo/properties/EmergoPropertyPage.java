@@ -39,9 +39,6 @@ public class EmergoPropertyPage extends PropertyPage implements IWorkbenchProper
 		radioInterprocedural.setText("Interprocedural");
 		radioInterprocedural.setSelection(getInterprocedural().equals("true"));
 
-		System.out.println("procedural key"
-				+ SystemProperties.INTERPROCEDURAL_PROPKEY);
-
 		radioIntraprocedural = new Button(myComposite, SWT.RADIO);
 		radioIntraprocedural.setText("Intraprocedural");
 		radioIntraprocedural.setSelection(getInterprocedural().equals("false"));
