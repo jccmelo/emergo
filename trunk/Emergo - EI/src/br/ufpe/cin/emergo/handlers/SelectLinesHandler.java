@@ -49,13 +49,12 @@ public class SelectLinesHandler extends AbstractHandler {
 	public static String generateFromID = "br.ufpe.cin.emergo.command.generateForLines";
 
 	static List<LineOfCode> linesOffset;
-	static List<Map<Object, Object>> allOptions;
+	static Map<Object, Object> lineOptions;
 	static boolean interprocedural = true;
 
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		emergoHandlerMethod(event);
-		return trialMethod(event);
+		return emergoHandlerMethod(event);
 	}
 
 	private Object emergoHandlerMethod(ExecutionEvent event)
@@ -69,8 +68,8 @@ public class SelectLinesHandler extends AbstractHandler {
 			 * Mechanism for passing through information that could make the
 			 * dependency finder easier/faster to implement.
 			 */
-			if (allOptions == null) {
-				allOptions = new ArrayList<Map<Object, Object>>();
+			if (lineOptions == null) {
+				lineOptions = new HashMap<Object, Object>();
 			}
 			if (linesOffset == null) {
 				linesOffset = new ArrayList<LineOfCode>();
@@ -136,26 +135,32 @@ public class SelectLinesHandler extends AbstractHandler {
 					break;
 				}
 			}
-
+			
+			/* 	checks what was the command being called by the user. 
+				Select Line or Generta from Selected lines*/
 			if (event.getCommand().getId().equals(SelectLinesHandler.chooseID)) {
 				options.put("classpath", classpath);
-				allOptions.add(options);
+				lineOptions= options;
 
 				/*
 				 * This instance of SelectionPosition holds the textual
-				 * selection information that needs to br passed along to the
+				 * selection information that needs to be passed along to the
 				 * underlying compiler infrastructure
 				 */
 				if (this.linesOffset == null) {
-					System.out.println("es ist immer null");
 					this.linesOffset = new ArrayList<LineOfCode>();
 				}
 				LineOfCode lineArguments = new LineOfCode(textSelection,
 						textSelectionFile);
 				linesOffset.add(lineArguments);
+				// updates the marked lines view
+				IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
+				.getActivePage().findView(MarkedLinesView.ID);
+				((MarkedLinesView) markedLinesView).update(linesOffset);
 			}
 
 			if (event.getCommand().getId().equals(SelectLinesHandler.generateFromID)) {
+				Map<Object, Object> allOptionsAux = lineOptions;
 				callDependendyGraphs(event, options, editor, document);
 			}
 			/*
@@ -181,6 +186,8 @@ public class SelectLinesHandler extends AbstractHandler {
 			internalErrorDialog.open();
 			e.printStackTrace();
 		}
+		// Updates Line view
+		
 		return null;
 	}
 
@@ -191,8 +198,7 @@ public class SelectLinesHandler extends AbstractHandler {
 		for (int i = 0; i < linesOffset.size(); i++) {
 			ITextSelection textSelection = linesOffset.get(i)
 					.getTextSelection();
-			System.out.println("------------> Es ist nicht null"
-					+ linesOffset.get(i));
+			
 			String selectionFileString = linesOffset.get(i)
 					.getTextSelectionFile().getLocation().toOSString();
 			final SelectionPosition selectionPosition = SelectionPosition
@@ -212,7 +218,7 @@ public class SelectLinesHandler extends AbstractHandler {
 					.filePath(selectionFileString).build();
 			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder
 					.findFromSelection(DependencyFinderID.JWCOMPILER,
-							selectionPosition, allOptions.get(i),
+							selectionPosition, lineOptions,
 							interprocedural);
 			dependencyGraphs.add(dependencyGraph);
 
@@ -234,7 +240,6 @@ public class SelectLinesHandler extends AbstractHandler {
 		 */
 
 		// Update the tree view.
-
 		IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event)
 				.getActivePage().findView(TestView.ID);
 		// for (DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>
@@ -249,47 +254,18 @@ public class SelectLinesHandler extends AbstractHandler {
 		((MarkedLinesView) markedLinesView).update(linesOffset);
 	}
 
-	private Object trialMethod(ExecutionEvent event) throws ExecutionException {
-
-		final Shell s = HandlerUtil.getActiveShellChecked(event);
-		ITextEditor editor = (ITextEditor) HandlerUtil
-				.getActiveEditorChecked(event);
-		IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(
-				IFile.class);
-		IDocumentProvider provider = editor.getDocumentProvider();
-		IDocument document = provider.getDocument(editor.getEditorInput());
-		ITextSelection textSelection = (ITextSelection) editor.getSite()
-				.getSelectionProvider().getSelection();
-
-		System.out.println("Begin of execution");
-		System.out.println(textSelection.getText());
-
-		System.out.println("End of execution");
-		IProject project = textSelectionFile.getProject();
-
-		// linesOffset.add(new LineOfCode(textSelection, textSelectionFile));
-		editor.getTitle();
-		// Updates Line view
-		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)
-				.getActivePage().findView(MarkedLinesView.ID);
-		((MarkedLinesView) markedLinesView).update(linesOffset);
-		return null;
-	}
-
 	public Map getLines() {
 		return this.getLines();
 	}
 
 	public static void deleteAllMarkers() {
-		allOptions = new ArrayList<Map<Object, Object>>();
+		lineOptions = new HashMap<Object, Object>();
 		linesOffset = new ArrayList<LineOfCode>();
 	}
 
 	public static void deleteMarkers(String message) {
-		List<Map<Object, Object>> allOptionsAux = allOptions;
-		for (Map<Object, Object> map : allOptionsAux) {
-			System.out.println(map);
-		}
+		Map<Object, Object> lineOptionsAux = lineOptions;
+		
 		int removePosition = 0;
 		boolean found = false;
 		for (int i = 0; i < linesOffset.size(); i++) {
@@ -301,7 +277,7 @@ public class SelectLinesHandler extends AbstractHandler {
 		}
 		if (found) {
 			linesOffset.remove(removePosition);
-			allOptions.remove(removePosition);
+			lineOptions = new HashMap<Object, Object>();
 		}
 	}
 

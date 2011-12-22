@@ -18,7 +18,6 @@ import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.IWorkbenchWindow;
 
 import br.ufpe.cin.emergo.listeners.Selection;
-import br.ufpe.cin.emergo.util.ColapsedFeatures;
 
 public class IfDefJavaEditor extends CompilationUnitEditor {
 
@@ -59,7 +58,6 @@ public class IfDefJavaEditor extends CompilationUnitEditor {
 		/**
 		 * Lines for collapsing elements.
 		 */
-		this.updateFoldingStructure(ColapsedFeatures.getPositionsFromColapsedFeatures());
 		this.annotationModelIfDefs.collapseAll(0, getDocument().getLength());
 	}
 	
