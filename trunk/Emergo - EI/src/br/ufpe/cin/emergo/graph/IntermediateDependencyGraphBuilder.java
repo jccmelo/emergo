@@ -2,15 +2,15 @@ package br.ufpe.cin.emergo.graph;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
@@ -22,12 +22,10 @@ import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.util.DebugUtil;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
-import dk.au.cs.java.compiler.cfg.VisualizerUtil;
 import dk.au.cs.java.compiler.cfg.Worklist;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.analysis.InterproceduralAnalysis;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
-import dk.au.cs.java.compiler.cfg.analysis.rules.ReachingDefinitionsRules;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
 import dk.au.cs.java.compiler.cfg.point.Expression;
 import dk.au.cs.java.compiler.cfg.point.Point;
@@ -36,7 +34,7 @@ import dk.au.cs.java.compiler.cfg.point.Variable;
 import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
-import dk.au.cs.java.compiler.node.AMethodDecl;
+import dk.au.cs.java.compiler.node.ACompilationUnit;
 import dk.au.cs.java.compiler.node.AProgram;
 import dk.au.cs.java.compiler.node.Node;
 import dk.au.cs.java.compiler.node.Token;
@@ -132,7 +130,7 @@ public class IntermediateDependencyGraphBuilder {
 
 		// Export dot files for inspection
 		{
-			DebugUtil.writeStringToFile(cfg.toDot(defUseRules), "cfg-inter.dot");
+			DebugUtil.writeStringToFile(cfg.toDot(), "cfg-inter.dot");
 			DebugUtil.exportToDotFile(dependencyGraph, "dep-inter.dot");
 			DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-inter.dot");
 			DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-inter.dot");
@@ -144,7 +142,7 @@ public class IntermediateDependencyGraphBuilder {
 		assert dependencyGraph != null;
 
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedGraph = new DefaultDirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
-
+		
 		/*
 		 * This graph can not be collapsed if there are no connections between the nodes or enough nodes to enable edges
 		 * to exist.
@@ -154,28 +152,56 @@ public class IntermediateDependencyGraphBuilder {
 		if (edgeSet.size() == 0 || vertexSet.size() <= 1) {
 			return collapsedGraph;
 		}
+		
+		class LineAndFile {
+			public final int line;
+			public final String file;
+			
+			public LineAndFile(Token token) {
+				this.line = token.getLine();
+				this.file = token.getAncestor(ACompilationUnit.class).getFile().getAbsolutePath();
+			}
+			
+			@Override
+			public int hashCode() {
+				return new HashCodeBuilder().append(line).append(file).build();
+			}
+			
+			@Override
+			public boolean equals(Object obj) {
+				if (obj instanceof LineAndFile == false) {  
+			        return false;  
+			    }  
+			    if (this == obj) {  
+			    	return true;  
+			    }  
+			    final LineAndFile otherObject = (LineAndFile) obj;  
+			  
+			    return new EqualsBuilder().append(this.line, otherObject.line).append(this.file, otherObject.file).isEquals();
+			}
+		}
 
-		Map<Integer, Set<DependencyNodeWrapper<Point>>> lineNodesSetMapping = new HashMap<Integer, Set<DependencyNodeWrapper<Point>>>();
-		Map<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>> lineNodeMapping = new HashMap<Integer, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>>();
-		Set<Integer> keysInSelection = new HashSet<Integer>();
+		Map<LineAndFile, Set<DependencyNodeWrapper<Point>>> lineNodesSetMapping = new HashMap<LineAndFile, Set<DependencyNodeWrapper<Point>>>();
+		Map<LineAndFile, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>> lineNodeMapping = new HashMap<LineAndFile, DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>>();
+		Set<LineAndFile> keysInSelection = new HashSet<LineAndFile>();
 
 		/*
 		 * In this first step the vertices are grouped by their line number in a map. Each entry maps an integer into a
 		 * set of vertices.
 		 */
 		for (DependencyNodeWrapper<Point> dependencyNode : vertexSet) {
-			Point data = (Point) dependencyNode.getData();
-			Integer line = data.getToken().getLine();
-			Set<DependencyNodeWrapper<Point>> set = lineNodesSetMapping.get(line);
+			Token pointToken = ((Point) dependencyNode.getData()).getToken();
+			LineAndFile lineAndFile = new LineAndFile(pointToken);
+			Set<DependencyNodeWrapper<Point>> set = lineNodesSetMapping.get(lineAndFile);
 			if (set == null) {
 				set = new HashSet<DependencyNodeWrapper<Point>>();
-				lineNodesSetMapping.put(line, set);
+				lineNodesSetMapping.put(lineAndFile, set);
 			}
 			set.add(dependencyNode);
 
 			// Store nodes that belong to the selection for later use.
 			if (dependencyNode.isInSelection()) {
-				keysInSelection.add(line);
+				keysInSelection.add(lineAndFile);
 			}
 		}
 
@@ -184,9 +210,9 @@ public class IntermediateDependencyGraphBuilder {
 		 * DependencyNodeWrapper. Each of these DependencyNodeWrappers are then added to the graph that will be
 		 * returned.
 		 */
-		Set<Entry<Integer, Set<DependencyNodeWrapper<Point>>>> entrySet = lineNodesSetMapping.entrySet();
-		for (Entry<Integer, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
-			Integer line = entry.getKey();
+		Set<Entry<LineAndFile, Set<DependencyNodeWrapper<Point>>>> entrySet = lineNodesSetMapping.entrySet();
+		for (Entry<LineAndFile, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
+			LineAndFile lineAndFile = entry.getKey();
 			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
 
 			IfDefVarSet accumulator = null;
@@ -197,27 +223,26 @@ public class IntermediateDependencyGraphBuilder {
 					accumulator = accumulator.and(dependencyNode.getData().getVarSet());
 				}
 			}
-
-			DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> dependencyNode = new DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>(nodes, SelectionPosition.builder().startLine(line).build(), keysInSelection.contains(line), accumulator);
+			
+			DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> dependencyNode = new DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>(nodes, SelectionPosition.builder().startLine(lineAndFile.line).filePath(lineAndFile.file).build(), keysInSelection.contains(lineAndFile), accumulator);
 			collapsedGraph.addVertex(dependencyNode);
-			lineNodeMapping.put(line, dependencyNode);
+			lineNodeMapping.put(lineAndFile, dependencyNode);
 		}
 
 		/*
 		 * At this point, all nodes in the graph actually represents a set of nodes (see steps 1 and 2 above). Thus, it
 		 * is only necessary to iterate over these embedded nodes and add the edges that connected them before.
 		 */
-		for (Entry<Integer, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
-			Integer line = entry.getKey();
+		for (Entry<LineAndFile, Set<DependencyNodeWrapper<Point>>> entry : entrySet) {
+			LineAndFile lineAndFile = entry.getKey();
 			Set<DependencyNodeWrapper<Point>> nodes = entry.getValue();
 			for (DependencyNodeWrapper<Point> dependencyNode : nodes) {
 				Set<ValueContainerEdge<ConfigSet>> outgoingEdgesOf = dependencyGraph.outgoingEdgesOf(dependencyNode);
 				for (ValueContainerEdge<ConfigSet> valueContainerEdge : outgoingEdgesOf) {
 					DependencyNodeWrapper<Point> edgeTarget = dependencyGraph.getEdgeTarget(valueContainerEdge);
-					Point data = (Point) edgeTarget.getData();
-					Integer line2 = data.getToken().getLine();
-					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> srcNodeWrapper = lineNodeMapping.get(line);
-					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> tgtNodeWrapper = lineNodeMapping.get(line2);
+					Token targeToken = (Token) edgeTarget.getData().getToken();
+					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> srcNodeWrapper = lineNodeMapping.get(lineAndFile);
+					DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> tgtNodeWrapper = lineNodeMapping.get(new LineAndFile(targeToken));
 
 					ValueContainerEdge<ConfigSet> addedEdge = collapsedGraph.addEdge(srcNodeWrapper, tgtNodeWrapper);
 
@@ -332,8 +357,6 @@ public class IntermediateDependencyGraphBuilder {
 					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
 						LatticeSet<Object> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
-
-						IfDefVarSet model = IfDefVarSet.getModel();
 
 						if (key.and(poppedPoint.getVarSet()).isEmpty()) {
 							continue;
@@ -467,6 +490,7 @@ public class IntermediateDependencyGraphBuilder {
 	}
 
 	private static SelectionPosition makePosition(Point p) {
-		return SelectionPosition.builder().startColumn(p.getToken().getPos()).startLine(p.getToken().getLine()).build();
+		ACompilationUnit ancestorCompilationUnit = p.getToken().getAncestor(ACompilationUnit.class);
+		return SelectionPosition.builder().startColumn(p.getToken().getPos()).startLine(p.getToken().getLine()).filePath(ancestorCompilationUnit.getFile().getAbsolutePath()).build();
 	}
 }

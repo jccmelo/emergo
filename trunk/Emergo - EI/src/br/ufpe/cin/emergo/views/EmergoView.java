@@ -55,6 +55,7 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.markers.EmergoMarker;
 import br.ufpe.cin.emergo.markers.FeatureDependency;
+import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class EmergoView extends ViewPart{
 	public static final String ID = "br.ufpe.cin.emergo.views.EmergoView";
@@ -268,7 +269,7 @@ public class EmergoView extends ViewPart{
 				}
 
 				List<GraphPath<DependencyNode, ValueContainerEdge<ConfigSet>>> paths = shortestPaths.getPaths(tgtNode);
-				// If not paths between the nodes were found, then just move on to the next pair of nodes.
+				// If no paths between the nodes were found, then just move on to the next pair of nodes.
 				if (paths == null) {
 					continue;
 				}
@@ -295,7 +296,7 @@ public class EmergoView extends ViewPart{
 						 */
 						message = "Unknown";
 					}
-					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine());
+					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine());
 					fd = auxFeature;
 					EmergoMarker.createMarker(message, auxFeature);
 				}

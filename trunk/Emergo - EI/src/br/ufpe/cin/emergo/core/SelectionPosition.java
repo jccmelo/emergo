@@ -1,5 +1,7 @@
 package br.ufpe.cin.emergo.core;
 
+import java.io.File;
+
 /**
  * Immutable class used to represent an user selection on a given file. Note that no verification is made, like if the
  * {@code startLine} or {@code offSet} is within the actual bounds of the file, or even if the file exists. Only if the
@@ -9,7 +11,7 @@ package br.ufpe.cin.emergo.core;
  * 
  * TODO: describe if the numbers are 0-based and things like that.
  * 
- * @author Társis Tolêdo
+ * @author Tï¿½rsis Tolï¿½do
  * 
  */
 public final class SelectionPosition {
@@ -41,7 +43,7 @@ public final class SelectionPosition {
 		this.endLine = el;
 		this.endColumn = ec;
 		this.filePath = f;
-		this.stringRepresentation = "[(" + sl + "," + sc + "),(" + el + "," + ec + ")," + l + "]";
+		this.stringRepresentation = "[(" + sl + "," + sc + "),(" + el + "," + ec + ")," + l + "," + new File(filePath).getName() +"]";
 	}
 
 	/**
@@ -186,7 +188,7 @@ public final class SelectionPosition {
 	/**
 	 * A simple builder for the enclosing class. Forces the client to explicitly and verbosely sets the arguments.
 	 * 
-	 * @author Társis
+	 * @author Tï¿½rsis
 	 * 
 	 */
 	public static final class Builder {

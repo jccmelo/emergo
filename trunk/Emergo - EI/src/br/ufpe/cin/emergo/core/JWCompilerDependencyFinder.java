@@ -190,7 +190,7 @@ public class JWCompilerDependencyFinder {
 		List<File> jarFiles = new ArrayList<File>();
 
 		/*
-		 * Builds the classpath in the format needed on Johnni Winther's
+		 * Builds the classpath in the format needed by Johnni Winther's
 		 * compiler. Paths should be separated by a whitespace and may contain
 		 * wildcards like ** and *.
 		 * 

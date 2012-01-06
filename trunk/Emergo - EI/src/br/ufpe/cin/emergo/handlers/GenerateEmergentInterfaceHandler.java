@@ -45,7 +45,7 @@ import br.ufpe.cin.emergo.views.EmergoView;
 /**
  * Handler for the br.ufal.cideei.commands.DoCompute extension command.
  * 
- * @author Társis
+ * @author Tï¿½rsis
  * 
  */
 public class GenerateEmergentInterfaceHandler extends AbstractHandler {
@@ -94,7 +94,6 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			} else {
 				interprocedural = false;
 			}
-String s = javaProject.getResource().getLocation().toFile().getAbsolutePath();
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
@@ -140,7 +139,7 @@ String s = javaProject.getResource().getLocation().toFile().getAbsolutePath();
 			IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoGraphView.ID);
 			if (findGraphView instanceof EmergoGraphView) {
 				EmergoGraphView view = (EmergoGraphView) findGraphView;
-				view.adaptTo(dependencyGraph, editor, selectionPosition);
+				view.adaptTo(dependencyGraph, editor);
 			}
 
 			// Update the tree view.

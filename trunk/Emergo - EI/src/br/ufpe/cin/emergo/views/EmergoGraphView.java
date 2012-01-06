@@ -5,7 +5,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.core.filebuffers.FileBuffers;
+import org.eclipse.core.filebuffers.ITextFileBufferManager;
+import org.eclipse.core.filebuffers.LocationKind;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.swt.SWT;
@@ -15,6 +20,8 @@ import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.zest.core.widgets.Graph;
@@ -26,15 +33,14 @@ import org.eclipse.zest.layouts.algorithms.SpringLayoutAlgorithm;
 import org.jgrapht.DirectedGraph;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
-import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
+import br.ufpe.cin.emergo.graph.DependencyNodeWrapper;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class EmergoGraphView extends ViewPart {
 	public static final String ID = "br.ufpe.cin.emergo.view.GraphView";
 	private Graph graph;
-	private ITextEditor editor;
 	private Composite parent;
 
 	public void createPartControl(final Composite parent) {
@@ -44,7 +50,7 @@ public class EmergoGraphView extends ViewPart {
 		graph = new Graph(parent, SWT.NONE);
 
 		// graph.setLayoutAlgorithm(new SpringLayoutAlgorithm(LayoutStyles.ENFORCE_BOUNDS), true);
-		// For a different layout algorith, comment the live above and uncomment the one below.
+		// For a different layout algorithm, comment the live above and uncomment the one below.
 		// graph.setLayoutAlgorithm(new TreeLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
 
 		// Adds a simple listener for a selection in the graph. Use this to link to the line number in the file.
@@ -57,36 +63,43 @@ public class EmergoGraphView extends ViewPart {
 					Object selectionObj = selection.get(0);
 					if (selectionObj instanceof GraphNode) {
 						GraphNode selectedNode = (GraphNode) selectionObj;
-						int startLine = ((DependencyNode) selectedNode.getData()).getPosition().getStartLine();
-						int lineLength = 0, offset = 0;
+						DependencyNodeWrapper<?> nodeWrapper = (DependencyNodeWrapper<?>) selectedNode.getData();
+						IFile file = ResourceUtil.getIFile(nodeWrapper.getPosition().getFilePath());
+						IWorkbenchPage page = getSite().getPage();
 						try {
-							IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
-							lineLength = document.getLineLength(startLine - 1);
-							offset = document.getLineOffset(startLine - 1);
-						} catch (BadLocationException e) {
-							new MessageDialog(parent.getShell(), "Emergo Message", ResourceUtil.getEmergoIcon(), "The selected node does not link to a valid position in the file. Try generating a new graph.", MessageDialog.WARNING, new String[] { "Ok" }, 0).open();
+							IMarker marker = file.createMarker(IMarker.TEXT);
+							marker.setAttribute(IMarker.LINE_NUMBER, nodeWrapper.getPosition().getStartLine());
+							
+   						    IDE.openEditor(page, marker);
+							marker.delete();
+						} catch (CoreException e) {
+							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						editor.selectAndReveal(offset, lineLength);
 					}
 				}
 			}
 		});
 	}
-
+	
+	private IDocument getDocument(String filename) throws CoreException {
+		IFile file = ResourceUtil.getIFile(filename);
+	    
+	    //XXX Does the method disconnect need to be called? When?
+	    ITextFileBufferManager.DEFAULT.connect(file.getFullPath(), LocationKind.IFILE, null);
+		return FileBuffers.getTextFileBufferManager().getTextFileBuffer(file.getFullPath(), LocationKind.IFILE).getDocument();
+	}
+	
+	
 	/**
 	 * Updates the graph visualization with the information provided.
 	 * 
 	 * @param dependencyGraph
 	 * @param compilationUnit
 	 * @param editor
-	 * @param spos
 	 */
-	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor, SelectionPosition spos) {
-		this.editor = editor;
+	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor) {
 		clearGraph();
-
-		IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 
 		Display display = parent.getDisplay();
 
@@ -114,8 +127,12 @@ public class EmergoGraphView extends ViewPart {
 				int startLine = edgeSrc.getPosition().getStartLine() - 1;
 				String nodeLabel = null;
 				try {
+					IDocument document = getDocument(edgeSrc.getPosition().getFilePath());
 					nodeLabel = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 				} catch (BadLocationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (CoreException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -133,8 +150,12 @@ public class EmergoGraphView extends ViewPart {
 				int startLine = edgeTgt.getPosition().getStartLine() - 1;
 				String nodeLabel = null;
 				try {
+					IDocument document = getDocument(edgeTgt.getPosition().getFilePath());
 					nodeLabel = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 				} catch (BadLocationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (CoreException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
