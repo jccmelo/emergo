@@ -68,8 +68,8 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			if (!(selection instanceof ITextSelection))
 				throw new ExecutionException("Not a textual selection");
 
-			ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
-			IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
+			final ITextEditor editor = (ITextEditor) HandlerUtil.getActiveEditorChecked(event);
+			final IFile textSelectionFile = (IFile) editor.getEditorInput().getAdapter(IFile.class);
 
 			IDocumentProvider provider = editor.getDocumentProvider();
 			IDocument document = provider.getDocument(editor.getEditorInput());
@@ -122,7 +122,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			String selectionFileString = textSelectionFile.getLocation().toOSString();
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 
-			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options, interprocedural);
+			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options, interprocedural);
 
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
@@ -138,14 +138,23 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			// Update the graph view
 			IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoGraphView.ID);
 			if (findGraphView instanceof EmergoGraphView) {
-				EmergoGraphView view = (EmergoGraphView) findGraphView;
-				view.adaptTo(dependencyGraph, editor);
+				final EmergoGraphView view = (EmergoGraphView) findGraphView;
+				new Runnable() {
+					public void run() {
+						view.adaptTo(dependencyGraph, editor);
+					}
+				}.run();
 			}
 
 			// Update the tree view.
-			IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
-			EmergoView.adaptTo(dependencyGraph, editor, textSelectionFile, true);
-			((EmergoView) testView).updateTree();
+			final IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
+			new Runnable() {
+				public void run() {
+					EmergoView.adaptTo(dependencyGraph, editor,
+							textSelectionFile, true);
+					((EmergoView) testView).updateTree();
+				}
+			}.run();
 			
 			// Update the tree view.
 			//IViewPart tableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);
