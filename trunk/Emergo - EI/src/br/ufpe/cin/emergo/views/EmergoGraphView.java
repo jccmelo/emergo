@@ -29,7 +29,7 @@ import org.eclipse.zest.core.widgets.GraphConnection;
 import org.eclipse.zest.core.widgets.GraphNode;
 import org.eclipse.zest.core.widgets.ZestStyles;
 import org.eclipse.zest.layouts.LayoutStyles;
-import org.eclipse.zest.layouts.algorithms.SpringLayoutAlgorithm;
+import org.eclipse.zest.layouts.algorithms.RadialLayoutAlgorithm;
 import org.jgrapht.DirectedGraph;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
@@ -98,13 +98,13 @@ public class EmergoGraphView extends ViewPart {
 	 * @param compilationUnit
 	 * @param editor
 	 */
-	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor) {
+	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		clearGraph();
 
 		Display display = parent.getDisplay();
 
 		// TODO: make this configurable for the user.
-		graph.setLayoutAlgorithm(new SpringLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
+		graph.setLayoutAlgorithm(new RadialLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
 
 		/*
 		 * The Graph from the Zest toolkit will gladly add objects that are are equal by the JAVA Object#equals(..)

@@ -30,6 +30,8 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	 * DUW: Def-Use Web.
 	 */
 	private static final String ID = "DUW";
+	private WriteProcessor writeProcessor = new WriteProcessor();
+	private ReadProcessor readProcessor = new ReadProcessor();
 
 	/**
 	 * Instantiates the rules for the DefUse web.
@@ -55,44 +57,67 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 			}
 		});
 	}
-
+	
+	/* 
+	 * ReadProcessor encapsulates the logic involved in the application
+	 * of the transfer function for a Read.
+	 */
+	class ReadProcessor implements Process<LatticeSet<Object>> {
+		private Read read = null;
+		
+		public ReadProcessor setRead(Read read) {
+			this.read = read;
+			return this;
+		}
+		
+		public LatticeSet<Object> process(LatticeSet<Object> set) {
+			return set.include(read);
+		}
+	}
+	
 	@Override
 	public void computeRead(final Read point, ProcessInfo<LatticeSet<Object>> info) {
 		/*
 		 * Blindly accept Reads.
 		 */
-		info.process(point, new Process<LatticeSet<Object>>() {
-
-			public LatticeSet<Object> process(LatticeSet<Object> set) {
-				return set.include(point);
-			}
-			
-		});
+		info.process(point, readProcessor.setRead(point));
 	}
 
+	/*
+	 *	Encapsulates the logic behind the transfer function
+	 * application in a Write. 
+	 */
+	class WriteProcessor implements Process<LatticeSet<Object>> {
+		Write write = null;
+		
+		public WriteProcessor setWrite(Write write){
+			this.write = write;
+			return this;
+		}
+		
+		public LatticeSet<Object> process(LatticeSet<Object> set) {
+			final LValue lvalue = write.getLValue();
+			set = set.filter(new LatticeSetFilter<Object>() {
+
+				public boolean accept(Object element) {
+					if (element instanceof Write) {
+						Write write = (Write) element;
+						LValue lv = write.getLValue();
+						return !lv.equals(lvalue);
+					} 
+					return true;
+				}
+
+			});
+			return set.include(write);
+		}
+	}
+	
 	@Override
 	public void computeWrite(final Write point, ProcessInfo<LatticeSet<Object>> info) {
 		/*
 		 * First, kill any previous Write to the same LValue, then add this new one.
 		 */
-		info.process(point, new Process<LatticeSet<Object>>() {
-
-			public LatticeSet<Object> process(LatticeSet<Object> set) {
-				final LValue lvalue = point.getLValue();
-				set = set.filter(new LatticeSetFilter<Object>() {
-
-					public boolean accept(Object element) {
-						if (element instanceof Write) {
-							Write write = (Write) element;
-							LValue lv = write.getLValue();
-							return !lv.equals(lvalue);
-						} 
-						return true;
-					}
-
-				});
-				return set.include(point);
-			}
-		});
+		info.process(point, writeProcessor.setWrite(point));
 	}
 }

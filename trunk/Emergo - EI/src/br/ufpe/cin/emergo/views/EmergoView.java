@@ -8,9 +8,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.filebuffers.FileBuffers;
+import org.eclipse.core.filebuffers.ITextFileBufferManager;
+import org.eclipse.core.filebuffers.LocationKind;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
@@ -38,8 +43,9 @@ import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IViewReference;
 import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.texteditor.AbstractTextEditor;
 import org.eclipse.ui.texteditor.IDocumentProvider;
@@ -57,14 +63,12 @@ import br.ufpe.cin.emergo.markers.EmergoMarker;
 import br.ufpe.cin.emergo.markers.FeatureDependency;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 
-public class EmergoView extends ViewPart{
+public class EmergoView extends ViewPart {
 	public static final String ID = "br.ufpe.cin.emergo.views.EmergoView";
 	private TreeViewer viewer;
 	private static final int MAX_PATHS = 16;
-	private static List<IFile> selectedFiles;
-	private static List<IMarker> test;
+	private List<IMarker> markerList;
 	public static final String EMERGO_MARKER_ID = Activator.PLUGIN_ID + ".emergomarker";
-	private static FeatureDependency fd;
 	private static final String MARKER_FIELD = "MARKER_FIELD"; //$NON-NLS-1$
 	
 	TreeViewerColumn tc;
@@ -82,61 +86,37 @@ public class EmergoView extends ViewPart{
 	private int auxiliary=0;
 	
 	Action addItemAction, deleteItemAction, selectAllAction;
-	
-	public EmergoView() {
-		// TODO Auto-generated constructor stub
-		selectedFiles = new ArrayList<IFile>();
-	}
-	
+
 	public void createPartControl(Composite parent) {
 		parent.setLayout(new FillLayout());
 		viewer = new TreeViewer(parent, SWT.FULL_SELECTION);
 		viewer.getTree().setLinesVisible(true);
 		viewer.setSelection(new TreeSelection());
 		viewer.getTree().addListener(SWT.MouseDown, new Listener() {
-			
+
 			@Override
 			public void handleEvent(Event event) {
-				 Point point = new Point (event.x, event.y);
-			        TreeItem clickedItem = viewer.getTree().getItem (point);
-			        if (clickedItem != null) 
-			        {
-			            
-			            if(event.button == MouseEvent.BUTTON1){
-			            	if(event.count == 2){	
-			            		File fileToOpen = new File("MediaControler.java");
-			            		if (fileToOpen.exists() && fileToOpen.isFile()) {
-			            		    // TODO: Make the double click on a marker to open the line of the resource
-			            		}else{
-			            			IWorkbenchPage page = getSite().getPage();
-			            			IEditorPart part = page.getActiveEditor();
-			            			 if (!(part instanceof AbstractTextEditor))
-			            				      return;
-			            			 ITextEditor editor = (ITextEditor)part;
-			            			   IDocumentProvider dp = editor.getDocumentProvider();
-			            			   IDocument doc = dp.getDocument(editor.getEditorInput());
-			            			   IRegion lineInfo;
-			            			   lineInfo = null;
-			            			try {
-			            				int line = (Integer) ((IMarker)clickedItem.getData()).getAttribute(IMarker.LINE_NUMBER);
-										lineInfo = doc.getLineInformation(line - 1);
-									} catch (BadLocationException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									} catch (CoreException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									}
-			            			   if(lineInfo!= null){
-			            				   editor.selectAndReveal(lineInfo.getOffset(), lineInfo.getLength());
-			            			   }
-			            		}
-			            	}
-			            }
-			        }
-			    }
+				Point point = new Point(event.x, event.y);
+				TreeItem clickedItem = viewer.getTree().getItem(point);
+				if (clickedItem != null) {
+					if (event.button == MouseEvent.BUTTON1 && event.count == 2) {
+						Object data = clickedItem.getData();
+						if (data instanceof IMarker) {
+							IMarker marker = (IMarker) data;
+							try {
+								IDE.openEditor(getSite().getPage(), marker);
+							} catch (PartInitException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} catch (CoreException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			}
 		});
-		
 		
 		TableLayout layout = new TableLayout();
 		tc = new TreeViewerColumn(viewer, SWT.FULL_SELECTION);
@@ -151,14 +131,12 @@ public class EmergoView extends ViewPart{
 		tc5.getColumn().addSelectionListener(getHeaderListener());
 		
 		tc.getColumn().setText(EmergoView.textColumnOne);
-		
 		tc2.getColumn().setText(EmergoView.textColumnTwo);
 		tc3.getColumn().setText(EmergoView.textColumnThree);
 		tc4.getColumn().setText(EmergoView.textColumnFour);
 		tc5.getColumn().setText(EmergoView.textColumnFive);
 		
 		tc.getColumn().setToolTipText("Tooltip one");
-		
 		tc2.getColumn().setToolTipText("Tooltip two");
 		tc3.getColumn().setToolTipText("Tooltip three");
 		tc4.getColumn().setToolTipText("Tooltip four");
@@ -193,15 +171,14 @@ public class EmergoView extends ViewPart{
          getSite().registerContextMenu(menuMgr, viewer);
 	 }
 
-	@Override
 	public void setFocus() {
 		// TODO Auto-generated method stub
 	}
 	
 	public void updateTree() {
 		try {
-			IMarker[] markers  = fd.getFile().findMarkers(EMERGO_MARKER_ID, false, IResource.DEPTH_INFINITE);
-			test = new ArrayList<IMarker>();
+			IMarker[] markers = ResourcesPlugin.getWorkspace().getRoot().findMarkers(EMERGO_MARKER_ID, false, IResource.DEPTH_INFINITE);
+			markerList = new ArrayList<IMarker>();
 			List<MarkerGrouping> goupins = generateMarkerList(markers);
 			viewer.refresh();
 			viewer.setContentProvider(new TreeContentProvider());
@@ -228,34 +205,35 @@ public class EmergoView extends ViewPart{
 				mkg.addChildren(markers[i]);
 				goupins.add(mkg);
 			}
-			test.add(markers[i]);
+			markerList.add(markers[i]);
 		}
 		Collections.sort(goupins, new MarkerGroupingComparable());
 		return goupins;
 	}
+	
+	public void clearView() throws CoreException {
+		IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
+		workspaceRoot.deleteMarkers(EmergoMarker.EMERGO_MARKER_ID, true,
+				IResource.DEPTH_INFINITE);
+	}
 
-	public static void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, ITextEditor editor, IFile textSelectionFile, boolean delete) {
+	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph, boolean delete) {
 		/*
 		 * Delete markers of all previously selected files.
 		 */
-		if(delete){
-			for (IFile file : selectedFiles) {
-				test.clear();
-				EmergoMarker.clearMarkers(file);
-			}			
+		if (delete){
+			try {
+				clearView();
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
 		}
-		
-		/*
-		 * Then, add the file being selected...
-		 */
-		selectedFiles.add(textSelectionFile);
 		
 		if (dependencyGraph.vertexSet().size() < 2) {
 			return;
 		}
 
 		Set<DependencyNode> vertexSet = dependencyGraph.vertexSet();
-		IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 		for (DependencyNode srcNode : vertexSet) {
 
 			if (!srcNode.isInSelection()) {
@@ -288,59 +266,37 @@ public class EmergoView extends ViewPart{
 					int startLine = srcNode.getPosition().getStartLine() - 1;
 					String message = null;
 					try {
+						IDocument document = getDocument(srcNode.getPosition().getFilePath());
+						message = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 						message = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 					} catch (BadLocationException e) {
 						/*
 						 * Something must have went very wrong here, because the line at issue is not a valid location
 						 * in the document.
 						 */
+						e.printStackTrace();
+						message = "Unknown";
+					} catch (CoreException e) {
+						e.printStackTrace();
 						message = "Unknown";
 					}
 					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine());
-					fd = auxFeature;
 					EmergoMarker.createMarker(message, auxFeature);
 				}
 			}
 		}
-	}
-
-	public static void deleteMarkers(String message){
-		Object[] markersToDelete = test.toArray();
-		for(int i = 0; i < markersToDelete.length; i++){
-			try {
-				if (((IMarker)markersToDelete[i]).getAttribute(IMarker.MESSAGE).toString().equals(message)) {
-					test.remove(markersToDelete[i]);
-				}
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
-		}
-		if(selectedFiles != null){ // Has nothing to delete			
-			for (IFile file : selectedFiles) {
-				EmergoMarker.clearMarkers(file, message);
-				}
-		}
-		IViewReference[] views = Activator.getDefault().getWorkbench().getActiveWorkbenchWindow().getActivePage().getViewReferences();
-		for (int i = 0; i < views.length; i++) {
-			if(views[i].getId().equals("br.ufpe.cin.emergo.views.TestView")){
-				((EmergoView) views[i].getView(true)).updateTree();
-			}
-		}
-	}
-	public static void deleteAllMarkers(){
-		if(selectedFiles != null){	// Has nothing to delete
-			for (IFile file : selectedFiles) {
-				EmergoMarker.clearMarkers(file);
-			}
-		}
-		IViewReference[] views = Activator.getDefault().getWorkbench().getActiveWorkbenchWindow().getActivePage().getViewReferences();
-		for (int i = 0; i < views.length; i++) {
-			if(views[i].getId().equals("br.ufpe.cin.emergo.views.TestView")){
-				((EmergoView) views[i].getView(true)).updateTree();
-			}
-		}
+		updateTree();
 	}
 	
+	///XXX DUPLICATED METHOD FROM EmergoGraphView
+	private IDocument getDocument(String filename) throws CoreException {
+		IFile file = ResourceUtil.getIFile(filename);
+	    
+	    //XXX Does the method disconnect need to be called? When?
+	    ITextFileBufferManager.DEFAULT.connect(file.getFullPath(), LocationKind.IFILE, null);
+		return FileBuffers.getTextFileBufferManager().getTextFileBuffer(file.getFullPath(), LocationKind.IFILE).getDocument();
+	}
+
 	/**
 	 * Return the listener that updates sort values on selection.
 	 * 
@@ -382,22 +338,22 @@ public class EmergoView extends ViewPart{
 			comparable = new MarkerTextComparable();
 		}
 		if(auxiliary==0){
-			Collections.sort(test, comparable);			
+			Collections.sort(markerList, comparable);			
 		}
 		else{
-			Collections.sort(test, comparable);
-			Collections.reverse(test);			
+			Collections.sort(markerList, comparable);
+			Collections.reverse(markerList);			
 		}
 		updateDirectionIndicator(column, field);
 		reOriginateTree();
 	}
 
 	private void reOriginateTree() {
-		IMarker[] markers = new IMarker[test.size()];
-		markers = test.toArray(markers);
+		IMarker[] markers = new IMarker[markerList.size()];
+		markers = markerList.toArray(markers);
 		List<MarkerGrouping> goupins = null;
 		try {
-			test = new ArrayList<IMarker>();
+			markerList = new ArrayList<IMarker>();
 			goupins = generateMarkerList(markers);
 		} catch (CoreException e) {
 			e.printStackTrace();

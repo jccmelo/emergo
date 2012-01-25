@@ -248,9 +248,14 @@ public class SelectLinesHandler extends AbstractHandler {
 				.getActivePage().findView(EmergoView.ID);
 		// for (DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>
 		// dependencyGraph : dependencyGraphs) {
-		EmergoView.adaptTo(dependencyGraph, editor, textSelectionFile, false);
+//		try {
+//			((EmergoView) testView).adaptTo(dependencyGraph);
+//		} catch (EmergoException e) {
+			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		// }
-		((EmergoView) testView).updateTree();
+//		((EmergoView) testView).updateTree();
 
 		// Updates Line view
 		IViewPart markedLinesView = HandlerUtil.getActiveWorkbenchWindow(event)

@@ -141,20 +141,21 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 				final EmergoGraphView view = (EmergoGraphView) findGraphView;
 				new Runnable() {
 					public void run() {
-						view.adaptTo(dependencyGraph, editor);
+						view.adaptTo(dependencyGraph);
 					}
 				}.run();
 			}
 
 			// Update the tree view.
-			final IViewPart testView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
-			new Runnable() {
-				public void run() {
-					EmergoView.adaptTo(dependencyGraph, editor,
-							textSelectionFile, true);
-					((EmergoView) testView).updateTree();
-				}
-			}.run();
+			IViewPart treeView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
+			if (treeView instanceof EmergoView) {
+				final EmergoView emergoView = (EmergoView) treeView;
+				new Runnable() {
+					public void run() {
+						emergoView.adaptTo(dependencyGraph, true);
+					}
+				}.run();
+			}
 			
 			// Update the tree view.
 			//IViewPart tableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);

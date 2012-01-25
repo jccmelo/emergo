@@ -38,7 +38,7 @@ public class EmergoResultsView extends MarkerSupportView {
 		 * Delete markers of all previously selected files.
 		 */
 		for (IFile file : selectedFiles) {
-			EmergoMarker.clearMarkers(file);
+//			EmergoMarker.clearMarkers(file);
 		}
 		
 		/*

@@ -115,7 +115,7 @@ public class MarkedLinesView extends ViewPart {
 					}
 				}
 				lineText = lineText + ";";
-				EmergoView.deleteMarkers(lineText);
+//				EmergoView.deleteMarkers(lineText);
 				SelectLinesHandler.deleteMarkers(auxSelectionText);
 				Object[] baseLinesClone = baseLines.toArray();
 				for (int i = 0; i < baseLinesClone.length; i++) {
@@ -132,7 +132,7 @@ public class MarkedLinesView extends ViewPart {
 			public void run() {
 				baseLines = new ArrayList<LineOfCode>();
 				update(new ArrayList<LineOfCode>());
-				EmergoView.deleteAllMarkers();
+//				EmergoView.deleteAllMarkers();
 				SelectLinesHandler.deleteAllMarkers();
 			}
 		};

@@ -105,7 +105,7 @@ public class IntermediateDependencyGraphBuilder {
 		 * with the ones that are in the intraprocedural one ALWAYS fails. This is most likely due to the fact that the
 		 * classes that comprise the graphs do not implement the equals/hashCode contract.
 		 */
-		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg);
+		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,2);
 		cfg.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
