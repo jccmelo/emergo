@@ -99,9 +99,8 @@ public class EmergoResultsView extends MarkerSupportView {
 						message = "Unknown";
 					}
 					
-					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine());
-					EmergoMarker.createMarker(message, auxFeature);
-					//EmergoMarker.createMarker(message, new FeatureDependency().setConfiguration(accString).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()));
+					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(textSelectionFile).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
+					EmergoMarker.createMarker(auxFeature);
 				}
 			}
 		}

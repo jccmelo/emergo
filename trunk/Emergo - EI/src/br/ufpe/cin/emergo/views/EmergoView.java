@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -22,7 +23,6 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.viewers.ColumnPixelData;
 import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TreePath;
@@ -42,14 +42,9 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
-import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
-import org.eclipse.ui.texteditor.AbstractTextEditor;
-import org.eclipse.ui.texteditor.IDocumentProvider;
-import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.ui.views.markers.MarkerField;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.GraphPath;
@@ -108,10 +103,7 @@ public class EmergoView extends ViewPart {
 							} catch (PartInitException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
-							} catch (CoreException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
+							} 
 						}
 					}
 				}
@@ -232,7 +224,13 @@ public class EmergoView extends ViewPart {
 		if (dependencyGraph.vertexSet().size() < 2) {
 			return;
 		}
-
+		
+		/*
+		 * Store a reference to every FeatureDependency so that IMarkers created
+		 * based on them can be checked for duplicates.
+		 */
+		Set<FeatureDependency> featureDependencySet = new HashSet<FeatureDependency>();
+		
 		Set<DependencyNode> vertexSet = dependencyGraph.vertexSet();
 		for (DependencyNode srcNode : vertexSet) {
 
@@ -270,18 +268,29 @@ public class EmergoView extends ViewPart {
 						message = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 						message = document.get(document.getLineOffset(startLine), document.getLineLength(startLine)).toString().trim();
 					} catch (BadLocationException e) {
-						/*
-						 * Something must have went very wrong here, because the line at issue is not a valid location
-						 * in the document.
-						 */
 						e.printStackTrace();
 						message = "Unknown";
 					} catch (CoreException e) {
 						e.printStackTrace();
 						message = "Unknown";
 					}
-					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine());
-					EmergoMarker.createMarker(message, auxFeature);
+					
+					/*
+					 * Do not create an IMarker if an existing FeatureDependency already exists.
+					 */
+					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
+					if (!featureDependencySet.add(auxFeature)){
+						continue;
+					}
+					
+					/*
+					 * If the IMarker could not be created, remove the corresponding
+					 * FeatureDependency from the set.
+					 */
+					IMarker createdMarker = EmergoMarker.createMarker(auxFeature);
+					if (createdMarker == null) {
+						featureDependencySet.remove(auxFeature);
+					}
 				}
 			}
 		}

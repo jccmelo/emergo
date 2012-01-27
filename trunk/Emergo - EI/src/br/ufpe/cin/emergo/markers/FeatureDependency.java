@@ -10,6 +10,7 @@ public class FeatureDependency {
 	private int lineNumber;
 	private ConfigSet configuration;
 	private String feature;
+	private String message;
 
 	public IFile getFile() {
 		return file;
@@ -46,24 +47,29 @@ public class FeatureDependency {
 		this.feature = feature;
 		return this;
 	}
+	
+	public FeatureDependency setMessage(String message) {
+		this.message = message;
+		return this;
+	}
+	
+	public String getMessage() {
+		return message;
+	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((configuration == null) ? 0 : configuration.hashCode());
+		result = prime * result
+				+ ((configuration == null) ? 0 : configuration.hashCode());
 		result = prime * result + ((feature == null) ? 0 : feature.hashCode());
 		result = prime * result + ((file == null) ? 0 : file.hashCode());
 		result = prime * result + lineNumber;
+		result = prime * result + ((message == null) ? 0 : message.hashCode());
 		return result;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -89,6 +95,11 @@ public class FeatureDependency {
 		} else if (!file.equals(other.file))
 			return false;
 		if (lineNumber != other.lineNumber)
+			return false;
+		if (message == null) {
+			if (other.message != null)
+				return false;
+		} else if (!message.equals(other.message))
 			return false;
 		return true;
 	}
