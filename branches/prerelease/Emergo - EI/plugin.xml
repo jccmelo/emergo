@@ -15,37 +15,9 @@
           		<command commandId="br.ufpe.cin.emergo.command.choosefeatures"
                 		 style="push">
           		</command>
-
-          		<command commandId="br.ufpe.cin.emergo.command.chooseLines"
-                		 style="push">
-          		</command>
-
-          		<command commandId="br.ufpe.cin.emergo.command.generateForLines"
-                		 style="push">
-          		</command>
        		</menu>
     	</menuContribution>
  	</extension>
-
-	<extension point="org.eclipse.ui.menus">
-		<menuContribution locationURI="popup:org.eclipse.ui.popup.any?after=additions">
-			<command commandId="br.ufpe.cin.emergo.command.hidefeature" icon="icons/Emergo-Logo-Blue.png">
-				<enabledWhen>
-					<not>
-						<count value="0" />
-					</not>
-				</enabledWhen>
-				<visibleWhen>
-					<with variable="activeMenuSelection">
-						<iterate>
-							<adapt type="org.eclipse.core.resources.IMarker"/>
-						</iterate>
-					</with>
-				</visibleWhen>
-			</command>
-        	<separator name="group.hide" visible="true"/>  
-		</menuContribution>
-	</extension>
 	
 	<!-- New menu to choosing-feature -->
 	
@@ -67,19 +39,7 @@
 		</command>
 	</extension>
 	
-	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.handlers.SelectLinesHandler"
-        		 id="br.ufpe.cin.emergo.command.chooseLines"
-             	 name="Select Line">
-		</command>
-	</extension>
 
-	<extension point="org.eclipse.ui.commands">
-		<command defaultHandler="br.ufpe.cin.emergo.handlers.SelectLinesHandler"
-        		 id="br.ufpe.cin.emergo.command.generateForLines"
-             	 name="Generate Interface from Selected Lines">
-		</command>
-	</extension>
 	
 	<!-- END OF THE choosing-feature -->
 
@@ -100,22 +60,6 @@
 		<category id="br.ufpe.cin.emergo.command.markerview"
 				  name="Markers View Command">
 		</category>
-		<command categoryId="br.ufpe.cin.emergo.command.markerview"
-			description="Hide features except the selected ones" 
-			id="br.ufpe.cin.emergo.command.hidefeature"
-			name="Hide Other Features">
-		</command>
-	</extension>
-
-	<extension point="org.eclipse.ui.handlers">
-		<handler class="br.ufpe.cin.emergo.handlers.HideFeaturesHandler"
-			commandId="br.ufpe.cin.emergo.command.hidefeature" name="Handler for the hidefeature command">
-		</handler>
-		<enabledWhen>
-			<not>
-				<count value="0"/>
-			</not>
-		</enabledWhen>
 	</extension>
 
  	<!-- Shortcuts (keys) -->
@@ -198,15 +142,6 @@
 		</view>
 	</extension>-->
 	
-	<extension point="org.eclipse.ui.views">
-		<view
-			category="br.ufpe.cin.emergo.view"
-	    	class="br.ufpe.cin.emergo.views.MarkedLinesView"
-			icon="icons/Emergo-Logo-Blue.png"
-			id="br.ufpe.cin.emergo.views.MarkedLinesView"
-			name="Selected Lines">
-		</view>
-	</extension>
  
 	<!-- Creating the markers for Emergo results -->
 
