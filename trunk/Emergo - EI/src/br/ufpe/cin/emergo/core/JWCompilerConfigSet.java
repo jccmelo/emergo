@@ -135,4 +135,9 @@ public class JWCompilerConfigSet implements ConfigSet {
 		return this.varSet.equals(IfDefVarSet.getAll());
 	}
 
+	@Override
+	public boolean isEmpty() {
+		return this.varSet.isEmpty();
+	}
+
 }

@@ -157,11 +157,6 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 				}.run();
 			}
 			
-			// Update the tree view.
-			//IViewPart tableView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoResultsView.ID);
-			//EmergoResultsView.adaptTo(dependencyGraph, editor, selectionPosition, textSelectionFile);
-//			((tableView) testView).updateTree();
-
 		} catch (Throwable e) {
 			String message = e.getMessage() == null ? "No message specified" : e.getMessage();
 			InternalErrorDialog internalErrorDialog = new InternalErrorDialog(shell, "An error has occurred", ResourceUtil.getEmergoIcon(), message, e, MessageDialog.ERROR, new String[] { "Ok", "Details" }, 0);

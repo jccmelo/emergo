@@ -9,6 +9,9 @@ import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.EdgeNameProvider;
 import org.jgrapht.ext.StringNameProvider;
 
+import dk.au.cs.java.compiler.cfg.point.Point;
+import dk.au.cs.java.compiler.node.Token;
+
 /**
  * Contains some utility methods for debug.
  * 
@@ -86,6 +89,8 @@ public class DebugUtil {
 	 * directory in $HOME/.emergo/ and write the String representation of
 	 * {@code graph} to it.
 	 * 
+	 * XXX: Use a "Stringifier" for the edges/nodes
+	 * 
 	 * Throws IllegalArgumentException if either {@code graph} or
 	 * {@code fileName} is null
 	 * 
@@ -111,6 +116,8 @@ public class DebugUtil {
 	 * Will try to write the string representation of graph by exporting it to
 	 * {@code file}.
 	 * 
+	 * XXX: Use a "Stringifier" for the edges/nodes
+	 * 
 	 * Throws IllegalArgumentException if either {@code graph} or {@code file}
 	 * is null
 	 * 
@@ -128,6 +135,18 @@ public class DebugUtil {
 
 					@Override
 					public String getVertexName(Object vertex) {
+						if (vertex instanceof Point) {
+							Point point = (Point) vertex;
+							StringBuilder builder = new StringBuilder("\"");
+							builder.append(vertex.toString());
+							builder.append("\\n");
+							builder.append(point.getVarSet());
+							builder.append("\\n(");
+							Token token = point.getToken();
+							builder.append(token.getLine() + "," + token.getPos());
+							builder.append(")\"");
+							return builder.toString();
+						}
 						return "\"" + vertex.toString() + "\"";
 					}
 

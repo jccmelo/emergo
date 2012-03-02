@@ -8,4 +8,6 @@ public interface ConfigSet {
 	public ConfigSet and(ConfigSet other);
 	
 	public boolean isTrueSet();
+
+	boolean isEmpty();
 }

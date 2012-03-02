@@ -228,10 +228,10 @@
 				id="org.eclipse.ui.ide.severityAndDescriptionField"
 				visible="true">
 	     	</markerFieldReference>
-			<markerFieldReference 
+			<!--<markerFieldReference 
 				id="br.ufpe.cin.emergo.markers.configurationColumn"
 				visible="true">
-	     	</markerFieldReference>
+	     	</markerFieldReference>-->
 			<markerFieldReference 
 				id="org.eclipse.ui.ide.locationField"
 				visible="true">
@@ -271,11 +271,11 @@
      		</markerGrouping>
 		</markerContentGenerator>
 
-		<markerField 
+		<!--<markerField 
 			class="br.ufpe.cin.emergo.markers.ConfigurationColumn"
 			id="br.ufpe.cin.emergo.markers.configurationColumn" 
 			name="Configuration">
-		</markerField>
+		</markerField>-->
 
 		<markerField
 			class="br.ufpe.cin.emergo.markers.FeatureColumn"

@@ -1,12 +1,13 @@
 package br.ufpe.cin.emergo.views;
 
 import java.awt.event.MouseEvent;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.filebuffers.FileBuffers;
@@ -20,7 +21,6 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.viewers.ColumnPixelData;
@@ -67,13 +67,15 @@ public class EmergoView extends ViewPart {
 	private static final String MARKER_FIELD = "MARKER_FIELD"; //$NON-NLS-1$
 	
 	TreeViewerColumn tc;
-	TreeViewerColumn tc2;
+	//CONFIGURATIONCOLUMN
+//	TreeViewerColumn tc2;
 	TreeViewerColumn tc3;
 	TreeViewerColumn tc4;
 	TreeViewerColumn tc5;
 	
 	private static String textColumnOne = "Description";
-	private static String textColumnTwo = "Configuration";
+	//CONFIGURATIONCOLUMN
+//	private static String textColumnTwo = "Configuration";
 	private static String textColumnThree = "Location";
 	private static String textColumnFour = "Feature";
 	private static String textColumnFive = "Resource";
@@ -113,8 +115,9 @@ public class EmergoView extends ViewPart {
 		TableLayout layout = new TableLayout();
 		tc = new TreeViewerColumn(viewer, SWT.FULL_SELECTION);
 		tc.getColumn().addSelectionListener(getHeaderListener());
-		tc2 = new TreeViewerColumn(viewer, SWT.NONE);
-		tc2.getColumn().addSelectionListener(getHeaderListener());
+		//CONFIGURATIONCOLUMN
+//		tc2 = new TreeViewerColumn(viewer, SWT.NONE);
+//		tc2.getColumn().addSelectionListener(getHeaderListener());
 		tc3 = new TreeViewerColumn(viewer, SWT.NONE);
 		tc3.getColumn().addSelectionListener(getHeaderListener());
 		tc4 = new TreeViewerColumn(viewer, SWT.NONE);
@@ -123,13 +126,15 @@ public class EmergoView extends ViewPart {
 		tc5.getColumn().addSelectionListener(getHeaderListener());
 		
 		tc.getColumn().setText(EmergoView.textColumnOne);
-		tc2.getColumn().setText(EmergoView.textColumnTwo);
+		//CONFIGURATIONCOLUMN
+//		tc2.getColumn().setText(EmergoView.textColumnTwo);
 		tc3.getColumn().setText(EmergoView.textColumnThree);
 		tc4.getColumn().setText(EmergoView.textColumnFour);
 		tc5.getColumn().setText(EmergoView.textColumnFive);
 		
 		tc.getColumn().setToolTipText("Tooltip one");
-		tc2.getColumn().setToolTipText("Tooltip two");
+		//CONFIGURATIONCOLUMN
+//		tc2.getColumn().setToolTipText("Tooltip two");
 		tc3.getColumn().setToolTipText("Tooltip three");
 		tc4.getColumn().setToolTipText("Tooltip four");
 		tc4.getColumn().setToolTipText("Tooltip five");
@@ -139,6 +144,7 @@ public class EmergoView extends ViewPart {
 		tree.setHeaderVisible(true);
 		tree.layout(true);
 		layout.addColumnData(new ColumnPixelData(100, true));
+		//CONFIGURATIONCOLUMN
 		layout.addColumnData(new ColumnPixelData(100, true));
 		layout.addColumnData(new ColumnPixelData(100, true));
 		layout.addColumnData(new ColumnPixelData(100, true));
@@ -184,6 +190,10 @@ public class EmergoView extends ViewPart {
 			throws CoreException {
 		List<MarkerGrouping> goupins = new ArrayList<MarkerGrouping>();
 		String markerType = sortingType;
+		for (IMarker m : markers){
+			Map<String, Object> attributes = new HashMap(m.getAttributes());
+			System.out.println(attributes);
+		}
 		for (int i = 0; i < markers.length; i++) {
 			boolean wasAdded = false;
 			for (int j = 0; j < goupins.size(); j++) {
@@ -231,18 +241,33 @@ public class EmergoView extends ViewPart {
 		 */
 		Set<FeatureDependency> featureDependencySet = new HashSet<FeatureDependency>();
 		
-		Set<DependencyNode> vertexSet = dependencyGraph.vertexSet();
-		for (DependencyNode srcNode : vertexSet) {
+		Set<DependencyNode> sourceVertexSet = dependencyGraph.vertexSet();
+		for (DependencyNode srcNode : sourceVertexSet) {
 
 			if (!srcNode.isInSelection()) {
 				continue;
 			}
 			KShortestPaths<DependencyNode, ValueContainerEdge<ConfigSet>> shortestPaths = new KShortestPaths<DependencyNode, ValueContainerEdge<ConfigSet>>(dependencyGraph, srcNode, MAX_PATHS);
-			Set<DependencyNode> vertexSet2 = dependencyGraph.vertexSet();
-			for (DependencyNode tgtNode : vertexSet2) {
-				if (tgtNode == srcNode) {
+			Set<DependencyNode> targetVertexSet = dependencyGraph.vertexSet();
+			for (DependencyNode tgtNode : targetVertexSet) {
+				
+				if (tgtNode.equals(srcNode)  || tgtNode.getConfigSet().isTrueSet()) {
 					continue;
 				}
+				
+//				JWCompilerConfigSet srcSet = (JWCompilerConfigSet) srcNode.getConfigSet();
+//				JWCompilerConfigSet tgtSet = (JWCompilerConfigSet) tgtNode.getConfigSet();
+				
+//				if (srcSet.getVarSet().implies(tgtSet.getVarSet()))
+//					continue;
+				
+//				if (
+//						tgtNode.getConfigSet().and(srcNode.getConfigSet()).equals(tgtNode.getConfigSet())
+//						|| 
+//						srcNode.getConfigSet().and(tgtNode.getConfigSet()).equals(srcNode.getConfigSet())
+//				) {
+//					continue;
+//				}
 
 				List<GraphPath<DependencyNode, ValueContainerEdge<ConfigSet>>> paths = shortestPaths.getPaths(tgtNode);
 				// If no paths between the nodes were found, then just move on to the next pair of nodes.
@@ -276,9 +301,9 @@ public class EmergoView extends ViewPart {
 					}
 					
 					/*
-					 * Do not create an IMarker if an existing FeatureDependency already exists.
+					 * Do not create an IMarker if an equivalent FeatureDependency already exists.
 					 */
-					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getConfigSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
+					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getFeatureSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
 					if (!featureDependencySet.add(auxFeature)){
 						continue;
 					}
@@ -339,9 +364,12 @@ public class EmergoView extends ViewPart {
 		Comparator<IMarker> comparable = null;
 		if(column.getText().equals(EmergoView.textColumnOne)){
 			comparable = new MarkerMessageComparable();
-		}else if(column.getText().equals(EmergoView.textColumnTwo)){
+		}
+		//CONFIGURATIONCOLUMN
+		/*else if(column.getText().equals(EmergoView.textColumnTwo)){
 			comparable = new MarkerLineComparable();
-		}if(column.getText().equals(EmergoView.textColumnThree)){
+		}*/
+		if(column.getText().equals(EmergoView.textColumnThree)){
 			comparable = new MarkerTextComparable();
 		}if(column.getText().equals(EmergoView.textColumnFour)){
 			comparable = new MarkerTextComparable();
@@ -373,6 +401,7 @@ public class EmergoView extends ViewPart {
 		viewer.setExpandedElements(expanded);
 		viewer.setExpandedTreePaths(paths);
 	}
+	
 	/**
 	 * Update the direction indicator as column is now the primary column.
 	 * 
@@ -390,22 +419,22 @@ public class EmergoView extends ViewPart {
 			auxiliary=0;
 		}
 	}
-	
-	private class MarkerLineComparable implements Comparator<IMarker>{
-
-		@Override
-		public int compare(IMarker arg0, IMarker arg1) {
-			try {
-				int line0 = Integer.valueOf(arg0.getAttribute(IMarker.LINE_NUMBER).toString());
-				int line1 = Integer.valueOf(arg1.getAttribute(IMarker.LINE_NUMBER).toString());
-				return line0-line1;
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
-			return 0;
-		}
-		
-	}
+	//CONFIGURATIONCOLUMN
+//	private class MarkerLineComparable implements Comparator<IMarker>{
+//
+//		@Override
+//		public int compare(IMarker arg0, IMarker arg1) {
+//			try {
+//				int line0 = Integer.valueOf(arg0.getAttribute(IMarker.LINE_NUMBER).toString());
+//				int line1 = Integer.valueOf(arg1.getAttribute(IMarker.LINE_NUMBER).toString());
+//				return line0-line1;
+//			} catch (CoreException e) {
+//				e.printStackTrace();
+//			}
+//			return 0;
+//		}
+//		
+//	}
 	
 	private class MarkerMessageComparable implements Comparator<IMarker>{
 		@Override
@@ -448,11 +477,13 @@ public class EmergoView extends ViewPart {
 	}
 	
 	public void createAction(){
-		getViewSite().getActionBars().getMenuManager().add(getSortAction(0));  
-		getViewSite().getActionBars().getMenuManager().add(getSortAction(1));  
+		getViewSite().getActionBars().getMenuManager().add(getSortAction(0));
+		//CONFIGURATIONCOLUMN
+//		getViewSite().getActionBars().getMenuManager().add(getSortAction(1));
 		getViewSite().getActionBars().getMenuManager().add(getSortAction(2));  
-		getViewSite().getActionBars().getMenuManager().add(new Separator()); //Add a horizontal separator  
+//		getViewSite().getActionBars().getMenuManager().add(new Separator()); //Add a horizontal separator  
 	}
+	
 	public Action getSortAction(int type){
 		/* Types are: 0 (Default, line text)
 		 * 1 (line number)
@@ -470,7 +501,8 @@ public class EmergoView extends ViewPart {
 				};
 				sortAction.setText("Group by Description");
 				break;
-			case 1:
+				//CONFIGURATIONCOLUMN
+			/*case 1:
 				sortAction =  new Action() {
 					@Override
 					public void run() {
@@ -479,7 +511,7 @@ public class EmergoView extends ViewPart {
 					}
 				};
 				sortAction.setText("Group by Configuration");
-				break;
+				break;*/
 			case 2:
 				sortAction =  new Action() {
 					@Override

@@ -9,4 +9,6 @@ public interface DependencyNode {
 	public boolean isInSelection();
 	
 	public ConfigSet getConfigSet();
+	
+	public ConfigSet getFeatureSet();
 }

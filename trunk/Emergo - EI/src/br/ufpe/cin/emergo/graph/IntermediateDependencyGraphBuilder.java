@@ -1,6 +1,5 @@
 package br.ufpe.cin.emergo.graph;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,6 +20,7 @@ import br.ufpe.cin.emergo.core.DefUseRules;
 import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.util.DebugUtil;
+import dk.au.cs.java.compiler.analysis.AnswerAdapter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.Worklist;
 import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
@@ -34,9 +34,15 @@ import dk.au.cs.java.compiler.cfg.point.Variable;
 import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
+import dk.au.cs.java.compiler.node.AAndIfdefExp;
 import dk.au.cs.java.compiler.node.ACompilationUnit;
+import dk.au.cs.java.compiler.node.AIdIfdefExp;
+import dk.au.cs.java.compiler.node.AIfdefStm;
+import dk.au.cs.java.compiler.node.ANotIfdefExp;
+import dk.au.cs.java.compiler.node.AOrIfdefExp;
 import dk.au.cs.java.compiler.node.AProgram;
 import dk.au.cs.java.compiler.node.Node;
+import dk.au.cs.java.compiler.node.NodeFilter;
 import dk.au.cs.java.compiler.node.Token;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
@@ -62,16 +68,20 @@ public class IntermediateDependencyGraphBuilder {
 	 * @return
 	 */
 	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildIntraproceduralGraph(AProgram node, ControlFlowGraph cfg, final Collection<Point> pointsInUserSelection, Node methodDecl) {
+		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-intra.dot");
+		
 		/*
 		 * Instantiates an analysis with the Def-Use rules.
 		 */
 		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = AnalysisProcessor.processShared(methodDecl, new DefUseRules());
-
+		DebugUtil.writeStringToFile(cfg.toDot(sharedAnalysis), "cfg-defuse-intra.dot");
+		
 		/*
 		 * Create a new feature-sensitive dependency graph based on the results of the analysis. The vertices are Reads
 		 * or Writes instances.
 		 */
 		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
+		DebugUtil.exportToDotFile(dependencyGraph, "dep-intra.dot");
 
 		/*
 		 * The selection boundaries are used here to filter the graph. All nodes that does not contain a path from one
@@ -81,31 +91,26 @@ public class IntermediateDependencyGraphBuilder {
 		 * In this graph, the vertices are DependencyNode instances used as wrappers for Reads and Writes.
 		 */
 		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
+		DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-intra.dot");
 
 		// Produce a more compact graph by collapsing nodes that belongs to the same line number.
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
-
-		// Export dot files for inspection.
-		{
-			DebugUtil.writeStringToFile(cfg.toDot(), "cfg-intra.dot");
-			DebugUtil.exportToDotFile(dependencyGraph, "dep-intra.dot");
-			DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-intra.dot");
-			DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-intra.dot");
-		}
+		DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-intra.dot");
 
 		return collapsedDependencyGraph;
 	}
 
 	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, final SelectionPosition selectionPosition) {
-		final Collection<Point> pointsInUserSelection = new HashSet<Point>();
-
+		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-pre-inter.dot");
 		/*
 		 * XXX it should be much faster to look for the nodes that are in the selection BEFORE creating the
 		 * interprocedural graph. However, when checking for equality on elements that are in the interprocedural graph
 		 * with the ones that are in the intraprocedural one ALWAYS fails. This is most likely due to the fact that the
 		 * classes that comprise the graphs do not implement the equals/hashCode contract.
 		 */
-		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,2);
+		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,100,100);
+		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-inter.dot");
+		final Collection<Point> pointsInUserSelection = new HashSet<Point>();
 		cfg.apply(new PointVisitor<Object, Object>() {
 			@Override
 			protected Object defaultPoint(Point point, Object question) {
@@ -118,23 +123,20 @@ public class IntermediateDependencyGraphBuilder {
 			}
 		});
 
-		SharedSimultaneousAnalysis<LatticeSet<Object>> defUseRules = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
+		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
+		DebugUtil.writeStringToFile(cfg.toDot(sharedAnalysis), "cfg-defuse-inter.dot");
+			
+		Worklist.process(cfg, sharedAnalysis);
 
-		Worklist.process(cfg, defUseRules);
-
-		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, defUseRules);
+		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
+		DebugUtil.exportToDotFile(dependencyGraph, "dep-inter.dot");
 
 		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
+		DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-inter.dot");
 
 		DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> collapsedDependencyGraph = collapseIntoLineNumbers(filteredDependencyGraph);
+		DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-inter.dot");
 
-		// Export dot files for inspection
-		{
-			DebugUtil.writeStringToFile(cfg.toDot(), "cfg-inter.dot");
-			DebugUtil.exportToDotFile(dependencyGraph, "dep-inter.dot");
-			DebugUtil.exportToDotFile(filteredDependencyGraph, "fil-inter.dot");
-			DebugUtil.exportToDotFile(collapsedDependencyGraph, "col-inter.dot");
-		}
 		return collapsedDependencyGraph;
 	}
 
@@ -225,6 +227,7 @@ public class IntermediateDependencyGraphBuilder {
 			}
 			
 			DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>> dependencyNode = new DependencyNodeWrapper<Set<DependencyNodeWrapper<Point>>>(nodes, SelectionPosition.builder().startLine(lineAndFile.line).filePath(lineAndFile.file).build(), keysInSelection.contains(lineAndFile), accumulator);
+			dependencyNode.setFeatureSet(makeFeatureSet(nodes));
 			collapsedGraph.addVertex(dependencyNode);
 			lineNodeMapping.put(lineAndFile, dependencyNode);
 		}
@@ -358,9 +361,8 @@ public class IntermediateDependencyGraphBuilder {
 						LatticeSet<Object> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
 
-						if (key.and(poppedPoint.getVarSet()).isEmpty()) {
+						if (key.and(poppedPoint.getVarSet()).isEmpty())
 							continue;
-						}
 
 						/*
 						 * Iterate over the lattice. In this case, the statement at issue is a Read. This means that the
@@ -454,37 +456,40 @@ public class IntermediateDependencyGraphBuilder {
 	 * sets and the new configuration set.
 	 * 
 	 * @param graph
-	 * @param source
-	 * @param key
-	 * @param target
+	 * @param use
+	 * @param configurationMean
+	 * @param def
 	 */
-	private static void connectVertices(final Graph<Object, ValueContainerEdge<ConfigSet>> graph, final Point source, final IfDefVarSet key, Point target) {
+	private static void connectVertices(final Graph<Object, ValueContainerEdge<ConfigSet>> graph, final Point use, final IfDefVarSet configurationMean, Point def) {
 
 		/*
 		 * Counting on the graph's implementation to check for the existance of the nodes before adding to avoid
 		 * duplicate vertices.
 		 */
-		graph.addVertex(source);
-		graph.addVertex(target);
+		graph.addVertex(use);
+		graph.addVertex(def);
 
 		/*
 		 * To avoid having more than one edge between two given nodes, the information contained in these edges,
 		 * internally an IfDefVarSet instance, is merged by using the OR operator.
 		 */
-		if (graph.containsEdge(target, source)) {
-			ValueContainerEdge<ConfigSet> existingEdge = graph.getEdge(target, source);
+		if (graph.containsEdge(def, use)) {
+			ValueContainerEdge<ConfigSet> existingEdge = graph.getEdge(def, use);
 			ConfigSet existingIfDefVarSet = (ConfigSet) existingEdge.getValue();
-			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(key));
+			ConfigSet or = existingIfDefVarSet.or(new JWCompilerConfigSet(configurationMean));
 
 			// TODO: is checking against the feature model necessary? It won't hurt to leave this here though.
-			if (((JWCompilerConfigSet) or).getVarSet().isValidInFeatureModel()) {
+			if (((JWCompilerConfigSet) or).getVarSet().isValidInFeatureModel())
 				existingEdge.setValue(or);
-			}
 
 		} else {
-			if (key.isValidInFeatureModel()) {
-				ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(target, source);
-				addedEdge.setValue(new JWCompilerConfigSet(key.and(source.getVarSet())));
+			JWCompilerConfigSet sourceConfigAndMean = new JWCompilerConfigSet(configurationMean.and(use.getVarSet()).and(def.getVarSet()));
+			if (sourceConfigAndMean.isEmpty() || !sourceConfigAndMean.getVarSet().isValidInFeatureModel()) {
+				return;
+			}
+			if (configurationMean.isValidInFeatureModel()) {
+				ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(def, use);
+				addedEdge.setValue(sourceConfigAndMean);
 			}
 		}
 	}
@@ -492,5 +497,55 @@ public class IntermediateDependencyGraphBuilder {
 	private static SelectionPosition makePosition(Point p) {
 		ACompilationUnit ancestorCompilationUnit = p.getToken().getAncestor(ACompilationUnit.class);
 		return SelectionPosition.builder().startColumn(p.getToken().getPos()).startLine(p.getToken().getLine()).filePath(ancestorCompilationUnit.getFile().getAbsolutePath()).build();
+	}
+	
+	private static IfDefVarSet makeFeatureSet(Set<DependencyNodeWrapper<Point>> points){
+		for (DependencyNodeWrapper<Point> node : points) {
+			final Point point = node.getData();
+			AIfdefStm ifdefStm = (AIfdefStm) point.getToken().getAncestor(new NodeFilter<Node>() {
+				
+				@Override
+				public boolean accept(Node node) {
+					if (node instanceof AIfdefStm){
+						return true; 
+					}
+					return false;
+				}
+
+				@Override
+				public boolean guard(Node node) {
+					return false;
+				}
+
+			});
+			if (ifdefStm != null) {
+				return ifdefStm.getExp().apply(new AnswerAdapter<IfDefVarSet>() {
+					@Override
+					public IfDefVarSet caseAIdIfdefExp(AIdIfdefExp node) {
+						return IfDefVarSet.getIfDefVarSet(node.getIdentifier().getText());
+					}
+			
+					@Override
+					public IfDefVarSet caseANotIfdefExp(ANotIfdefExp node) {
+						return node.getExp().apply(this).not();
+					}
+			
+					@Override
+					public IfDefVarSet caseAAndIfdefExp(AAndIfdefExp node) {
+						IfDefVarSet left = node.getLeft().apply(this);
+						IfDefVarSet right = node.getRight().apply(this);
+						return left.and(right);
+					}
+			
+					@Override
+					public IfDefVarSet caseAOrIfdefExp(AOrIfdefExp node) {
+						IfDefVarSet left = node.getLeft().apply(this);
+						IfDefVarSet right = node.getRight().apply(this);
+						return left.or(right);
+					}
+				});
+			}
+		}
+		return null;
 	}
 }

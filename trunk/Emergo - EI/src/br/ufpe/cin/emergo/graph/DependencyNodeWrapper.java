@@ -7,10 +7,10 @@ import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 
 /**
  * This is a simple wrapper class meant to be used as nodes in the dependency graph. It is capable of holding an
- * arbitrary and parametric instance, aswell as position information regarding the parametric instance. This should be
+ * arbitrary and parametric instance, as well as position information regarding the parametric instance. This should be
  * enough for some very basic abstractions that the dependency graph might need for now.
  * 
- * @author Társis Toledo
+ * @author Tï¿½rsis Toledo
  * 
  * @param <T>
  */
@@ -19,6 +19,7 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 	private final SelectionPosition position;
 	private final boolean isInSelection;
 	private final IfDefVarSet config;
+	private IfDefVarSet featureSet;
 
 	public DependencyNodeWrapper(T data, SelectionPosition position, boolean isInSelection, IfDefVarSet config) {
 		this.data = data;
@@ -117,6 +118,16 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 		} else if (!position.equals(other.position))
 			return false;
 		return true;
+	}
+	
+	public DependencyNodeWrapper<T> setFeatureSet(IfDefVarSet varSet){
+		this.featureSet = varSet;
+		return this;
+	}
+
+	@Override
+	public ConfigSet getFeatureSet() {
+		return new JWCompilerConfigSet(featureSet);
 	}
 
 }
