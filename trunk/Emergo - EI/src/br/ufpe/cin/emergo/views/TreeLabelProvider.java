@@ -14,12 +14,20 @@ public class TreeLabelProvider extends LabelProvider {
 	}
 
 	public String getText(Object element) {
-		if (columnCount == 5) {
+		/* TODO: the parametrization of this amount has to be made
+		*  It should receive the amount of table columns that exist in the tableView.
+		*  Maybe a global constant should solve this problem
+		*/
+		if (columnCount == 4) { // antes tinha um 5 aqui
 			columnCount = 0;
 		}
 		columnCount++;
 		if (element instanceof IMarker && ((IMarker) element).exists()) { // if the marker doesn't exist, it does nothing at all.
 			try {
+				/*	The switch depends on the amount of columns from the TableView (Not yet parametrizated)
+				* 	TODO: The switch case should work with a mapping that contains the right
+				* 	amount of columns and the what is written in each column.
+				*/
 				switch (columnCount) {
 				case 1:
 					if (compareGrouping.getName().charAt(0) != '('
@@ -27,16 +35,16 @@ public class TreeLabelProvider extends LabelProvider {
 						return "";
 					}
 					return ((IMarker) element).getAttribute(IMarker.MESSAGE).toString();
-				case 2:
-					return ((IMarker) element).getAttribute(IMarker.TEXT).toString();
-				case 3:
+				//case 2:
+				//	return ((IMarker) element).getAttribute(IMarker.TEXT).toString();
+				case 2://case 3:
 					return ((IMarker) element).getAttribute(IMarker.LINE_NUMBER).toString();
-				case 4:
+				case 3://case 4:
 					String message = ((IMarker) element).getAttribute(IMarker.TASK).toString();
 					if (message.equals("true"))
 						message = "None";
 					return message;
-				case 5:
+				case 4: //case 5:
 					return ((IMarker) element).getResource().getName().toString();
 				}
 			} catch (CoreException e) {
