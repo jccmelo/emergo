@@ -188,29 +188,25 @@ public class EmergoView extends ViewPart {
 
 	private List<MarkerGrouping> generateMarkerList(IMarker[] markers)
 			throws CoreException {
-		List<MarkerGrouping> goupins = new ArrayList<MarkerGrouping>();
+		List<MarkerGrouping> groupings = new ArrayList<MarkerGrouping>();
 		String markerType = sortingType;
-		for (IMarker m : markers){
-			Map<String, Object> attributes = new HashMap(m.getAttributes());
-			System.out.println(attributes);
-		}
 		for (int i = 0; i < markers.length; i++) {
 			boolean wasAdded = false;
-			for (int j = 0; j < goupins.size(); j++) {
-				if(markers[i].getAttribute(markerType).toString().equals(goupins.get(j).getName())){
-						goupins.get(j).addChildren(markers[i]);
+			for (int j = 0; j < groupings.size(); j++) {
+				if(markers[i].getAttribute(markerType).toString().equals(groupings.get(j).getName())){
+						groupings.get(j).addChildren(markers[i]);
 						wasAdded = true;
 				}
 			}
 			if(!wasAdded){
 				MarkerGrouping mkg = new MarkerGrouping(markers[i].getAttribute(markerType).toString());
 				mkg.addChildren(markers[i]);
-				goupins.add(mkg);
+				groupings.add(mkg);
 			}
 			markerList.add(markers[i]);
 		}
-		Collections.sort(goupins, new MarkerGroupingComparable());
-		return goupins;
+		Collections.sort(groupings, new MarkerGroupingComparable());
+		return groupings;
 	}
 	
 	public void clearView() throws CoreException {
@@ -254,20 +250,6 @@ public class EmergoView extends ViewPart {
 				if (tgtNode.equals(srcNode)  || tgtNode.getConfigSet().isTrueSet()) {
 					continue;
 				}
-				
-//				JWCompilerConfigSet srcSet = (JWCompilerConfigSet) srcNode.getConfigSet();
-//				JWCompilerConfigSet tgtSet = (JWCompilerConfigSet) tgtNode.getConfigSet();
-				
-//				if (srcSet.getVarSet().implies(tgtSet.getVarSet()))
-//					continue;
-				
-//				if (
-//						tgtNode.getConfigSet().and(srcNode.getConfigSet()).equals(tgtNode.getConfigSet())
-//						|| 
-//						srcNode.getConfigSet().and(tgtNode.getConfigSet()).equals(srcNode.getConfigSet())
-//				) {
-//					continue;
-//				}
 
 				List<GraphPath<DependencyNode, ValueContainerEdge<ConfigSet>>> paths = shortestPaths.getPaths(tgtNode);
 				// If no paths between the nodes were found, then just move on to the next pair of nodes.
@@ -303,7 +285,7 @@ public class EmergoView extends ViewPart {
 					/*
 					 * Do not create an IMarker if an equivalent FeatureDependency already exists.
 					 */
-					FeatureDependency auxFeature = new FeatureDependency().setConfiguration(configAccumulator).setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getFeatureSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
+					FeatureDependency auxFeature = new FeatureDependency().setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getFeatureSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
 					if (!featureDependencySet.add(auxFeature)){
 						continue;
 					}

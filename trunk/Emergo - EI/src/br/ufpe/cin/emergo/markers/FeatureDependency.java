@@ -1,5 +1,6 @@
 package br.ufpe.cin.emergo.markers;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.eclipse.core.resources.IFile;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
@@ -11,6 +12,11 @@ public class FeatureDependency {
 	private ConfigSet configuration;
 	private String feature;
 	private String message;
+	
+	@Override
+	public String toString() {
+		 return ToStringBuilder.reflectionToString(this);
+	}
 
 	public IFile getFile() {
 		return file;
