@@ -48,6 +48,8 @@ public class EmergoPropertyPage extends PropertyPage implements
 
 		Label interproceduralDepthLabel = new Label(myComposite, SWT.NONE);
 		interproceduralDepthLabel.setText("Choose the maximum depth for interprocedural analysis");
+		
+		//TODO: disable this field when interprocedural is not active.
 		depthSpinner = new Spinner(parent, SWT.NONE);
 		depthSpinner.setIncrement(1);
 		depthSpinner.setMinimum(1);
