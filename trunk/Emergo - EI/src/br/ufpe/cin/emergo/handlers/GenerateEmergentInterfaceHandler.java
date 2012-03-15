@@ -45,13 +45,11 @@ import br.ufpe.cin.emergo.views.EmergoView;
 /**
  * Handler for the br.ufal.cideei.commands.DoCompute extension command.
  * 
- * @author T�rsis
+ * @author Társis Toledo
  * 
  */
 public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 
-	private static boolean interprocedural = true;
-	
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		
 		ISelection selection = HandlerUtil.getCurrentSelectionChecked(event);
@@ -88,12 +86,8 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			 */
 			IJavaProject javaProject = JavaCore.create(project);
 
-			if (javaProject.getResource().getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY) != null) {
-				interprocedural = javaProject.getResource().getPersistentProperty(
-						SystemProperties.INTERPROCEDURAL_PROPKEY).toString().equals("true");
-			} else {
-				interprocedural = false;
-			}
+			options.put("interprocedural", SystemProperties.getInterprocedural(javaProject.getResource()));
+			options.put("interprocedural-depth", SystemProperties.getInterproceduralDepth(javaProject.getResource()));
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
@@ -122,7 +116,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			String selectionFileString = textSelectionFile.getLocation().toOSString();
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 
-			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options, interprocedural);
+			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
 
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.

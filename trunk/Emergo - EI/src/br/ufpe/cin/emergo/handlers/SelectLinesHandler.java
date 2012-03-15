@@ -43,6 +43,7 @@ import br.ufpe.cin.emergo.views.LineOfCode;
 import br.ufpe.cin.emergo.views.MarkedLinesView;
 import br.ufpe.cin.emergo.views.EmergoView;
 
+//XXX This class needs a complete revamp ASAP.
 public class SelectLinesHandler extends AbstractHandler {
 
 	public static String chooseID = "br.ufpe.cin.emergo.command.chooseLines";
@@ -219,14 +220,15 @@ public class SelectLinesHandler extends AbstractHandler {
 									textSelection.getOffset()
 											+ textSelection.getLength()))
 					.filePath(selectionFileString).build();
-			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder
-					.findFromSelection(DependencyFinderID.JWCOMPILER,
-							selectionPosition, lineOptions,
-							interprocedural);
-			dependencyGraphs.add(dependencyGraph);
-
-			updateViews(event, editor, linesOffset.get(i)
-					.getTextSelectionFile(), dependencyGraph);
+			throw new UnsupportedOperationException("Not yet (re)implemented)");
+//			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder
+//					.findFromSelection(DependencyFinderID.JWCOMPILER,
+//							selectionPosition, lineOptions,
+//							interprocedural);
+//			dependencyGraphs.add(dependencyGraph);
+//
+//			updateViews(event, editor, linesOffset.get(i)
+//					.getTextSelectionFile(), dependencyGraph);
 		}
 		return dependencyGraphs;
 	}

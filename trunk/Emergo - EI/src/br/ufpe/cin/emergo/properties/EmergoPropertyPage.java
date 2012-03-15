@@ -1,7 +1,6 @@
 package br.ufpe.cin.emergo.properties;
 
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -9,13 +8,16 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.ui.IWorkbenchPropertyPage;
 import org.eclipse.ui.dialogs.PropertyPage;
 
-public class EmergoPropertyPage extends PropertyPage implements IWorkbenchPropertyPage {
+public class EmergoPropertyPage extends PropertyPage implements
+		IWorkbenchPropertyPage {
 
 	private Button radioInterprocedural;
 	private Button radioIntraprocedural;
+	private Spinner depthSpinner;
 
 	public EmergoPropertyPage() {
 		super();
@@ -32,51 +34,60 @@ public class EmergoPropertyPage extends PropertyPage implements IWorkbenchProper
 		mylayout.marginWidth = 1;
 		myComposite.setLayout(mylayout);
 
-		Label mylabel = new Label(myComposite, SWT.NONE);
-		mylabel.setLayoutData(new GridData());
-		mylabel.setText("Choose the type of procedure");
+		Label procedureTypeLabel = new Label(myComposite, SWT.NONE);
+		procedureTypeLabel.setLayoutData(new GridData());
+		procedureTypeLabel.setText("Choose the type of analysis");
 		radioInterprocedural = new Button(myComposite, SWT.RADIO);
 		radioInterprocedural.setText("Interprocedural");
-		radioInterprocedural.setSelection(getInterprocedural().equals("true"));
+		boolean interprocedural = getInterprocedural();
+		radioInterprocedural.setSelection(interprocedural);
 
 		radioIntraprocedural = new Button(myComposite, SWT.RADIO);
 		radioIntraprocedural.setText("Intraprocedural");
-		radioIntraprocedural.setSelection(getInterprocedural().equals("false"));
+		radioIntraprocedural.setSelection(!interprocedural);
+
+		Label interproceduralDepthLabel = new Label(myComposite, SWT.NONE);
+		interproceduralDepthLabel.setText("Choose the maximum depth for interprocedural analysis");
+		depthSpinner = new Spinner(parent, SWT.NONE);
+		depthSpinner.setIncrement(1);
+		depthSpinner.setMinimum(1);
+		depthSpinner.setMaximum(Integer.MAX_VALUE);
+		depthSpinner.setSelection(getInterproceduralDepth());
 
 		return myComposite;
 	}
 
-	protected String getInterprocedural() {
-		IResource resource = (IResource) getElement().getAdapter(
-				IResource.class);
-		try {
-			String value = resource
-					.getPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY);
-			if (value == null)
-				return "" + SystemProperties.getDefaultInterprocedure();
-			return value;
-		} catch (CoreException e) {
-			return e.getMessage();
-		}
+	protected boolean getInterprocedural() {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		return SystemProperties.getInterprocedural(resource);
 	}
 
-	protected void setInterprocedural(String interprocedural) {
-		IResource resource = (IResource) getElement().getAdapter(
-				IResource.class);
-		String value = interprocedural;
-		if (value.equals(SystemProperties.getDefaultInterprocedure()))
-			value = null;
-		try {
-			resource.setPersistentProperty(
-					SystemProperties.INTERPROCEDURAL_PROPKEY, value);
-		} catch (CoreException e) {
-			// doesnt return anything
-		}
+	protected void setInterprocedural(boolean interprocedural) {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		SystemProperties.setInterprocedural(resource, interprocedural);
 	}
 
+
+	protected void setInterproceduralDepth(Integer depth) {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		SystemProperties.setInterproceduralDepth(resource, depth);
+	}
+	
+	protected int getInterproceduralDepth() {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		return SystemProperties.getInterproceduralDepth(resource);
+	}
+	
 	public boolean performOk() {
-		setInterprocedural("" + radioInterprocedural.getSelection());
+		setInterprocedural(radioInterprocedural.getSelection());
+		setInterproceduralDepth(Integer.parseInt(depthSpinner.getText()));
 		return super.performOk();
+	}
+	
+	@Override
+	protected void performDefaults() {
+		super.performDefaults();
+		//XXX: Implement fall back to default values
 	}
 
 }

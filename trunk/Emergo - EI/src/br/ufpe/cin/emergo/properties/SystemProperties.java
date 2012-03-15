@@ -8,29 +8,51 @@ import br.ufpe.cin.emergo.activator.Activator;
 
 public class SystemProperties {
 
-	private static boolean DEFAULT_INTERPROCEDURAL = true;
-	public static QualifiedName INTERPROCEDURAL_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interprocedural");
-	public static QualifiedName CHOOSEN_FEATURES = new QualifiedName(Activator.PLUGIN_ID, "features");
-    
-	public static void setDefaultInterprocedure(String defaultInterprocedure) {
-		Activator.getDefault().getPreferenceStore().setValue("" + DEFAULT_INTERPROCEDURAL,defaultInterprocedure);
-	}
-
-	public static String getDefaultInterprocedure() {
-		return Activator.getDefault().getPreferenceStore().getString("" + DEFAULT_INTERPROCEDURAL);
-	}
+	public static final QualifiedName INTERPROCEDURALDEPTH_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interproceduraldepth");
+	private static final int DEFAULT_INTERPROCEDURALDEPTH = 1;
 	
-	public static String getInterprocedure(IResource resource){
+	public static final QualifiedName INTERPROCEDURAL_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interprocedural");
+	private static final boolean DEFAULT_INTERPROCEDURAL = true;
+	
+	public static final QualifiedName CHOOSEN_FEATURES = new QualifiedName(Activator.PLUGIN_ID, "features");
+	
+	public static boolean getInterprocedural(IResource resource){
 		try {
 			String value = resource.getPersistentProperty(INTERPROCEDURAL_PROPKEY);
 			if (value == null){
-				return getDefaultInterprocedure();
+				return DEFAULT_INTERPROCEDURAL;
 			}
-			return value;
+			return Boolean.parseBoolean(value);
 		} catch (CoreException e) {
-			// TODO Auto-generated catch block
-			return e.getMessage();
+			return DEFAULT_INTERPROCEDURAL;
+		}
+	}
+	
+	public static int getInterproceduralDepth(IResource resource) {
+		try {
+			String value = resource.getPersistentProperty(INTERPROCEDURALDEPTH_PROPKEY);
+			if (value == null){
+				return DEFAULT_INTERPROCEDURALDEPTH;
+			}
+			return Integer.parseInt(value);
+		} catch (CoreException e) {
+			return DEFAULT_INTERPROCEDURALDEPTH	;
 		}
 	}
 
+	public static void setInterprocedural(IResource resource, boolean interprocedural) {
+		try {
+			resource.setPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY, "" + interprocedural);
+		} catch (CoreException e) {
+			//XXX
+		}	
+	}
+	
+	public static void setInterproceduralDepth(IResource resource, int depth) {
+		try {
+			resource.setPersistentProperty(SystemProperties.INTERPROCEDURALDEPTH_PROPKEY, "" + depth);
+		} catch (CoreException e) {
+			//XXX
+		}	
+	}
 }

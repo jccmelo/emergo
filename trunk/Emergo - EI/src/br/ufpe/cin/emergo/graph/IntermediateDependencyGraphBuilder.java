@@ -100,7 +100,7 @@ public class IntermediateDependencyGraphBuilder {
 		return collapsedDependencyGraph;
 	}
 
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, final SelectionPosition selectionPosition) {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, int depth, final SelectionPosition selectionPosition) {
 		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-pre-inter.dot");
 		/*
 		 * XXX it should be much faster to look for the nodes that are in the selection BEFORE creating the
@@ -108,7 +108,7 @@ public class IntermediateDependencyGraphBuilder {
 		 * with the ones that are in the intraprocedural one ALWAYS fails. This is most likely due to the fact that the
 		 * classes that comprise the graphs do not implement the equals/hashCode contract.
 		 */
-		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,100,100);
+		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,depth,Integer.MAX_VALUE);
 		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-inter.dot");
 		final Collection<Point> pointsInUserSelection = new HashSet<Point>();
 		cfg.apply(new PointVisitor<Object, Object>() {
@@ -171,7 +171,7 @@ public class IntermediateDependencyGraphBuilder {
 			
 			@Override
 			public boolean equals(Object obj) {
-				if (obj instanceof LineAndFile == false) {  
+				if (!(obj instanceof LineAndFile)) {  
 			        return false;  
 			    }  
 			    if (this == obj) {  

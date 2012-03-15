@@ -46,10 +46,10 @@ public class DependencyFinder {
 	 * @return
 	 * @throws EmergoException
 	 */
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options, boolean interprocedural) throws EmergoException {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> findFromSelection(DependencyFinderID finder, SelectionPosition selectionPosition, Map<Object, Object> options) throws EmergoException {
 		switch (finder) {
 		case JWCOMPILER:
-			return JWCompilerDependencyFinder.generateDependencyGraph(selectionPosition, options, interprocedural);
+			return JWCompilerDependencyFinder.generateDependencyGraph(selectionPosition, options);
 		case SOOT:
 		default:
 			throw new UnsupportedOperationException("Depency finder unavailable");

@@ -162,7 +162,7 @@ public class JWCompilerDependencyFinder {
 
 	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateDependencyGraph(
 			final SelectionPosition selectionPosition,
-			Map<Object, Object> options, boolean interprocedural) throws EmergoException {
+			Map<Object, Object> options) throws EmergoException {
 		// Resets compiler status.
 		Main.resetCompiler();
 		useDefWeb = null;
@@ -376,9 +376,11 @@ public class JWCompilerDependencyFinder {
 		 * Now that there is enough information about the selection and the CFGs
 		 * have been generated, create the intermediate dependency graph.
 		 */
+		boolean interprocedural = (Boolean) options.get("interprocedural");
 		if (interprocedural) {
+			int depth = (Integer) options.get("interprocedural-depth");
 			useDefWeb = IntermediateDependencyGraphBuilder
-					.buildInterproceduralGraph(rootNode, cfg, selectionPosition);
+					.buildInterproceduralGraph(rootNode, cfg, depth, selectionPosition);
 		} else {
 			useDefWeb = IntermediateDependencyGraphBuilder
 					.buildIntraproceduralGraph(rootNode, cfg,
