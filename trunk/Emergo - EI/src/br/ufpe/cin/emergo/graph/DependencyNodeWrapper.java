@@ -25,6 +25,8 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 		this.data = data;
 		this.position = position;
 		this.isInSelection = isInSelection;
+		if (config == null)
+			throw new IllegalArgumentException("Argument config cannot be null ");
 		this.config = config;
 	}
 
@@ -120,8 +122,11 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 		return true;
 	}
 	
-	public DependencyNodeWrapper<T> setFeatureSet(IfDefVarSet varSet){
-		this.featureSet = varSet;
+	public DependencyNodeWrapper<T> setFeatureSet(IfDefVarSet featureSet){
+		if (featureSet == null)
+			throw new IllegalArgumentException("Argument featureSet cannot be null ");
+		
+		this.featureSet = featureSet;
 		return this;
 	}
 

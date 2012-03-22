@@ -40,6 +40,8 @@ public class JWCompilerConfigSet implements ConfigSet {
 	 * @param varSet
 	 */
 	public JWCompilerConfigSet(IfDefVarSet varSet) {
+		if (varSet == null)
+			throw new IllegalArgumentException("Argument varSet cannot be null ");
 		this.varSet = varSet;
 	}
 

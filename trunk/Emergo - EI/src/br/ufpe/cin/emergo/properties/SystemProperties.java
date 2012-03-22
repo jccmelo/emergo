@@ -8,8 +8,11 @@ import br.ufpe.cin.emergo.activator.Activator;
 
 public class SystemProperties {
 
-	public static final QualifiedName INTERPROCEDURALDEPTH_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interproceduraldepth");
-	private static final int DEFAULT_INTERPROCEDURALDEPTH = 1;
+	public static final QualifiedName INTERPROCEDURAL_MAXDEPTH_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interprocedural.maxdepth");
+	private static final int DEFAULT_INTERPROCEDURAL_MAXDEPTH = 1;
+	
+	public static final QualifiedName INTERPROCEDURAL_MAXINLINE_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interprocedural.maxinline");
+	private static final int DEFAULT_INTERPROCEDURAL_MAXINLINE = -1;
 	
 	public static final QualifiedName INTERPROCEDURAL_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "interprocedural");
 	private static final boolean DEFAULT_INTERPROCEDURAL = true;
@@ -24,19 +27,8 @@ public class SystemProperties {
 			}
 			return Boolean.parseBoolean(value);
 		} catch (CoreException e) {
+			e.printStackTrace();
 			return DEFAULT_INTERPROCEDURAL;
-		}
-	}
-	
-	public static int getInterproceduralDepth(IResource resource) {
-		try {
-			String value = resource.getPersistentProperty(INTERPROCEDURALDEPTH_PROPKEY);
-			if (value == null){
-				return DEFAULT_INTERPROCEDURALDEPTH;
-			}
-			return Integer.parseInt(value);
-		} catch (CoreException e) {
-			return DEFAULT_INTERPROCEDURALDEPTH	;
 		}
 	}
 
@@ -44,14 +36,51 @@ public class SystemProperties {
 		try {
 			resource.setPersistentProperty(SystemProperties.INTERPROCEDURAL_PROPKEY, "" + interprocedural);
 		} catch (CoreException e) {
+			e.printStackTrace();
 			//XXX
 		}	
 	}
 	
+	public static int getInterproceduralDepth(IResource resource) {
+		try {
+			String value = resource.getPersistentProperty(INTERPROCEDURAL_MAXDEPTH_PROPKEY);
+			if (value == null){
+				return DEFAULT_INTERPROCEDURAL_MAXDEPTH;
+			}
+			return Integer.parseInt(value);
+		} catch (CoreException e) {
+			e.printStackTrace();
+			return DEFAULT_INTERPROCEDURAL_MAXDEPTH	;
+		}
+	}
+	
 	public static void setInterproceduralDepth(IResource resource, int depth) {
 		try {
-			resource.setPersistentProperty(SystemProperties.INTERPROCEDURALDEPTH_PROPKEY, "" + depth);
+			resource.setPersistentProperty(SystemProperties.INTERPROCEDURAL_MAXDEPTH_PROPKEY, "" + depth);
 		} catch (CoreException e) {
+			e.printStackTrace();
+			//XXX
+		}	
+	}
+	
+	public static int getInterproceduralInline(IResource resource) {
+		try {
+			String value = resource.getPersistentProperty(INTERPROCEDURAL_MAXINLINE_PROPKEY);
+			if (value == null){
+				return DEFAULT_INTERPROCEDURAL_MAXINLINE;
+			}
+			return Integer.parseInt(value);
+		} catch (CoreException e) {
+			e.printStackTrace();
+			return DEFAULT_INTERPROCEDURAL_MAXINLINE	;
+		}
+	}
+	
+	public static void setInterproceduralInline(IResource resource, int depth) {
+		try {
+			resource.setPersistentProperty(SystemProperties.INTERPROCEDURAL_MAXINLINE_PROPKEY, "" + depth);
+		} catch (CoreException e) {
+			e.printStackTrace();
 			//XXX
 		}	
 	}

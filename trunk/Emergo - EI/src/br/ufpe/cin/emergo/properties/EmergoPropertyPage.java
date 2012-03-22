@@ -18,6 +18,7 @@ public class EmergoPropertyPage extends PropertyPage implements
 	private Button radioInterprocedural;
 	private Button radioIntraprocedural;
 	private Spinner depthSpinner;
+	private Spinner inlineSpinner;
 
 	public EmergoPropertyPage() {
 		super();
@@ -47,14 +48,27 @@ public class EmergoPropertyPage extends PropertyPage implements
 		radioIntraprocedural.setSelection(!interprocedural);
 
 		Label interproceduralDepthLabel = new Label(myComposite, SWT.NONE);
-		interproceduralDepthLabel.setText("Choose the maximum depth for interprocedural analysis");
+		interproceduralDepthLabel.setText("Choose the maximum depth for interprocedural analysis.");
+		interproceduralDepthLabel.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		
 		//TODO: disable this field when interprocedural is not active.
-		depthSpinner = new Spinner(parent, SWT.NONE);
+		depthSpinner = new Spinner(myComposite, SWT.NONE);
 		depthSpinner.setIncrement(1);
-		depthSpinner.setMinimum(1);
+		depthSpinner.setMinimum(0);
 		depthSpinner.setMaximum(Integer.MAX_VALUE);
 		depthSpinner.setSelection(getInterproceduralDepth());
+		depthSpinner.setLayoutData(new GridData());
+		
+		Label interproceduralInlineLabel = new Label(myComposite, SWT.NONE);
+		interproceduralInlineLabel.setText("Choose the maximum inlining for interprocedural analysis.\n-1 for no limit;\n0 for mono-variant; and \n> 0 for poly-variant analyses.");
+		interproceduralInlineLabel.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		
+		inlineSpinner = new Spinner(myComposite, SWT.NONE);
+		inlineSpinner.setIncrement(1);
+		inlineSpinner.setMinimum(-1);
+		inlineSpinner.setMaximum(Integer.MAX_VALUE);
+		inlineSpinner.setSelection(getInterproceduralInline());
+		inlineSpinner.setLayoutData(new GridData());
 
 		return myComposite;
 	}
@@ -69,20 +83,31 @@ public class EmergoPropertyPage extends PropertyPage implements
 		SystemProperties.setInterprocedural(resource, interprocedural);
 	}
 
+	
+	protected int getInterproceduralDepth() {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		return SystemProperties.getInterproceduralDepth(resource);
+	}
 
 	protected void setInterproceduralDepth(Integer depth) {
 		IResource resource = (IResource) getElement().getAdapter(IResource.class);
 		SystemProperties.setInterproceduralDepth(resource, depth);
 	}
 	
-	protected int getInterproceduralDepth() {
+	protected int getInterproceduralInline() {
 		IResource resource = (IResource) getElement().getAdapter(IResource.class);
-		return SystemProperties.getInterproceduralDepth(resource);
+		return SystemProperties.getInterproceduralInline(resource);
+	}
+
+	protected void setInterproceduralInline(Integer depth) {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		SystemProperties.setInterproceduralInline(resource, depth);
 	}
 	
 	public boolean performOk() {
 		setInterprocedural(radioInterprocedural.getSelection());
 		setInterproceduralDepth(Integer.parseInt(depthSpinner.getText()));
+		setInterproceduralInline(Integer.parseInt(inlineSpinner.getText()));
 		return super.performOk();
 	}
 	

@@ -40,5 +40,6 @@ Bundle-ClassPath: .,
  lib/xact.jar,
  lib/jgrapht-jdk1.6.jar,
  lib/commons-collections-3.2.1.jar,
- lib/commons-lang3-3.0.1.jar
+ lib/commons-lang3-3.0.1.jar,
+ lib/measurement.jar
 Import-Package: org.eclipse.core.filesystem

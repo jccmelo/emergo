@@ -23,7 +23,6 @@ import br.ufpe.cin.emergo.util.DebugUtil;
 import dk.au.cs.java.compiler.analysis.AnswerAdapter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.Worklist;
-import dk.au.cs.java.compiler.cfg.analysis.AnalysisProcessor;
 import dk.au.cs.java.compiler.cfg.analysis.InterproceduralAnalysis;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
 import dk.au.cs.java.compiler.cfg.edge.Edge;
@@ -73,7 +72,10 @@ public class IntermediateDependencyGraphBuilder {
 		/*
 		 * Instantiates an analysis with the Def-Use rules.
 		 */
-		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = AnalysisProcessor.processShared(methodDecl, new DefUseRules());
+		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
+		
+		Worklist.process(cfg, sharedAnalysis);
+		
 		DebugUtil.writeStringToFile(cfg.toDot(sharedAnalysis), "cfg-defuse-intra.dot");
 		
 		/*
@@ -100,7 +102,7 @@ public class IntermediateDependencyGraphBuilder {
 		return collapsedDependencyGraph;
 	}
 
-	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, int depth, final SelectionPosition selectionPosition) {
+	public static DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> buildInterproceduralGraph(AProgram node, ControlFlowGraph cfg, int depth, int inline, final SelectionPosition selectionPosition) {
 		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-pre-inter.dot");
 		/*
 		 * XXX it should be much faster to look for the nodes that are in the selection BEFORE creating the
@@ -108,7 +110,7 @@ public class IntermediateDependencyGraphBuilder {
 		 * with the ones that are in the intraprocedural one ALWAYS fails. This is most likely due to the fact that the
 		 * classes that comprise the graphs do not implement the equals/hashCode contract.
 		 */
-		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,depth,Integer.MAX_VALUE);
+		cfg = InterproceduralAnalysis.createInterproceduralControlFlowGraph(cfg,depth,inline);
 		DebugUtil.writeStringToFile(cfg.toDot(), "cfg-inter.dot");
 		final Collection<Point> pointsInUserSelection = new HashSet<Point>();
 		cfg.apply(new PointVisitor<Object, Object>() {
@@ -546,6 +548,6 @@ public class IntermediateDependencyGraphBuilder {
 				});
 			}
 		}
-		return null;
+		return IfDefVarSet.getAll();
 	}
 }

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -242,6 +243,9 @@ public class JWCompilerDependencyFinder {
 		// XXX I don't know what this is for yet...
 		rootNode.setOptionalInvariant(true);
 
+		Set<IfDefVarSet> computableFeatureSets = Collections.singleton(IfDefVarSet.getAll());
+		IfDefVarSet featureSet = computableFeatureSets.iterator().next();
+		
 		/*
 		 * Apply compiler phases to the root node.
 		 * 
@@ -253,7 +257,7 @@ public class JWCompilerDependencyFinder {
 			Errors.check();
 			rootNode.apply(new WeedingCheck());
 			Errors.check();
-			rootNode.apply(new IfDefBDDAssigner());
+			rootNode.apply(new IfDefBDDAssigner(featureSet));
 			Errors.check();
 			rootNode.apply(new Environments());
 			Errors.check();
@@ -273,7 +277,7 @@ public class JWCompilerDependencyFinder {
 			Errors.check();
 			rootNode.apply(new TargetResolver());
 			Errors.check();
-			rootNode.apply(new Reachability());
+			rootNode.apply(new Reachability(featureSet));
 			Errors.check();
 
 			// Un/Comment line below to en/disable constant folding
@@ -379,8 +383,9 @@ public class JWCompilerDependencyFinder {
 		boolean interprocedural = (Boolean) options.get("interprocedural");
 		if (interprocedural) {
 			int depth = (Integer) options.get("interprocedural-depth");
+			int inline = (Integer) options.get("interprocedural-inline");
 			useDefWeb = IntermediateDependencyGraphBuilder
-					.buildInterproceduralGraph(rootNode, cfg, depth, selectionPosition);
+					.buildInterproceduralGraph(rootNode, cfg, depth, inline, selectionPosition);
 		} else {
 			useDefWeb = IntermediateDependencyGraphBuilder
 					.buildIntraproceduralGraph(rootNode, cfg,

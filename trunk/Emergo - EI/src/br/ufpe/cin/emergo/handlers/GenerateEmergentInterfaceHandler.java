@@ -88,6 +88,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 
 			options.put("interprocedural", SystemProperties.getInterprocedural(javaProject.getResource()));
 			options.put("interprocedural-depth", SystemProperties.getInterproceduralDepth(javaProject.getResource()));
+			options.put("interprocedural-inline", SystemProperties.getInterproceduralInline(javaProject.getResource()));
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
