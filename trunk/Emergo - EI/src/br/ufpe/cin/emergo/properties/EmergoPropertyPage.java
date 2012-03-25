@@ -60,7 +60,7 @@ public class EmergoPropertyPage extends PropertyPage implements
 		depthSpinner.setLayoutData(new GridData());
 		
 		Label interproceduralInlineLabel = new Label(myComposite, SWT.NONE);
-		interproceduralInlineLabel.setText("Choose the maximum inlining for interprocedural analysis.\n-1 for no limit;\n0 for mono-variant; and \n> 0 for poly-variant analyses.");
+		interproceduralInlineLabel.setText("Choose the maximum inlining for interprocedural analysis.\n-1 for no limit;\n0 for mono-variant; and \n>0 for poly-variant analyses.");
 		interproceduralInlineLabel.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		
 		inlineSpinner = new Spinner(myComposite, SWT.NONE);

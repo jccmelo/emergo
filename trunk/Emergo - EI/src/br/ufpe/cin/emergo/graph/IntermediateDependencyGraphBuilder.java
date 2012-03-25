@@ -72,7 +72,7 @@ public class IntermediateDependencyGraphBuilder {
 		/*
 		 * Instantiates an analysis with the Def-Use rules.
 		 */
-		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
+		SharedSimultaneousAnalysis<LatticeSet<Point>> sharedAnalysis = new SharedSimultaneousAnalysis<LatticeSet<Point>>(new DefUseRules());
 		
 		Worklist.process(cfg, sharedAnalysis);
 		
@@ -82,7 +82,7 @@ public class IntermediateDependencyGraphBuilder {
 		 * Create a new feature-sensitive dependency graph based on the results of the analysis. The vertices are Reads
 		 * or Writes instances.
 		 */
-		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
+		DirectedGraph<Point, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
 		DebugUtil.exportToDotFile(dependencyGraph, "dep-intra.dot");
 
 		/*
@@ -125,12 +125,12 @@ public class IntermediateDependencyGraphBuilder {
 			}
 		});
 
-		SharedSimultaneousAnalysis<LatticeSet<Object>> sharedAnalysis = new SharedSimultaneousAnalysis<LatticeSet<Object>>(new DefUseRules());
+		SharedSimultaneousAnalysis<LatticeSet<Point>> sharedAnalysis = new SharedSimultaneousAnalysis<LatticeSet<Point>>(new DefUseRules());
 		DebugUtil.writeStringToFile(cfg.toDot(sharedAnalysis), "cfg-defuse-inter.dot");
 			
 		Worklist.process(cfg, sharedAnalysis);
 
-		DirectedGraph<Object, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
+		DirectedGraph<Point, ValueContainerEdge<ConfigSet>> dependencyGraph = createGraph(cfg, sharedAnalysis);
 		DebugUtil.exportToDotFile(dependencyGraph, "dep-inter.dot");
 
 		DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredDependencyGraph = filterWithUserSelection(pointsInUserSelection, dependencyGraph);
@@ -274,10 +274,10 @@ public class IntermediateDependencyGraphBuilder {
 	 * DependencyNodes instances.
 	 * 
 	 * @param pointsInUserSelection
-	 * @param reachesData
+	 * @param dependencyGraph
 	 * @return a new filtered graph
 	 */
-	private static DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filterWithUserSelection(Collection<Point> pointsInUserSelection, DirectedGraph<Object, ValueContainerEdge<ConfigSet>> reachesData) {
+	private static DirectedGraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filterWithUserSelection(Collection<Point> pointsInUserSelection, DirectedGraph<Point, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		// The new graph that will be returned from this method.
 		final DirectedMultigraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>> filteredGraph = new DirectedMultigraph<DependencyNodeWrapper<Point>, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 
@@ -292,18 +292,18 @@ public class IntermediateDependencyGraphBuilder {
 
 		while (!workList.isEmpty()) {
 			Point head = workList.removeFirst();
-			if (!reachesData.containsVertex(head)) {
+			if (!dependencyGraph.containsVertex(head)) {
 				alreadyVisitedPoints.add(head);
 				continue;
 			}
-			Set<ValueContainerEdge<ConfigSet>> outgoingEdges = reachesData.outgoingEdgesOf(head);
+			Set<ValueContainerEdge<ConfigSet>> outgoingEdges = dependencyGraph.outgoingEdgesOf(head);
 			if (outgoingEdges.isEmpty()) {
 				alreadyVisitedPoints.add(head);
 				continue;
 			}
 			alreadyVisitedPoints.add(head);
 			for (ValueContainerEdge<ConfigSet> edge : outgoingEdges) {
-				Point target = (Point) reachesData.getEdgeTarget(edge);
+				Point target = (Point) dependencyGraph.getEdgeTarget(edge);
 				DependencyNodeWrapper<Point> dependencyNodeTarget = new DependencyNodeWrapper<Point>(target, makePosition(target), pointsInUserSelection.contains(target), target.getVarSet());
 				filteredGraph.addVertex(dependencyNodeTarget);
 
@@ -323,9 +323,9 @@ public class IntermediateDependencyGraphBuilder {
 		return filteredGraph;
 	}
 
-	private static DirectedGraph<Object, ValueContainerEdge<ConfigSet>> createGraph(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Object>> analysisResult) {
+	private static DirectedMultigraph<Point, ValueContainerEdge<ConfigSet>> createGraph(ControlFlowGraph controlFlowGraph, SharedSimultaneousAnalysis<LatticeSet<Point>> analysisResult) {
 		// The dependency graph that this method will return.
-		final DirectedMultigraph<Object, ValueContainerEdge<ConfigSet>> reachesData = new DirectedMultigraph<Object, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
+		final DirectedMultigraph<Point, ValueContainerEdge<ConfigSet>> reachesData = new DirectedMultigraph<Point, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 
 		// List of points to be visited. Starts with the CFG entry point.
 		LinkedList<Point> pendingPoints = new LinkedList<Point>();
@@ -353,14 +353,14 @@ public class IntermediateDependencyGraphBuilder {
 				final Expression expression = read.getExpression();
 				Set<? extends Edge> ingoingEdges = read.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
-					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
+					Map<IfDefVarSet, LatticeSet<Point>> variable = analysisResult.getVariable(edge);
 
 					if (variable == null)
 						continue;
 
-					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
-					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
-						LatticeSet<Object> value = entry.getValue();
+					Set<Entry<IfDefVarSet, LatticeSet<Point>>> entrySet = variable.entrySet();
+					for (Entry<IfDefVarSet, LatticeSet<Point>> entry : entrySet) {
+						LatticeSet<Point> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
 
 						if (key.and(poppedPoint.getVarSet()).isEmpty())
@@ -396,18 +396,18 @@ public class IntermediateDependencyGraphBuilder {
 				final Variable rValue = write.getVariable();
 				Set<? extends Edge> ingoingEdges = write.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
-					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
+					Map<IfDefVarSet, LatticeSet<Point>> variable = analysisResult.getVariable(edge);
 
 					if (variable == null)
 						continue;
 
-					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
-					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
-						LatticeSet<Object> value = entry.getValue();
+					Set<Entry<IfDefVarSet, LatticeSet<Point>>> entrySet = variable.entrySet();
+					for (Entry<IfDefVarSet, LatticeSet<Point>> entry : entrySet) {
+						LatticeSet<Point> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
-						value.filter(new LatticeSetFilter<Object>() {
+						value.filter(new LatticeSetFilter<Point>() {
 
-							public boolean accept(Object obj) {
+							public boolean accept(Point obj) {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (rValue.equals(element.getVariable())) {
@@ -423,18 +423,18 @@ public class IntermediateDependencyGraphBuilder {
 				final String strPoint = poppedPoint.toString();
 				Set<? extends Edge> ingoingEdges = poppedPoint.getIngoingEdges();
 				for (Edge edge : ingoingEdges) {
-					Map<IfDefVarSet, LatticeSet<Object>> variable = analysisResult.getVariable(edge);
+					Map<IfDefVarSet, LatticeSet<Point>> variable = analysisResult.getVariable(edge);
 
 					if (variable == null)
 						continue;
 
-					Set<Entry<IfDefVarSet, LatticeSet<Object>>> entrySet = variable.entrySet();
-					for (Entry<IfDefVarSet, LatticeSet<Object>> entry : entrySet) {
-						LatticeSet<Object> value = entry.getValue();
+					Set<Entry<IfDefVarSet, LatticeSet<Point>>> entrySet = variable.entrySet();
+					for (Entry<IfDefVarSet, LatticeSet<Point>> entry : entrySet) {
+						LatticeSet<Point> value = entry.getValue();
 						final IfDefVarSet key = entry.getKey();
-						value.filter(new LatticeSetFilter<Object>() {
+						value.filter(new LatticeSetFilter<Point>() {
 
-							public boolean accept(Object obj) {
+							public boolean accept(Point obj) {
 								if (obj instanceof Read) {
 									Read element = (Read) obj;
 									if (strPoint.contains(element.getVariable().toString())) {
@@ -462,7 +462,7 @@ public class IntermediateDependencyGraphBuilder {
 	 * @param configurationMean
 	 * @param def
 	 */
-	private static void connectVertices(final Graph<Object, ValueContainerEdge<ConfigSet>> graph, final Point use, final IfDefVarSet configurationMean, Point def) {
+	private static void connectVertices(final Graph<Point, ValueContainerEdge<ConfigSet>> graph, final Point use, final IfDefVarSet configurationMean, Point def) {
 
 		/*
 		 * Counting on the graph's implementation to check for the existance of the nodes before adding to avoid

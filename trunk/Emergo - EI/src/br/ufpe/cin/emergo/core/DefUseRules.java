@@ -1,5 +1,6 @@
 package br.ufpe.cin.emergo.core;
 
+import net.silentbeing.measurement.ClassMeasurementFilter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.ForwardStrategy;
 import dk.au.cs.java.compiler.cfg.analysis.Analysis;
@@ -11,20 +12,22 @@ import dk.au.cs.java.compiler.cfg.point.Point;
 import dk.au.cs.java.compiler.cfg.point.Read;
 import dk.au.cs.java.compiler.cfg.point.Write;
 import dk.au.cs.java.compiler.type.NameContext;
+import dk.brics.lattice.BitSetLatticeStrategy;
 import dk.brics.lattice.Lattice;
 import dk.brics.lattice.LatticeSet;
 import dk.brics.lattice.LatticeSetFilter;
 import dk.brics.lattice.UnionSetLattice;
+import dk.brics.util.collection.BitSetUniverse;
 import dk.brics.util.collection.Stringifier;
 
 /**
- * A similar implementation to the Reaching definitions {@link ReachingDefinitionsRules} rules for a flow analysis,
- * except that lattice elements may be Reads or Writes.
+ * A similar implementation to the Reaching definitions
+ * {@link ReachingDefinitionsRules} rules for a flow analysis, except that
+ * lattice elements may be Reads or Writes.
  * 
  * @author Társis Tolêdo
- * 
  */
-public class DefUseRules extends Analysis<LatticeSet<Object>> {
+public class DefUseRules extends Analysis<LatticeSet<Point>> {
 
 	/**
 	 * DUW: Def-Use Web.
@@ -38,45 +41,49 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	 */
 	public DefUseRules() {
 		super(ID, ForwardStrategy.INSTANCE);
+		measurementFilter = new ClassMeasurementFilter(Point.class);
 	}
 
 	@Override
-	public Lattice<LatticeSet<Object>> createLattice(ControlFlowGraph controlFlowGraph) {
-		return new UnionSetLattice<Object>();
+	public Lattice<LatticeSet<Point>> createLattice(ControlFlowGraph controlFlowGraph) {
+		return new UnionSetLattice<Point>(
+				new BitSetLatticeStrategy<Point>(new BitSetUniverse<Point>()));
 	}
 
 	@Override
-	public String getVariableText(LatticeSet<Object> variable) {
+	public String getVariableText(LatticeSet<Point> variable) {
 		if (variable == null) {
 			return "";
 		}
-		return variable.toString(new Stringifier<Object>() {
+		return variable.toString(new Stringifier<Point>() {
 
-			public String toString(Object point) {
-				return ((Point) point).getLabelText(new NameContext());
+			@Override
+			public String toString(Point point) {
+				return point.getLabelText(new NameContext());
 			}
 		});
 	}
-	
+
 	/* 
 	 * ReadProcessor encapsulates the logic involved in the application
 	 * of the transfer function for a Read.
 	 */
-	class ReadProcessor implements Process<LatticeSet<Object>> {
+	class ReadProcessor implements Process<LatticeSet<Point>> {
 		private Read read = null;
-		
+
 		public ReadProcessor setRead(Read read) {
 			this.read = read;
 			return this;
 		}
-		
-		public LatticeSet<Object> process(LatticeSet<Object> set) {
+
+		@Override
+		public LatticeSet<Point> process(LatticeSet<Point> set) {
 			return set.include(read);
 		}
 	}
-	
+
 	@Override
-	public void computeRead(final Read point, ProcessInfo<LatticeSet<Object>> info) {
+	public void computeRead(final Read point, ProcessInfo<LatticeSet<Point>> info) {
 		/*
 		 * Blindly accept Reads.
 		 */
@@ -87,24 +94,25 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 	 *	Encapsulates the logic behind the transfer function
 	 * application in a Write. 
 	 */
-	class WriteProcessor implements Process<LatticeSet<Object>> {
+	class WriteProcessor implements Process<LatticeSet<Point>> {
 		Write write = null;
-		
-		public WriteProcessor setWrite(Write write){
+
+		public WriteProcessor setWrite(Write write) {
 			this.write = write;
 			return this;
 		}
-		
-		public LatticeSet<Object> process(LatticeSet<Object> set) {
-			final LValue lvalue = write.getLValue();
-			set = set.filter(new LatticeSetFilter<Object>() {
 
-				public boolean accept(Object element) {
+		@Override
+		public LatticeSet<Point> process(LatticeSet<Point> set) {
+			final LValue lvalue = write.getLValue();
+			set = set.filter(new LatticeSetFilter<Point>() {
+				@Override
+				public boolean accept(Point element) {
 					if (element instanceof Write) {
-						Write write = (Write) element;
+						Write write = (Write)element;
 						LValue lv = write.getLValue();
 						return !lv.equals(lvalue);
-					} 
+					}
 					return true;
 				}
 
@@ -112,9 +120,9 @@ public class DefUseRules extends Analysis<LatticeSet<Object>> {
 			return set.include(write);
 		}
 	}
-	
+
 	@Override
-	public void computeWrite(final Write point, ProcessInfo<LatticeSet<Object>> info) {
+	public void computeWrite(final Write point, ProcessInfo<LatticeSet<Point>> info) {
 		/*
 		 * First, kill any previous Write to the same LValue, then add this new one.
 		 */
