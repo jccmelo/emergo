@@ -53,6 +53,8 @@ public class JWCompilerConfigSet implements ConfigSet {
 	 * @return and instance of JWCompilerConfigSet
 	 */
 	public static JWCompilerConfigSet of(IfDefVarSet varSet) {
+		if (varSet == null)
+			throw new IllegalArgumentException("Argument varSet cannot be null. ");
 		JWCompilerConfigSet cacheShot = (JWCompilerConfigSet) cache.get(varSet);
 		if (cacheShot == null) /* MISS? */{
 			JWCompilerConfigSet cacheElement = new JWCompilerConfigSet(varSet);

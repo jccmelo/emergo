@@ -42,13 +42,17 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.swt.widgets.TreeItem;
+import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.views.markers.MarkerField;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.alg.KShortestPaths;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.DirectedMultigraph;
 
 import br.ufpe.cin.emergo.activator.Activator;
 import br.ufpe.cin.emergo.core.ConfigSet;
@@ -56,6 +60,7 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.markers.EmergoMarker;
 import br.ufpe.cin.emergo.markers.FeatureDependency;
+import br.ufpe.cin.emergo.util.DebugUtil;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class EmergoView extends ViewPart {
@@ -83,12 +88,14 @@ public class EmergoView extends ViewPart {
 	private int auxiliary=0;
 	
 	Action addItemAction, deleteItemAction, selectAllAction;
+	private Map<IMarker, DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphMapping = new HashMap<IMarker, DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>>>();
 
 	public void createPartControl(Composite parent) {
 		parent.setLayout(new FillLayout());
 		viewer = new TreeViewer(parent, SWT.FULL_SELECTION);
 		viewer.getTree().setLinesVisible(true);
 		viewer.setSelection(new TreeSelection());
+		final EmergoView thisView = this;
 		viewer.getTree().addListener(SWT.MouseDown, new Listener() {
 
 			@Override
@@ -99,13 +106,23 @@ public class EmergoView extends ViewPart {
 					if (event.button == MouseEvent.BUTTON1 && event.count == 2) {
 						Object data = clickedItem.getData();
 						if (data instanceof IMarker) {
-							IMarker marker = (IMarker) data;
+							final IMarker marker = (IMarker) data;
 							try {
 								IDE.openEditor(getSite().getPage(), marker);
 							} catch (PartInitException e) {
 								// TODO Auto-generated catch block
 								e.printStackTrace();
-							} 
+							}
+							
+							IViewPart findGraphView = thisView.getSite().getPage().findView(EmergoGraphView.ID);
+							if (findGraphView instanceof EmergoGraphView) {
+								final EmergoGraphView view = (EmergoGraphView) findGraphView;
+								new Runnable() {
+									public void run() {
+										view.adaptTo(dependencyGraphMapping.get(marker));
+									}
+								}.run();
+							}
 						}
 					}
 				}
@@ -282,10 +299,11 @@ public class EmergoView extends ViewPart {
 						message = "Unknown";
 					}
 					
+					FeatureDependency auxFeature = new FeatureDependency().setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getFeatureSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
+					
 					/*
 					 * Do not create an IMarker if an equivalent FeatureDependency already exists.
 					 */
-					FeatureDependency auxFeature = new FeatureDependency().setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getFeatureSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
 					if (!featureDependencySet.add(auxFeature)){
 						continue;
 					}
@@ -297,6 +315,25 @@ public class EmergoView extends ViewPart {
 					IMarker createdMarker = EmergoMarker.createMarker(auxFeature);
 					if (createdMarker == null) {
 						featureDependencySet.remove(auxFeature);
+					}
+					
+					/*
+					 * Store a mapping for each created marker to a corresponding graph
+					 * that represent a "dependency path". 
+					 * 
+					 *  TODO: There may exist more than on dependency path for 2 given
+					 *  nodes. How can this be represented/shown to the user?
+					 */
+					if (dependencyGraphMapping.get(createdMarker) == null) {
+						DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> pathAsGraph = new DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
+						for (ValueContainerEdge<ConfigSet> edge : edgeList) {
+							DependencyNode edgeSource = dependencyGraph.getEdgeSource(edge);
+							DependencyNode edgeTarget = dependencyGraph.getEdgeTarget(edge);
+							pathAsGraph.addVertex(edgeSource);
+							pathAsGraph.addVertex(edgeTarget);
+							pathAsGraph.addEdge(edgeSource, edgeTarget).setValue(edge.getValue());
+						}
+						dependencyGraphMapping.put(createdMarker, pathAsGraph);
 					}
 				}
 			}

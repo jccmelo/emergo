@@ -6,11 +6,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,7 +19,6 @@ import java.util.Set;
 import org.apache.commons.lang3.Range;
 import org.jgrapht.DirectedGraph;
 
-import br.ufpe.cin.emergo.core.dependencies.DependencyTypeDetectorVisitor;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.IntermediateDependencyGraphBuilder;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
@@ -103,9 +100,6 @@ public class JWCompilerDependencyFinder {
 		// The mapping to be returned later.
 		// final Map<ConfigSet, Collection<Integer>> configSetMapping = new HashMap<ConfigSet, Collection<Integer>>();
 		final Map<ConfigSet, Collection<Range<Integer>>> configMapping = new HashMap<ConfigSet, Collection<Range<Integer>>>();
-
-		// A stack for stacking up nested ifdef statements.
-		final Deque<IfDefVarSet> stack = new ArrayDeque<IfDefVarSet>();
 
 		final String filePath = file.getAbsolutePath();
 		rootNode.apply(new DepthFirstAdapter() {
@@ -460,9 +454,6 @@ public class JWCompilerDependencyFinder {
 		// The mapping to be returned later.
 		// final Map<ConfigSet, Collection<Integer>> configSetMapping = new HashMap<ConfigSet, Collection<Integer>>();
 		final Map<PIfdefExp, Collection<Range<Integer>>> configMapping = new HashMap<PIfdefExp, Collection<Range<Integer>>>();
-
-		// A stack for stacking up nested ifdef statements.
-		final Deque<IfDefVarSet> stack = new ArrayDeque<IfDefVarSet>();
 
 		final String filePath = file.getAbsolutePath();
 		rootNode.apply(new DepthFirstAdapter() {
