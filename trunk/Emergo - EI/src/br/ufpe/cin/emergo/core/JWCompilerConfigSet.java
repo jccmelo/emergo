@@ -38,6 +38,7 @@ public class JWCompilerConfigSet implements ConfigSet {
 	 * Public constructor.
 	 * 
 	 * @param varSet
+	 * @throws IllegalArgumentException if varSet is null
 	 */
 	public JWCompilerConfigSet(IfDefVarSet varSet) {
 		if (varSet == null)
@@ -46,10 +47,11 @@ public class JWCompilerConfigSet implements ConfigSet {
 	}
 
 	/**
-	 * Returns an instance of JWCompilerConfigSet, but uses a simple caching
+	 * Returns an instance of JWCompilerConfigSet, but using a simple caching
 	 * mechanism.
 	 * 
 	 * @param varSet
+	 * @throws IllegalArgumentException if varSet is null
 	 * @return and instance of JWCompilerConfigSet
 	 */
 	public static JWCompilerConfigSet of(IfDefVarSet varSet) {
@@ -142,6 +144,11 @@ public class JWCompilerConfigSet implements ConfigSet {
 	@Override
 	public boolean isEmpty() {
 		return this.varSet.isEmpty();
+	}
+
+	@Override
+	public boolean isValid() {
+		return this.varSet.isValidInFeatureModel();
 	}
 
 }

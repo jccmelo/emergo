@@ -3,6 +3,12 @@ package br.ufpe.cin.emergo.markers;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
 
+/*
+ * XXX: Rename to a more meaningful name. This name suggests that instances
+ * of this class represent the actual IMarker, and that is not true.
+ * 
+ * Suggestion: EmergoMarkerFactory
+ */
 public class EmergoMarker {
 
 	public static final String EMERGO_MARKER_ID = "Emergo.emergomarker";

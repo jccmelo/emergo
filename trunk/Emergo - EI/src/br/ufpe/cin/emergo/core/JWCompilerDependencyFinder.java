@@ -452,7 +452,6 @@ public class JWCompilerDependencyFinder {
 		}
 
 		// The mapping to be returned later.
-		// final Map<ConfigSet, Collection<Integer>> configSetMapping = new HashMap<ConfigSet, Collection<Integer>>();
 		final Map<PIfdefExp, Collection<Range<Integer>>> configMapping = new HashMap<PIfdefExp, Collection<Range<Integer>>>();
 
 		final String filePath = file.getAbsolutePath();
@@ -462,12 +461,15 @@ public class JWCompilerDependencyFinder {
 			public void caseACompilationUnit(ACompilationUnit compilationUnit) {
 				String file = compilationUnit.getFile().getPath();
 
-				// Iterate over all compilation units looking for the one we are
-				// interested (see file argument).
+				/* 
+				 * Iterate over all compilation units looking for the one we are interested (see file argument).
+				 */
 				if (file.equals(filePath)) {
 
-					// If there is a match, iterate over the nodes in this
-					// compilation unit.
+					/* 
+					 * If there is a match, iterate over the nodes in this 
+					 * compilation unit.
+					 */
 					compilationUnit.apply(new DepthFirstAdapter() {
 						
 						public void caseAIfdefStm(AIfdefStm node) {

@@ -34,64 +34,58 @@ import br.ufpe.cin.emergo.util.ResourceUtil;
 public class HideFeaturesHandler extends AbstractHandler {
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		ISelection selection = (ISelection) HandlerUtil
-				.getActiveMenuSelection(event);
+		ISelection selection = (ISelection) HandlerUtil.getActiveMenuSelection(event);
 		Shell shell = HandlerUtil.getActiveShellChecked(event);
 		Object marker = ((IStructuredSelection) selection).getFirstElement();
 
 		try {
-
-			if (marker instanceof MarkerItem) {
+			if (marker instanceof IMarker) {
 
 				/*
 				 * Code which gets the document on the annotations will be
 				 * placed.
 				 */
-				IfDefJavaEditor editor = (IfDefJavaEditor) HandlerUtil
-						.getActiveEditor(event).getAdapter(
-								IfDefJavaEditor.class);
-				IDocument d = editor.getDocument();
+				IfDefJavaEditor editor = (IfDefJavaEditor) HandlerUtil.getActiveEditor(event)
+						.getAdapter(IfDefJavaEditor.class);
+				
+				
+				if (editor == null) {
+					new MessageDialog(shell, "Emergo Message",
+							ResourceUtil.getEmergoIcon(),
+							"There is no active editor.",
+							MessageDialog.INFORMATION, new String[] { "Ok" }, 0)
+							.open();
+				}
+				
+				IDocument document = editor.getDocument();
+
+				// Get the file which will be analyzed by the visitor.
+				IFile file = (IFile) HandlerUtil.getActiveEditorChecked(event).getEditorInput()
+						.getAdapter(IFile.class);
+
+				//XXX: IMarker.TEXT is a really bad "key" to refer to the ConfigSet here.
+				//selectedConfigSet ==> ifdef feature expression (emergo table view)
+				ConfigSet selectedConfigSet = (ConfigSet) ((IMarker) marker).getAttribute(IMarker.TEXT);
 
 				/*
-				 * Get the file which will be analysed by the visitor.
+				 *  Example of featureRangeLineNumbers
+				 *  {(COPY)=[[12..17]], (SMS)=[[28..30], [19..24]]}
 				 */
-				IFile file = (IFile) HandlerUtil.getActiveEditorChecked(event)
-						.getEditorInput().getAdapter(IFile.class);
-
-				/*
-				 * selectedConfigSet ==> ifdef feature expression (emergo table
-				 * view)
-				 */
-				ConfigSet selectedConfigSet = (ConfigSet) ((MarkerItem) marker)
-						.getMarker().getAttribute(IMarker.TEXT);
-
-				// Example of featureRangeLineNumbers
-				// {(COPY)=[[12..17]], (SMS)=[[28..30], [19..24]]}
 				Map<ConfigSet, Collection<Range<Integer>>> featureRangeLineNumbers = DependencyFinder
 						.getIfDefLineMapping(file.getRawLocation().toFile());
 
 				Map<ConfigSet, Collection<Integer>> ifDefLineMapping = new HashMap<ConfigSet, Collection<Integer>>();
 
-				Set<Entry<ConfigSet, Collection<Range<Integer>>>> entrySet = featureRangeLineNumbers
-						.entrySet();
+				Set<Entry<ConfigSet, Collection<Range<Integer>>>> entrySet = featureRangeLineNumbers.entrySet();
 
 				for (Entry<ConfigSet, Collection<Range<Integer>>> entry : entrySet) {
-					Collection<Range<Integer>> rangeCollection = entry
-							.getValue();
+					Collection<Range<Integer>> rangeCollection = entry.getValue();
 
 					Collection<Integer> lineNumbers = new ArrayList<Integer>();
 
 					for (Range<Integer> range : rangeCollection) {
-						Integer minimum = range.getMinimum();
-						Integer maximum = range.getMaximum();
-
-						// Object[] array = generateListFromXtoY(minimum,
-						// maximum).toArray();
-						// Arrays.sort(array);
-						// Arrays.asList(array);
-
-						lineNumbers.addAll(generateListFromXplus1toY(minimum,
-								maximum));
+						lineNumbers.addAll(generateListFromXplus1toY(range.getMinimum(),
+								range.getMaximum()));
 					}
 
 					ifDefLineMapping.put(entry.getKey(), lineNumbers);
@@ -117,14 +111,17 @@ public class HideFeaturesHandler extends AbstractHandler {
 					 * by the hiding mechanism. Therefore, configSet will not be
 					 * hidden.
 					 */
-					if ((configSet.and(selectedConfigSet)).equals(configSet)
-							|| (selectedConfigSet.and(configSet))
-									.equals(selectedConfigSet)) {
+					if ((configSet.and(selectedConfigSet)).equals(configSet) || (selectedConfigSet.and(configSet)).
+							equals(selectedConfigSet)) {
 						concurrent.remove(configSet);
 					}
 				}
 
 				if (concurrent.size() == 0) {
+					/*
+					 * TODO: It would be a good idea to refactor this into
+					 * a utility function.
+					 */
 					new MessageDialog(shell, "Emergo Message",
 							ResourceUtil.getEmergoIcon(),
 							"There is nothing to hide!",
@@ -136,7 +133,7 @@ public class HideFeaturesHandler extends AbstractHandler {
 				 * If concurrent.size() == 0, we still need to update the editor
 				 * in case where we already have projections there.
 				 */
-				List<Position> positions = createPositions(d, concurrent);
+				List<Position> positions = createPositions(document, concurrent);
 				List<Position> positionsEmpty = new ArrayList<Position>();
 
 				/*
@@ -144,14 +141,10 @@ public class HideFeaturesHandler extends AbstractHandler {
 				 * areas.
 				 */
 				if (editor instanceof IfDefJavaEditor) {
-					((IfDefJavaEditor) editor).expandAllAnnotations(d
-							.getLength());
+					((IfDefJavaEditor) editor).expandAllAnnotations(document.getLength());
 					((IfDefJavaEditor) editor).removeAllAnnotations();
-
-					((IfDefJavaEditor) editor)
-							.updateFoldingStructure(positionsEmpty);
-					((IfDefJavaEditor) editor)
-							.updateFoldingStructure(positions);
+					((IfDefJavaEditor) editor).updateFoldingStructure(positionsEmpty);
+					((IfDefJavaEditor) editor).updateFoldingStructure(positions);
 				}
 			}
 

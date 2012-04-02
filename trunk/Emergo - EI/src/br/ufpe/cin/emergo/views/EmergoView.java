@@ -299,7 +299,16 @@ public class EmergoView extends ViewPart {
 						message = "Unknown";
 					}
 					
-					FeatureDependency auxFeature = new FeatureDependency().setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath())).setFeature(tgtNode.getFeatureSet().toString()).setLineNumber(tgtNode.getPosition().getStartLine()).setMessage(message);
+					if (!configAccumulator.isValid())
+						continue;
+					
+					FeatureDependency auxFeature = new FeatureDependency()
+							.setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath()))
+							.setFeature(tgtNode.getFeatureSet()
+							.toString())
+							.setLineNumber(tgtNode.getPosition().getStartLine())
+							.setMessage(message)
+							.setConfiguration(configAccumulator);
 					
 					/*
 					 * Do not create an IMarker if an equivalent FeatureDependency already exists.

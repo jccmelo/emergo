@@ -10,4 +10,6 @@ public interface ConfigSet {
 	public boolean isTrueSet();
 
 	boolean isEmpty();
+
+	public boolean isValid();
 }
