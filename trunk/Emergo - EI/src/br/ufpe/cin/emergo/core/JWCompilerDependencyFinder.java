@@ -26,8 +26,10 @@ import br.ufpe.cin.emergo.util.EmergoConstants;
 import dk.au.cs.java.compiler.ErrorType;
 import dk.au.cs.java.compiler.Errors;
 import dk.au.cs.java.compiler.Flags;
+import dk.au.cs.java.compiler.InternalCompilerError;
 import dk.au.cs.java.compiler.Main;
 import dk.au.cs.java.compiler.SourceError;
+import dk.au.cs.java.compiler.analysis.AnswerAdapter;
 import dk.au.cs.java.compiler.analysis.DepthFirstAdapter;
 import dk.au.cs.java.compiler.cfg.ControlFlowGraph;
 import dk.au.cs.java.compiler.cfg.analysis.PointVisitor;
@@ -45,10 +47,15 @@ import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.ifdef.SharedSimultaneousAnalysis;
 import dk.au.cs.java.compiler.lexer.Lexer;
 import dk.au.cs.java.compiler.lexer.LexerException;
+import dk.au.cs.java.compiler.node.AAndIfdefExp;
 import dk.au.cs.java.compiler.node.ACompilationUnit;
+import dk.au.cs.java.compiler.node.AIdIfdefExp;
 import dk.au.cs.java.compiler.node.AIfdefStm;
 import dk.au.cs.java.compiler.node.AMethodDecl;
+import dk.au.cs.java.compiler.node.ANotIfdefExp;
+import dk.au.cs.java.compiler.node.AOrIfdefExp;
 import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.Node;
 import dk.au.cs.java.compiler.node.PIfdefExp;
 import dk.au.cs.java.compiler.node.Start;
 import dk.au.cs.java.compiler.node.TEndif;
@@ -473,7 +480,7 @@ public class JWCompilerDependencyFinder {
 					compilationUnit.apply(new DepthFirstAdapter() {
 						
 						public void caseAIfdefStm(AIfdefStm node) {
-							IfDefVarSet varSet = node.getOnTrueSet();
+							IfDefVarSet varSet = node.getExp().apply(JWCompilerDependencyFinder.varSetCalculator);
 							
 							int startLine = node.getToken().getLine();
 							int endLine = startLine;
@@ -510,4 +517,36 @@ public class JWCompilerDependencyFinder {
 
 		return configMapping;
 	}
+	
+	//XXX: this class was copied from IfDefBDDAssigner inner class. Refactor for reuse.
+	static protected AnswerAdapter<IfDefVarSet> varSetCalculator = new AnswerAdapter<IfDefVarSet>() {
+		@Override
+		public IfDefVarSet defaultNode(Node node) {
+			throw new InternalCompilerError("Unhandled if-def exp: " + node.getClass().getName());
+		}
+
+		@Override
+		public IfDefVarSet caseAIdIfdefExp(AIdIfdefExp node) {
+			return IfDefVarSet.getIfDefVarSet(node.getIdentifier().getText());
+		}
+
+		@Override
+		public IfDefVarSet caseANotIfdefExp(ANotIfdefExp node) {
+			return node.getExp().apply(this).not();
+		}
+
+		@Override
+		public IfDefVarSet caseAAndIfdefExp(AAndIfdefExp node) {
+			IfDefVarSet left = node.getLeft().apply(this);
+			IfDefVarSet right = node.getRight().apply(this);
+			return left.and(right);
+		}
+
+		@Override
+		public IfDefVarSet caseAOrIfdefExp(AOrIfdefExp node) {
+			IfDefVarSet left = node.getLeft().apply(this);
+			IfDefVarSet right = node.getRight().apply(this);
+			return left.or(right);
+		}
+	};
 }
