@@ -265,10 +265,6 @@ public class SelectLinesHandler extends AbstractHandler {
 		((MarkedLinesView) markedLinesView).update(linesOffset);
 	}
 
-	public Map getLines() {
-		return this.getLines();
-	}
-
 	public static void deleteAllMarkers() {
 		lineOptions = new HashMap<Object, Object>();
 		linesOffset = new ArrayList<LineOfCode>();

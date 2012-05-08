@@ -55,6 +55,8 @@ public class HideFeaturesHandler extends AbstractHandler {
 							"There is no active editor.",
 							MessageDialog.INFORMATION, new String[] { "Ok" }, 0)
 							.open();
+					
+					return null;
 				}
 				
 				IDocument document = editor.getDocument();
