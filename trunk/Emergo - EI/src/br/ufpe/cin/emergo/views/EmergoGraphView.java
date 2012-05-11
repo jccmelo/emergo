@@ -23,7 +23,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
-import org.eclipse.ui.texteditor.ITextEditor;
 import org.eclipse.zest.core.widgets.Graph;
 import org.eclipse.zest.core.widgets.GraphConnection;
 import org.eclipse.zest.core.widgets.GraphNode;
@@ -49,8 +48,8 @@ public class EmergoGraphView extends ViewPart {
 		// Graph will hold all other objects
 		graph = new Graph(parent, SWT.NONE);
 
-		// graph.setLayoutAlgorithm(new SpringLayoutAlgorithm(LayoutStyles.ENFORCE_BOUNDS), true);
 		// For a different layout algorithm, comment the live above and uncomment the one below.
+		// graph.setLayoutAlgorithm(new SpringLayoutAlgorithm(LayoutStyles.ENFORCE_BOUNDS), true);
 		// graph.setLayoutAlgorithm(new TreeLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
 
 		// Adds a simple listener for a selection in the graph. Use this to link to the line number in the file.
@@ -92,11 +91,10 @@ public class EmergoGraphView extends ViewPart {
 	
 	
 	/**
-	 * Updates the graph visualization with the information provided.
+	 * Updates the graph visualization with the information provided by the dependency graph.
 	 * 
 	 * @param dependencyGraph
 	 * @param compilationUnit
-	 * @param editor
 	 */
 	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		clearGraph();
