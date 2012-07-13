@@ -21,7 +21,9 @@ public class DependencyTypeDetectorVisitor extends DepthFirstAdapter {
 	private String filePath;
 	private SelectionPosition position;
 
-	private ArrayList<DepthFirstAdapter> visitors = new ArrayList<DepthFirstAdapter>();
+	private ArrayList<DependencyVisitor> visitors = new ArrayList<DependencyVisitor>();
+	
+	public ArrayList<Dependency> dependencies = new ArrayList<Dependency>();
 
 	public DependencyTypeDetectorVisitor(String filePath,
 			SelectionPosition position) {
@@ -30,12 +32,14 @@ public class DependencyTypeDetectorVisitor extends DepthFirstAdapter {
 	}
 	
 	public void runVisitors(AProgram rootNode) {
-		for (DepthFirstAdapter visitor : visitors) {
+		dependencies.clear();
+		for (DependencyVisitor visitor : visitors) {
 			rootNode.apply(visitor);
+			dependencies.addAll(visitor.dependencies);
 		}
 	}
 
-	public ArrayList<DepthFirstAdapter> getVisitors() {
+	public ArrayList<DependencyVisitor> getVisitors() {
 		return visitors;
 	}
 

@@ -23,6 +23,9 @@
           		<command commandId="br.ufpe.cin.emergo.command.generateForLines"
                 		 style="push">
           		</command>
+          		<command commandId="br.ufpe.cin.emergo.command.genrateInterfaceSyntactically"
+                		 style="push">
+          		</command>
        		</menu>
     	</menuContribution>
  	</extension>
@@ -104,6 +107,12 @@
 			description="Hide features except the selected ones" 
 			id="br.ufpe.cin.emergo.command.hidefeature"
 			name="Hide Other Features">
+		</command>
+	</extension>
+	<extension point="org.eclipse.ui.commands">
+		<command defaultHandler="br.ufpe.cin.emergo.handlers.SyntaxDependenciesHandler"
+        		 id="br.ufpe.cin.emergo.command.genrateInterfaceSyntactically"
+             	 name="View Syntax Dependencies">
 		</command>
 	</extension>
 

@@ -27,9 +27,18 @@ public class FieldDependencyVisitor extends DependencyVisitor {
 	public void caseAFieldDecl(AFieldDecl node) {
 		//System.out.println("caseAFieldDecl " + node.getName());
 		if (dependency(node.getField()) && checkVarSet(node)) {
-			System.out.println("\tDEPENDENCY DECL FIELD | FILE: " + node.getAncestor(ACompilationUnit.class).getFileName() +
-					" | LINE: " + node.getToken().getLine() + 
-					" | VARSET: " + IfDefGetVarSet.getVarSet(node));
+			Dependency dependency = new Dependency();
+			dependency.description = "DEPENDENCY DECL FIELD";
+			dependency.file = node.getAncestor(ACompilationUnit.class).getFile().getAbsolutePath();
+			dependency.line = node.getToken().getLine();
+			dependency.varSet = IfDefGetVarSet.getVarSet(node);
+			dependencies.add(dependency);
+			
+			System.out.println("\t" + dependency.description + 
+					"| FILE: " + dependency.file +
+					" | LINE: " + dependency.line + 
+					" | VARSET: " + dependency.varSet);
+			
 		}
 		
 		super.caseAFieldDecl(node);
@@ -40,10 +49,20 @@ public class FieldDependencyVisitor extends DependencyVisitor {
 		//System.out.println("caseAFieldAccessPrimary " + node.toString());
 		
 		if (dependency(node.getField()) && checkVarSet(node)) {
-			System.out.println("\tDEPENDENCY ACCESS FIELD | FILE: " + node.getAncestor(ACompilationUnit.class).getFileName() +
-					" | LINE: " + node.getToken().getLine() + 
-					" | VARSET: " + IfDefGetVarSet.getVarSet(node));
+			Dependency dependency = new Dependency();
+			dependency.description = "DEPENDENCY ACCESS FIELD";
+			dependency.file = node.getAncestor(ACompilationUnit.class).getFile().getAbsolutePath();
+			dependency.line = node.getToken().getLine();
+			dependency.varSet = IfDefGetVarSet.getVarSet(node);
+			dependencies.add(dependency);
+			
+			System.out.println("\t" + dependency.description + 
+					"| FILE: " + dependency.file +
+					" | LINE: " + dependency.line + 
+					" | VARSET: " + dependency.varSet);
 		}
+		
+		
 		
 		super.caseAFieldAccessPrimary(node);
 	}

@@ -1,6 +1,6 @@
 package br.ufpe.cin.emergo.views;
-
 import java.awt.event.MouseEvent;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -16,9 +16,12 @@ import org.eclipse.core.filebuffers.LocationKind;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.text.BadLocationException;
@@ -56,12 +59,15 @@ import org.jgrapht.graph.DirectedMultigraph;
 
 import br.ufpe.cin.emergo.activator.Activator;
 import br.ufpe.cin.emergo.core.ConfigSet;
+import br.ufpe.cin.emergo.core.dependencies.Dependency;
 import br.ufpe.cin.emergo.graph.DependencyNode;
+import br.ufpe.cin.emergo.markers.FeatureDependency;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.markers.EmergoMarker;
 import br.ufpe.cin.emergo.markers.FeatureDependency;
 import br.ufpe.cin.emergo.util.DebugUtil;
 import br.ufpe.cin.emergo.util.ResourceUtil;
+import br.ufpe.cin.emergo.views.EmergoResultsView;
 
 public class EmergoView extends ViewPart {
 	public static final String ID = "br.ufpe.cin.emergo.views.EmergoView";
@@ -192,13 +198,16 @@ public class EmergoView extends ViewPart {
 	
 	public void updateTree() {
 		try {
+			//System.out.print("HI UPDATE TRY");
 			IMarker[] markers = ResourcesPlugin.getWorkspace().getRoot().findMarkers(EMERGO_MARKER_ID, false, IResource.DEPTH_INFINITE);
+			//System.out.println(markers[1].getAttribute(IMarker.LINE_NUMBER));
 			markerList = new ArrayList<IMarker>();
 			List<MarkerGrouping> goupins = generateMarkerList(markers);
 			viewer.refresh();
 			viewer.setContentProvider(new TreeContentProvider());
 			viewer.setInput(goupins);
 		} catch (CoreException e) {
+			//System.out.print("HI UPDATE EXC");
 			e.printStackTrace();
 		} 
 	}
@@ -347,6 +356,65 @@ public class EmergoView extends ViewPart {
 				}
 			}
 		}
+		updateTree();
+	}
+	
+	public void adaptTo2(ArrayList<Dependency> dependencies, boolean delete) {
+		/*
+		 * Delete markers of all previously selected files.
+		 */
+		
+		if (delete){
+			try {
+				clearView();
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		List<IFile> selectedFiles = new ArrayList<IFile>();
+		
+		for (IFile file : selectedFiles) {
+			EmergoMarker.clearMarkers(file);
+		}
+		
+		for (Dependency d : dependencies) {
+			FeatureDependency fd = new FeatureDependency();
+			fd.setConfiguration(null);
+			fd.setFeature(d.varSet.toString());
+			fd.setLineNumber(d.line);
+			
+			IWorkspace workspace = ResourcesPlugin.getWorkspace();
+			IWorkspaceRoot workspaceRoot = workspace.getRoot();
+			IPath workspacePath = workspaceRoot.getRawLocation();
+			String workspacePathStr = workspacePath.toOSString();
+			IPath path = Path.fromOSString(d.file.replace(workspacePathStr, ""));
+			IFile file = workspaceRoot.getFile(path);
+			fd.setFile(file);
+			selectedFiles.add(file);
+			
+			String message = null;
+			String content = "";
+			
+			
+			try {
+				InputStream fileContent = file.getContents();
+				content = EmergoResultsView.convertStreamToString(fileContent);
+				
+				String[] split = content.split("\n");
+				if (split.length >= d.line) {
+					message = split[d.line-1].trim();
+				}
+				
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			
+			//System.out.print("HI FUNCTION LAST");
+			IMarker createdMarker = EmergoMarker.createMarker(fd);
+					
+		}
+		//System.out.println("Hi Update");
 		updateTree();
 	}
 	

@@ -1,5 +1,7 @@
 package br.ufpe.cin.emergo.core.dependencies;
 
+import java.util.ArrayList;
+
 import dk.au.cs.java.compiler.analysis.DepthFirstAdapter;
 import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 import dk.au.cs.java.compiler.node.Node;
@@ -8,7 +10,10 @@ public class DependencyVisitor extends DepthFirstAdapter {
 	
 	protected IfDefVarSet varSet;
 	
+	ArrayList<Dependency> dependencies;
+	
 	protected DependencyVisitor(IfDefVarSet varSet) {
+		dependencies = new ArrayList<Dependency>();
 		this.varSet = varSet;
 	}
 	
@@ -23,5 +28,6 @@ public class DependencyVisitor extends DepthFirstAdapter {
 		//System.out.println("sameVarSet " + varSet1 + " AND " + varSet2 + " = " + result);
 		return result;
 	}
-
+	
+		
 }

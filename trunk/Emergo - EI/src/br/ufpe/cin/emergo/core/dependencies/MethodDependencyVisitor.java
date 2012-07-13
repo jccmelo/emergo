@@ -26,9 +26,17 @@ public class MethodDependencyVisitor extends DependencyVisitor {
 	@Override
 	public void caseAMethodDecl(AMethodDecl node) {
 		if (dependency(node.getMethod()) && checkVarSet(node)) {
-			System.out.println("\tDEPENDENCY DECL METHOD | FILE: " + node.getAncestor(ACompilationUnit.class).getFileName() +
-					" | LINE: " + node.getToken().getLine() + 
-					" | VARSET: " + IfDefGetVarSet.getVarSet(node));
+			Dependency dependency = new Dependency();
+			dependency.description = "DEPENDENCY DECL METHOD";
+			dependency.file = node.getAncestor(ACompilationUnit.class).getFile().getAbsolutePath();
+			dependency.line = node.getToken().getLine();
+			dependency.varSet = IfDefGetVarSet.getVarSet(node);
+			dependencies.add(dependency);
+			
+			System.out.println("\t" + dependency.description + 
+					"| FILE: " + dependency.file +
+					" | LINE: " + dependency.line + 
+					" | VARSET: " + dependency.varSet);
 		}
 		super.caseAMethodDecl(node);
 	}
@@ -36,9 +44,17 @@ public class MethodDependencyVisitor extends DependencyVisitor {
 	@Override
 	public void caseAMethodInvocationPrimary(AMethodInvocationPrimary node) {
 		if (dependency(node.getMethod()) && checkVarSet(node)) {
-			System.out.println("\tDEPENDENCY ACCESS METHOD | FILE: " + node.getAncestor(ACompilationUnit.class).getFileName() +
-					" | LINE: " + node.getToken().getLine() + 
-					" | VARSET: " + IfDefGetVarSet.getVarSet(node));
+			Dependency dependency = new Dependency();
+			dependency.description = "DEPENDENCY ACCESS METHOD";
+			dependency.file = node.getAncestor(ACompilationUnit.class).getFile().getAbsolutePath();
+			dependency.line = node.getToken().getLine();
+			dependency.varSet = IfDefGetVarSet.getVarSet(node);
+			dependencies.add(dependency);
+			
+			System.out.println("\t" + dependency.description + 
+					"| FILE: " + dependency.file +
+					" | LINE: " + dependency.line + 
+					" | VARSET: " + dependency.varSet);
 		}
 		super.caseAMethodInvocationPrimary(node);
 	}
