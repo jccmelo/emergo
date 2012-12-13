@@ -1,6 +1,7 @@
 package br.ufpe.cin.emergo.graph.transform;
 
 import soot.toolkits.scalar.FlowSet;
+import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
 import br.ufpe.cin.emergo.instrument.IFeatureRep;
 

@@ -32,8 +32,7 @@ import org.eclipse.ui.texteditor.ITextEditor;
 import org.jgrapht.DirectedGraph;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
-import br.ufpe.cin.emergo.core.DependencyFinderSyntax;
-import br.ufpe.cin.emergo.core.DependencyFinderID;
+import br.ufpe.cin.emergo.core.DependencyFinder;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.core.JWCompilerDependencyFinderSyntax;
 import br.ufpe.cin.emergo.graph.DependencyNode;
@@ -116,7 +115,7 @@ public class SyntaxDependenciesHandler extends AbstractHandler {
 			String selectionFileString = textSelectionFile.getLocation().toOSString();
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 
-			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinderSyntax.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
+			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(selectionPosition, options);
 
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.

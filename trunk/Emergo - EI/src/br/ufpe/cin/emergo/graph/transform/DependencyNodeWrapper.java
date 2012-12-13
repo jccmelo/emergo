@@ -1,5 +1,9 @@
 package br.ufpe.cin.emergo.graph.transform;
 
+import br.ufpe.cin.emergo.core.ConfigSet;
+import br.ufpe.cin.emergo.core.SelectionPosition;
+import br.ufpe.cin.emergo.graph.DependencyNode;
+
 
 /**
  * This is a simple wrapper class meant to be used as nodes in the dependency graph. It is capable of holding an
@@ -12,10 +16,12 @@ package br.ufpe.cin.emergo.graph.transform;
  */
 public class DependencyNodeWrapper<T> implements DependencyNode {
 	private final T data;
+	private final SelectionPosition position;
 	private final ConfigSet configSet;
 
-	public DependencyNodeWrapper(T data, ConfigSet config) {
+	public DependencyNodeWrapper(T data, SelectionPosition position, ConfigSet config) {
 		this.data = data;
+		this.position = position;
 		if (config == null)
 			throw new IllegalArgumentException("Argument config cannot be null ");
 		this.configSet = config;
@@ -89,6 +95,17 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 			return false;
 		
 		return true;
+	}
+
+	@Override
+	public SelectionPosition getPosition() {
+		return this.position;
+	}
+
+	@Override
+	public boolean isInSelection() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

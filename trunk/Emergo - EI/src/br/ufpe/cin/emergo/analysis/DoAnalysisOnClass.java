@@ -21,6 +21,7 @@ import br.ufpe.cin.emergo.analysis.reachingdefs.LazyLiftedReachingDefinitions;
 import br.ufpe.cin.emergo.analysis.reachingdefs.LiftedReachingDefinitions;
 import br.ufpe.cin.emergo.analysis.reachingdefs.SimpleReachingDefinitions;
 import br.ufpe.cin.emergo.analysis.reachingdefs.UnliftedReachingDefinitions;
+import br.ufpe.cin.emergo.graph.transform.DependencyGraphBuilder;
 import br.ufpe.cin.emergo.instrument.EagerConfigTag;
 import br.ufpe.cin.emergo.instrument.FeatureInstrumentor;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
@@ -28,6 +29,7 @@ import br.ufpe.cin.emergo.instrument.ILazyConfigRep;
 import br.ufpe.cin.emergo.instrument.LazyConfigTag;
 import br.ufpe.cin.emergo.preprocessor.ContextManager;
 import br.ufpe.cin.emergo.preprocessor.Preprocessor;
+import br.ufpe.cin.emergo.views.EmergoGraphView;
 import br.ufpe.cin.emergo.compiler.Compiler;
 
 public class DoAnalysisOnClass {
@@ -44,8 +46,8 @@ public class DoAnalysisOnClass {
 		 * First of all, (1) the preprocessing is performed.
 		 */
 		ContextManager manager = ContextManager.getContext();
-		manager.setSrcfile("Out.groovy"); // input class
-		manager.setDestfile("Testclass.groovy"); // output class
+		manager.setSrcfile("BaselineGraph.groovy"); // input class
+		manager.setDestfile("Baseline.groovy"); // output class
 
 		Preprocessor pp = new Preprocessor();
 
@@ -71,7 +73,7 @@ public class DoAnalysisOnClass {
 		 * (3) Loads and configures the output class with the Soot Framework
 		 */
 		// Set up the class we’re working with
-		SootManager.configure("../Preprocessor4SPL/bin/");
+		SootManager.configure("../Emergo - EI/bin/");
 		SootClass c = SootManager.loadAndSupport(Compiler.retrieveClassName(manager.getDestfile()));
 
 		// Retrieve the method and its body
@@ -94,12 +96,12 @@ public class DoAnalysisOnClass {
 		// --------------------------------------------------------------------
 		// Analysis: SimpleReachingDefinitions
 		// --------------------------------------------------------------------
-		BriefUnitGraph briefUnitGraph = new BriefUnitGraph(b);
-
-		SimpleReachingDefinitions reachingDefinitions = new SimpleReachingDefinitions(
-				briefUnitGraph);
-
-		runAnalysis(reachingDefinitions, briefUnitGraph, "SimpleReachingDefinitions");
+//		BriefUnitGraph briefUnitGraph = new BriefUnitGraph(b);
+//
+//		SimpleReachingDefinitions reachingDefinitions = new SimpleReachingDefinitions(
+//				briefUnitGraph);
+//
+//		runAnalysis(reachingDefinitions, briefUnitGraph, "SimpleReachingDefinitions");
 
 		// --------------------------------------------------------------------
 		// Analysis: UnliftedReachingDefinitions
@@ -121,12 +123,12 @@ public class DoAnalysisOnClass {
 
 		UnitGraph bodyGraph = new BriefUnitGraph(b);
 
-		for (IConfigRep config : configReps) {
-			UnliftedReachingDefinitions unliftedReachingDefinitions = new UnliftedReachingDefinitions(
-					bodyGraph, config);
-			
-			runAnalysis(unliftedReachingDefinitions, bodyGraph, "UnliftedReachingDefinitions-"+config);
-		}
+//		for (IConfigRep config : configReps) {
+//			UnliftedReachingDefinitions unliftedReachingDefinitions = new UnliftedReachingDefinitions(
+//					bodyGraph, config);
+//			
+//			runAnalysis(unliftedReachingDefinitions, bodyGraph, "UnliftedReachingDefinitions-"+config);
+//		}
 		
 		// --------------------------------------------------------------------
 		// Analysis: LiftedReachingDefinitions
@@ -134,27 +136,31 @@ public class DoAnalysisOnClass {
 		
 		LiftedReachingDefinitions liftedReachingDefinitions = new LiftedReachingDefinitions(bodyGraph, configReps);
 		
+		DependencyGraphBuilder builder = new DependencyGraphBuilder();
+		
+//		EmergoGraphView view = new EmergoGraphView();
+//		view.adaptTo(builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions));
 		runAnalysis(liftedReachingDefinitions, bodyGraph, "LiftedReachingDefinitions");
 		
 		// --------------------------------------------------------------------
 		// Analysis: LazyLiftedReachingDefinitions
 		// --------------------------------------------------------------------
 		
-		LazyConfigTag configLazyTag = (LazyConfigTag) b.getTag(LazyConfigTag.TAG_NAME);
-		if (configLazyTag == null) {
-			throw new IllegalStateException("No LazyConfigTag found for body of method " + b.getMethod());
-		}
-		
-		ILazyConfigRep lazyConfig = configLazyTag.getLazyConfig();
-		if (lazyConfig.size() < 1) {
-			return;
-		}
-		
-		UnitGraph bodyLazyGraph = new BriefUnitGraph(b);
-		
-		LazyLiftedReachingDefinitions lazyLiftedReachingDefinitions = new LazyLiftedReachingDefinitions(bodyLazyGraph, lazyConfig);
-		
-		runAnalysis(lazyLiftedReachingDefinitions, bodyLazyGraph, "LazyLiftedReachingDefinitions");
+//		LazyConfigTag configLazyTag = (LazyConfigTag) b.getTag(LazyConfigTag.TAG_NAME);
+//		if (configLazyTag == null) {
+//			throw new IllegalStateException("No LazyConfigTag found for body of method " + b.getMethod());
+//		}
+//		
+//		ILazyConfigRep lazyConfig = configLazyTag.getLazyConfig();
+//		if (lazyConfig.size() < 1) {
+//			return;
+//		}
+//		
+//		UnitGraph bodyLazyGraph = new BriefUnitGraph(b);
+//		
+//		LazyLiftedReachingDefinitions lazyLiftedReachingDefinitions = new LazyLiftedReachingDefinitions(bodyLazyGraph, lazyConfig);
+//		
+//		runAnalysis(lazyLiftedReachingDefinitions, bodyLazyGraph, "LazyLiftedReachingDefinitions");
 		
 		// --------------------------------------------------------------------
 		// Compares the results: LatticeEquivalenceTester
@@ -211,7 +217,7 @@ public class DoAnalysisOnClass {
 	private static String settingDirectory(){
 		String className = Compiler.retrieveClassName(ContextManager.getContext().getDestfile());
 //		String path = "../Preprocessor4SPL/results/"+ className +"/";
-		String path = "../Preprocessor4SPL/results/"+ className + new Date().getDate() +"/";
+		String path = "../Emergo - EI/results/"+ className + new Date().getDate() +"/";
 
 		File dir = new File(path);
 		dir.mkdirs();

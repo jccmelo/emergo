@@ -1,0 +1,4 @@
+Unit: r0 := @parameter0: java.lang.String[] => {0={}}
+Unit: b0 = 0 => {0={b0 = 0}}
+Unit: i1 = b0 + 10 => {0={b0 = 0, i1 = b0 + 10}}
+Unit: return => {0={b0 = 0, i1 = b0 + 10}}

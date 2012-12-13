@@ -33,11 +33,11 @@ import org.jgrapht.DirectedGraph;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DependencyFinder;
-import br.ufpe.cin.emergo.core.DependencyFinderID;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.properties.SystemProperties;
+import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 import br.ufpe.cin.emergo.views.EmergoGraphView;
 import br.ufpe.cin.emergo.views.EmergoView;
@@ -109,6 +109,9 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			}
 
 			options.put("classpath", classpath);
+			
+			String correspondentClasspath = MethodDeclarationSootMethodBridge.getCorrespondentClasspath(textSelectionFile);
+			options.put("correspondentClasspath", correspondentClasspath);
 
 			/*
 			 * This instance of SelectionPosition holds the textual selection information that needs to br passed along
@@ -117,7 +120,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			String selectionFileString = textSelectionFile.getLocation().toOSString();
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 
-			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(DependencyFinderID.JWCOMPILER, selectionPosition, options);
+			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(selectionPosition, options);
 
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.

@@ -32,7 +32,6 @@ import org.jgrapht.DirectedGraph;
 
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.DependencyFinder;
-import br.ufpe.cin.emergo.core.DependencyFinderID;
 import br.ufpe.cin.emergo.core.EmergoException;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;

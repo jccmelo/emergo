@@ -14,6 +14,10 @@ import soot.jimple.internal.JAssignStmt;
 import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.FlowSet;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
+import br.ufpe.cin.emergo.core.ConfigSet;
+import br.ufpe.cin.emergo.core.SelectionPosition;
+import br.ufpe.cin.emergo.graph.DependencyNode;
+import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.preprocessor.ContextManager;
 
 public class DependencyGraphBuilder {
@@ -26,13 +30,15 @@ public class DependencyGraphBuilder {
 	 * @return
 	 */
 	public DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateDependencyGraph(
-			UnitGraph cfg, ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis) {
+			UnitGraph cfg, ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis, SelectionPosition position) {
 
 		// This graph will be return
 		DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = new DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 		
 		// List of nodes to be visited
 		List<DependencyNode> visitedNodes = new ArrayList<DependencyNode>();
+		
+		ConfigSet configSet = new ConfigSetImpl(); //without feature
 		
 		// Iterate over the results
 		Iterator i = cfg.iterator();
@@ -46,14 +52,13 @@ public class DependencyGraphBuilder {
 			
 			//==================TODO=================
 			// gets the set of features from line of code
-			Set<String> setFeatures = ContextManager.getContext().getFeaturesByLine(ContextManager.getLineNumberForUnit(u));
+//			Set<String> setFeatures = ContextManager.getContext().getFeaturesByLine(ContextManager.getLineNumberForUnit(u));
 			
-			ConfigSet configSet = new ConfigSetImpl(); //without feature
 			//=======================================
 			
 			// Creates the node
-			DependencyNode node = new DependencyNodeWrapper<Unit>(u, configSet);
-			dependencyGraph.addVertex(node);
+			DependencyNode node = new DependencyNodeWrapper<Unit>(u, position, configSet);
+//			dependencyGraph.addVertex(node);
 			
 			visitedNodes.add(node);
 		}
@@ -70,7 +75,7 @@ public class DependencyGraphBuilder {
 				
 				// for each use found.. creates one directed edge (def -> use)
 				for (DependencyNode use : uses) {
-					connectVertices(dependencyGraph, use, currentNode);
+					connectVertices(dependencyGraph, configSet, use, currentNode);
 				}
 			}
 		}
@@ -83,17 +88,20 @@ public class DependencyGraphBuilder {
 	private List<DependencyNode> getUse(List<DependencyNode> nodes, DependencyNode currentNode) {
 		List<DependencyNode> uses = new ArrayList<DependencyNode>();
 		
-		Unit unit = (Unit) currentNode.getData();
+		Unit unit = ((DependencyNodeWrapper<Unit>) currentNode).getData();
 		JAssignStmt def = (JAssignStmt) unit;
 		
 		for (Iterator it = nodes.iterator(); it.hasNext();) {
 			DependencyNode useCandidateNode = (DependencyNode) it.next();
 			
-			Unit u = (Unit) useCandidateNode.getData();
-			JAssignStmt stmt = (JAssignStmt) u;
+			Unit u = ((DependencyNodeWrapper<Unit>) useCandidateNode).getData();
 			
-			if (stmt.getRightOp().toString().contains(def.getLeftOp().toString())) {
-				uses.add(useCandidateNode);
+			if(u instanceof JAssignStmt) {
+				JAssignStmt stmt = (JAssignStmt) u;
+				
+				if (stmt.getRightOp().toString().contains(def.getLeftOp().toString())) {
+					uses.add(useCandidateNode);
+				}
 			}
 			
 		}
@@ -103,7 +111,7 @@ public class DependencyGraphBuilder {
 
 	private boolean isDef(DependencyNode dependencyNode) {
 		
-		Unit u = (Unit)dependencyNode.getData();
+		Unit u = ((DependencyNodeWrapper<Unit>) dependencyNode).getData();
 		
 		if(u instanceof JAssignStmt) {
 			JAssignStmt stmt = (JAssignStmt) u;
@@ -130,7 +138,7 @@ public class DependencyGraphBuilder {
 	 * @param def
 	 */
 	private static void connectVertices(
-			final Graph<DependencyNode, ValueContainerEdge<ConfigSet>> graph,
+			final Graph<DependencyNode, ValueContainerEdge<ConfigSet>> graph, final ConfigSet configSet,
 			final DependencyNode use, DependencyNode def) {
 
 		/*
@@ -140,8 +148,10 @@ public class DependencyGraphBuilder {
 		graph.addVertex(use);
 		graph.addVertex(def);
 
-		
-		ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(def, use);
+		if (!graph.containsEdge(def, use)) {
+			ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(def, use);
+			addedEdge.setValue(configSet);
+		}
 		
 		
 		
