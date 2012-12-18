@@ -1,6 +1,7 @@
 package br.ufpe.cin.emergo.graph.transform;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -15,6 +16,7 @@ import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.FlowSet;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
 import br.ufpe.cin.emergo.core.ConfigSet;
+import br.ufpe.cin.emergo.core.EmergoException;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
@@ -30,7 +32,7 @@ public class DependencyGraphBuilder {
 	 * @return
 	 */
 	public DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateDependencyGraph(
-			UnitGraph cfg, ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis, SelectionPosition position) {
+			UnitGraph cfg, ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis, Collection<Unit> unitsInSelection, SelectionPosition selectionPosition) {
 
 		// This graph will be return
 		DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = new DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>>((Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
@@ -47,20 +49,35 @@ public class DependencyGraphBuilder {
 		while (i.hasNext()) {
 			// Gets a node/unit
 			Unit u = (Unit) i.next();
+			DependencyNode node;
+			
+			if(unitsInSelection.contains(u)){
+				// Creates the node
+				node = new DependencyNodeWrapper<Unit>(u, true, selectionPosition, configSet);
+				
+				if(!isDef(node)) {
+					System.out.println("Invalid selection..");
+					return null;
+				}
+			} else {
+				// Creates the node
+				node = new DependencyNodeWrapper<Unit>(u, false, selectionPosition, configSet);
+			}
+			
+			visitedNodes.add(node);
+			
+			
+			
+			
+			
 			// Gets value of OUT set for unit
-			FlowSet out = analysis.getFlowAfter(u);
+//			FlowSet out = analysis.getFlowAfter(u);
 			
 			//==================TODO=================
 			// gets the set of features from line of code
 //			Set<String> setFeatures = ContextManager.getContext().getFeaturesByLine(ContextManager.getLineNumberForUnit(u));
 			
 			//=======================================
-			
-			// Creates the node
-			DependencyNode node = new DependencyNodeWrapper<Unit>(u, position, configSet);
-//			dependencyGraph.addVertex(node);
-			
-			visitedNodes.add(node);
 		}
 		
 		// Iterates over all nodes of the graph
@@ -68,7 +85,7 @@ public class DependencyGraphBuilder {
 			
 			DependencyNode currentNode = visitedNodes.get(j);
 			
-			if (isDef(currentNode)) {
+			if (currentNode.isInSelection()) {
 				// Now, currentNode is def
 				// Gets the all uses for this def
 				List<DependencyNode> uses = getUse(visitedNodes, currentNode);

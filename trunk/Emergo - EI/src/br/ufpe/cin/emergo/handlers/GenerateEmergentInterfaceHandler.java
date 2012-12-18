@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -18,6 +19,8 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -36,9 +39,11 @@ import br.ufpe.cin.emergo.core.DependencyFinder;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
+import br.ufpe.cin.emergo.graph.transform.GraphTransformer;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
 import br.ufpe.cin.emergo.util.ResourceUtil;
+import br.ufpe.cin.emergo.util.SelectionNodesVisitor;
 import br.ufpe.cin.emergo.views.EmergoGraphView;
 import br.ufpe.cin.emergo.views.EmergoView;
 
@@ -49,6 +54,10 @@ import br.ufpe.cin.emergo.views.EmergoView;
  * 
  */
 public class GenerateEmergentInterfaceHandler extends AbstractHandler {
+	
+	public static Set<ASTNode> selectionNodes;
+	public static CompilationUnit jdtCompilationUnit;
+	
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		
@@ -76,6 +85,24 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			if (textSelection.getLength() == -1) {
 				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "The selection is invalid.", MessageDialog.WARNING, new String[] { "Ok" }, 0).open();
 			}
+			
+			//===========JEAN ADDED================
+			
+			SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(textSelection);
+			jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
+
+	        jdtCompilationUnit.accept(selectionNodesVisitor);
+	        selectionNodes = selectionNodesVisitor.getNodes();
+
+	        for (ASTNode astNode : selectionNodes) {
+	        	GraphTransformer.lineNumbers.add(jdtCompilationUnit.getLineNumber(astNode.getStartPosition()));
+	        }
+	        
+	        options.put("selectionNodes", selectionNodes);
+	        
+			//===========END=======================
+	        
+	        
 
 			// The project that contains the file in which the selection happened.
 			IProject project = textSelectionFile.getProject();
@@ -196,5 +223,13 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
         }
         return path;
     }
+
+	public static Set<ASTNode> getSelectionNodes() {
+		return selectionNodes;
+	}
+
+	public static CompilationUnit getJdtCompilationUnit() {
+		return jdtCompilationUnit;
+	}
 
 }

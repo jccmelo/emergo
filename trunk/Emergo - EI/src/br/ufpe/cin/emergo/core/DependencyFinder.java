@@ -8,11 +8,14 @@ import java.util.Set;
 import javax.swing.JOptionPane;
 
 import org.apache.commons.lang3.Range;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.jgrapht.DirectedGraph;
 
 import soot.Body;
 import soot.SootClass;
 import soot.SootMethod;
+import soot.Unit;
 import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.graph.UnitGraph;
 
@@ -25,9 +28,12 @@ import br.ufpe.cin.emergo.compiler.Compiler;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.graph.transform.DependencyGraphBuilder;
+import br.ufpe.cin.emergo.graph.transform.GraphTransformer;
+import br.ufpe.cin.emergo.handlers.GenerateEmergentInterfaceHandler;
 import br.ufpe.cin.emergo.instrument.EagerConfigTag;
 import br.ufpe.cin.emergo.instrument.FeatureInstrumentor;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
+import br.ufpe.cin.emergo.util.ASTNodeUnitBridge;
 import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
 
 /**
@@ -73,17 +79,40 @@ public class DependencyFinder {
              * Initialize and configure Soot's options and find out which method
              * contains the selection
              */
-//            SootManager.configure("/Users/paolaaccioly/Documents/runtime-EclipseApplication/JCalc/bin/");
 			Object cp = options.get("correspondentClasspath");
 			SootManager.configure(cp.toString());
 			
 			String clazz = retrieveClassName(selectionPosition.getFilePath());
     		SootClass c = SootManager.loadAndSupport(clazz);
     		
-    		// Retrieve the method and its body
-    		SootMethod m = c.getMethodByName("initResolution");
-    		Body b = m.retrieveActiveBody();
+    		// Retrieve the method and its body  
     		
+    		Set<ASTNode> nodes = (Set<ASTNode>) options.get("selectionNodes");
+    		
+    		MethodDeclaration methodDeclaration = MethodDeclarationSootMethodBridge.getParentMethod(nodes.iterator().next());
+            String declaringMethodClass = methodDeclaration.resolveBinding().getDeclaringClass().getQualifiedName();
+            MethodDeclarationSootMethodBridge mdsm = new MethodDeclarationSootMethodBridge(methodDeclaration);
+            
+            SootMethod sootMethod = SootManager.getMethodBySignature(declaringMethodClass, mdsm.getSootMethodSubSignature());
+            Body b = sootMethod.retrieveActiveBody();
+    		
+            System.out.println("sootMethod => "+sootMethod.getName());
+    		
+    		/*
+             * Maps ASTNodes to Units based on the line no.
+             */
+            Collection<Unit> unitsInSelection = ASTNodeUnitBridge.getUnitsFromLines(ASTNodeUnitBridge.getLinesFromASTNodes(GenerateEmergentInterfaceHandler.selectionNodes, GenerateEmergentInterfaceHandler.jdtCompilationUnit),
+                    b);
+            if (unitsInSelection.isEmpty()) {
+                System.out.println("the selection doesn't map to any Soot Unit");
+                return null;
+            }
+            
+            for (Unit unit : unitsInSelection) {
+				System.out.println("unitInSelection => "+unit);
+			}
+    		
+            
     		/*
     		 * Instruments bytecode of the output class
     		 */
@@ -115,9 +144,16 @@ public class DependencyFinder {
     		 */
     		DependencyGraphBuilder builder = new DependencyGraphBuilder();
     		
-    		selectionPosition = selectionPosition.builder().startLine(49).endLine(49).startColumn(9).endColumn(76).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).filePath(selectionPosition.getFilePath()).build();
+//    		selectionPosition = selectionPosition.builder().startLine(49).endLine(49).startColumn(9).endColumn(76).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).filePath(selectionPosition.getFilePath()).build();
     		
-			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, selectionPosition);
+    		final int selectionStartLine = selectionPosition.getStartLine() + 1;
+    		final int selecionEndLine = selectionPosition.getEndLine() + 1;
+    		
+    		selectionPosition = selectionPosition.builder().startLine(selectionStartLine).endLine(selecionEndLine).
+    				startColumn(9).endColumn(19).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).
+    				filePath(selectionPosition.getFilePath()).build();
+    		
+			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition);
 		//#endif
 		} catch (Exception e) {
 			throw new UnsupportedOperationException("Dependency finder unavailable");

@@ -16,12 +16,14 @@ import br.ufpe.cin.emergo.graph.DependencyNode;
  */
 public class DependencyNodeWrapper<T> implements DependencyNode {
 	private final T data;
-	private final SelectionPosition position;
+	private final SelectionPosition selectionPosition;
+	private final boolean isInSelection;
 	private final ConfigSet configSet;
 
-	public DependencyNodeWrapper(T data, SelectionPosition position, ConfigSet config) {
+	public DependencyNodeWrapper(T data, boolean isInSelection, SelectionPosition selectionPosition, ConfigSet config) {
 		this.data = data;
-		this.position = position;
+		this.isInSelection = isInSelection;
+		this.selectionPosition = selectionPosition;
 		if (config == null)
 			throw new IllegalArgumentException("Argument config cannot be null ");
 		this.configSet = config;
@@ -98,14 +100,13 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 	}
 
 	@Override
-	public SelectionPosition getPosition() {
-		return this.position;
+	public boolean isInSelection() {
+		return this.isInSelection;
 	}
 
 	@Override
-	public boolean isInSelection() {
-		// TODO Auto-generated method stub
-		return false;
+	public SelectionPosition getPosition() {
+		return this.selectionPosition;
 	}
 
 }
