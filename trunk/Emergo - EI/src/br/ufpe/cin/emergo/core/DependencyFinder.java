@@ -1,6 +1,7 @@
 package br.ufpe.cin.emergo.core;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -85,6 +86,7 @@ public class DependencyFinder {
 			String clazz = retrieveClassName(selectionPosition.getFilePath());
     		SootClass c = SootManager.loadAndSupport(clazz);
     		
+    		
     		// Retrieve the method and its body  
     		
     		Set<ASTNode> nodes = (Set<ASTNode>) options.get("selectionNodes");
@@ -92,10 +94,10 @@ public class DependencyFinder {
     		MethodDeclaration methodDeclaration = MethodDeclarationSootMethodBridge.getParentMethod(nodes.iterator().next());
             String declaringMethodClass = methodDeclaration.resolveBinding().getDeclaringClass().getQualifiedName();
             MethodDeclarationSootMethodBridge mdsm = new MethodDeclarationSootMethodBridge(methodDeclaration);
-            
             SootMethod sootMethod = SootManager.getMethodBySignature(declaringMethodClass, mdsm.getSootMethodSubSignature());
             Body b = sootMethod.retrieveActiveBody();
-    		
+            
+    		System.out.println("Methods => "+c.getMethods());
             System.out.println("sootMethod => "+sootMethod.getName());
     		
     		/*

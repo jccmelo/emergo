@@ -6,7 +6,7 @@
 	
 	<extension point="org.eclipse.ui.menus">
     	<menuContribution allPopups="false"
-          				  locationURI="popup:#CompilationUnitEditorContext">
+          				  locationURI="popup:#CompilationUnitEditorContext"> <!-- GroovyCompilationUnitEditorContext -->
        		<menu id="emergo" label="Emergo!" icon="icons/Emergo-Logo-Blue.png">
           		<command commandId="br.ufpe.cin.emergo.command.generateinterface"
                 		 style="push">
@@ -153,9 +153,28 @@
             class="br.ufpe.cin.emergo.editor.IfDefJavaEditor"
             symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
             id="de.ovgu.cide.ColoredFoldingCompilationUnitEditor">
-            <contentTypeBinding contentTypeId="org.eclipse.jdt.core.javaSource"/> 
+            <contentTypeBinding contentTypeId="org.eclipse.jdt.core.javaSource"/>
 		</editor>
 	</extension>
+	
+	<!-- Groovy Editor symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
+ 	
+ 	<extension id="groovyeditor" point="org.eclipse.ui.editors">
+    	<editor
+        	name="Groovy Editor"
+            default="false"
+            icon="icons/Emergo-Logo-Blue.png"
+            extensions="groovy"
+            contributorClass="org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditorActionContributor"
+            class="org.codehaus.groovy.eclipse.editor.GroovyEditor"
+            symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
+            id="org.codehaus.groovy.eclipse.editor.GroovyEditor"
+            symbolicFontName="org.eclipse.jdt.ui.editors.textfont">
+            <contentTypeBinding contentTypeId="org.eclipse.jdt.groovy.core.groovySource"/> 
+		</editor>
+	</extension>
+	
+	-->
 
 	<!-- View for showing Emergo results as a graph -->
 	

@@ -1,71 +1,15 @@
 package br.ufpe.cin.emergo.graph.transform;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 
-import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jface.text.ITextSelection;
-import org.eclipse.jface.text.TextSelection;
-import org.jgrapht.DirectedGraph;
-import org.jgrapht.graph.DirectedMultigraph;
-
-import dk.brics.util.file.WildcardExpander;
-
-import soot.Body;
-import soot.Local;
-import soot.SootClass;
-import soot.SootMethod;
-import soot.Unit;
-import soot.ValueBox;
-import soot.jimple.DefinitionStmt;
-import soot.toolkits.graph.BriefUnitGraph;
-import soot.toolkits.graph.UnitGraph;
-import soot.toolkits.scalar.FlowSet;
-import soot.toolkits.scalar.ForwardFlowAnalysis;
-import br.ufpe.cin.emergo.analysis.EagerMapLiftedFlowSet;
-import br.ufpe.cin.emergo.analysis.SootManager;
-import br.ufpe.cin.emergo.analysis.reachingdefs.LiftedReachingDefinitions;
-import br.ufpe.cin.emergo.analysis.reachingdefs.SimpleReachingDefinitions;
-import br.ufpe.cin.emergo.graph.DependencyNode;
-import br.ufpe.cin.emergo.graph.IntermediateDependencyGraphBuilder;
-import br.ufpe.cin.emergo.graph.ValueContainerEdge;
-import br.ufpe.cin.emergo.instrument.EagerConfigTag;
-import br.ufpe.cin.emergo.instrument.FeatureInstrumentor;
-import br.ufpe.cin.emergo.instrument.FeatureTag;
-import br.ufpe.cin.emergo.instrument.IConfigRep;
-import br.ufpe.cin.emergo.instrument.IFeatureRep;
-import br.ufpe.cin.emergo.preprocessor.ContextManager;
-import br.ufpe.cin.emergo.preprocessor.Preprocessor;
-import br.ufpe.cin.emergo.util.ASTNodeUnitBridge;
-import br.ufpe.cin.emergo.util.EmergoConstants;
-import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
-import br.ufpe.cin.emergo.util.Pair;
-import br.ufpe.cin.emergo.util.SelectionNodesVisitor;
-import br.ufpe.cin.emergo.compiler.Compiler;
-import br.ufpe.cin.emergo.core.ConfigSet;
-import br.ufpe.cin.emergo.core.EmergoException;
-import br.ufpe.cin.emergo.core.SelectionPosition;
 
 public class GraphTransformer {
 	
