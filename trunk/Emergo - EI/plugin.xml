@@ -149,6 +149,7 @@
         	name="//#ifdef Java Editor"
             default="true"
             icon="icons/Emergo-Logo-Blue.png"
+            extensions="java"
             contributorClass="org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditorActionContributor"
             class="br.ufpe.cin.emergo.editor.IfDefJavaEditor"
             symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
@@ -157,7 +158,19 @@
 		</editor>
 	</extension>
 	
+	
+	
 	<!-- Groovy Editor symbolicFontName="org.eclipse.jdt.ui.editors.textfont"
+	
+	<extension
+       point="org.eclipse.ui.actionSetPartAssociations">
+    <actionSetPartAssociation
+          targetID="org.eclipse.jdt.ui.CodingActionSet">
+       <part
+             id="org.codehaus.groovy.eclipse.editor.GroovyEditor">
+       </part>
+    </actionSetPartAssociation>
+ </extension>
  	
  	<extension id="groovyeditor" point="org.eclipse.ui.editors">
     	<editor

@@ -1,20 +1,40 @@
 package br.ufpe.cin.emergo.graph.transform;
 
+import groovy.lang.GroovyClassLoader;
+
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 
+import org.codehaus.groovy.ast.ClassNode;
+import org.codehaus.groovy.ast.MethodNode;
+import org.codehaus.groovy.ast.ModuleNode;
+import org.codehaus.groovy.control.CompilerConfiguration;
+import org.codehaus.groovy.control.Phases;
+import org.codehaus.groovy.control.SourceUnit;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jface.text.ITextSelection;
+
+import br.ufpe.cin.emergo.handlers.ClassNodeOperationGroovy;
+//import static org.codehaus.groovy.eclipse.core.model.GroovyProject.GROOVY_ERROR_MARKER;
+//import static org.eclipse.core.resources.IResource.DEPTH_INFINITE;
 
 public class GraphTransformer {
+	// maps class name to a list of org.codehaus.groovy.ast.ModuleNode
+    //  ModuleNodes then map to ClassNodes
+    private final Map<String, List<ModuleNode>> scriptPathModuleNodeMap = new HashMap<String, List<ModuleNode>>();
 	
 	public static TreeSet<Integer> lineNumbers = new TreeSet<Integer>();
-
+	
 	
 	private static String generateClassPath(Collection<File> jarFiles) {
 		StringBuilder classpath = new StringBuilder();
@@ -34,6 +54,122 @@ public class GraphTransformer {
         CompilationUnit jdtCompilationUnit = (CompilationUnit) parser.createAST(null);
         return jdtCompilationUnit;
     }
+	
+	public static MethodNode getGroovyCompilationUnit(IFile textSelectionFile, Map<Object, Object> options) {
+		
+		String scriptLocation = (String) options.get("selectionFile"); //.groovy
+		
+		//Configure
+		CompilerConfiguration conf = new CompilerConfiguration();
+		conf.setTargetDirectory((String) options.get("correspondentClasspath")); // until bin folder
+		
+		ArrayList<String> p = (ArrayList<String>) options.get("classpath");
+		Object cp = p.get(0);
+		
+		conf.setClasspath(cp.toString());
+		
+		//Compile
+		GroovyClassLoader gcl = new GroovyClassLoader();
+		org.codehaus.groovy.control.CompilationUnit cu = new org.codehaus.groovy.control.CompilationUnit(gcl);
+		cu.setConfiguration(conf);
+		cu.configure(conf);
+		cu.addPhaseOperation(new ClassNodeOperationGroovy((ITextSelection) options.get("textSelection")), Phases.SEMANTIC_ANALYSIS);
+		SourceUnit sourceUnit = cu.addSource(new File(scriptLocation)); //add more sources if it is needed
+		sourceUnit.configure(conf);
+		cu.setClassLoader(gcl);
+		cu.compile();
+		
+		ClassNode classNode = cu.getFirstClassNode();
+		
+		List<MethodNode> methods = classNode.getDeclaredMethods((String)options.get("methodName")); //method name
+		MethodNode methodNode = methods.get(0);
+		
+		return methodNode;
+		
+//		ast.getStatementBlock().visit(null);
+//		
+//		List<org.codehaus.groovy.ast.ASTNode> nodes = new AstBuilder().buildFromString(scriptLocation);//CompilePhase.SEMANTIC_ANALYSIS, true, codeString
+//		
+//		for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
+//			System.out.println(astNode.getText());
+//		}
+//		
+//		
+//		
+//		
+//		
+//		GroovyCompilationUnit compilationUnit = (GroovyCompilationUnit) JavaCore.createCompilationUnitFrom(textSelectionFile);
+//		try {
+//			compilationUnit.becomeWorkingCopy(null);
+//		} catch (JavaModelException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		ModuleNode node = compilationUnit.getModuleNode();
+
+    }
+	
+	
+//	public List<ModuleNode> getModuleNodes(final IFile file) {
+//        final String className = getSourceFileKey( file );
+//        final List< ModuleNode > list = getModuleNodes( className );
+//        if( list.isEmpty() ) 
+//        {     
+//            // If there are error markers on the file, then it means that the file
+//            // has been compiled already and there is no ModuleNode info available
+//            // from a successful compile
+//            IMarker[] markers = null;
+//            try 
+//            {
+//                markers = file.findMarkers(GROOVY_ERROR_MARKER, true, DEPTH_INFINITE);
+//                // There may be error in other files that this file extends which prevents it from building.
+//                // Since we don't have a valid AST to walk if the file has problems being built, there is no
+//                // way to check for just errors in a superclass. Therefore the best we can do is see if there
+//                // are still errors in the project. If so don't try to rebuild.
+//                //
+//                // The outline view will be out of sync with the source file until all project errors are resolved.
+//                // This can be fixed when we stop depending on the Groovy compiler for parsing files and
+//                // use our own parser to walk up the superclasses.
+//                //
+//                if( markers == null || markers.length ==  0 ) 
+//                {
+//                	trace("trying to get project error markers");
+//                	markers = file.getProject().findMarkers( GROOVY_ERROR_MARKER, false, DEPTH_INFINITE );
+//                }
+//            } 
+//            catch( final CoreException e ) 
+//            {
+//                logException( e.getMessage(), e );
+//            }
+//            if( ( markers == null || markers.length ==  0 ) && isInSourceFolder( file, project.getJavaProject() ) ) 
+//            {
+//                trace( "ProjectModel.getModuleNodes() - starting compile for file:" + file );
+//                //List files = fullBuild();
+//                project.compileGroovyFile( file );
+//               	list.clear();
+//                list.addAll( getModuleNodes( className ) );
+//            }
+//        }
+//        return list;
+//    }
+	
+	/**
+     * This returns a string for the IFile that is used to generate the keys
+     * for classNode maps and moduleNode maps.
+     * @param file
+     * @return
+     */
+    public static String getSourceFileKey( final IFile file )
+    {
+        return file.getRawLocation().toOSString();
+    }
+    
+//    public List<ModuleNode> getModuleNodes(final String scriptPath) {
+//    	final List< ModuleNode > list = scriptPathModuleNodeMap.get( scriptPath );
+//    	if( list == null )
+//    	    return newList();
+//    	return list;
+//    }
 
 //	// TODO: extract *some* methods from this one.
 //    private Map<Pair<Unit, IFeatureRep>, Set<Unit>> createProvidesGraph(Collection<Unit> unitsInSelection, LiftedReachingDefinitions reachingDefinitions,

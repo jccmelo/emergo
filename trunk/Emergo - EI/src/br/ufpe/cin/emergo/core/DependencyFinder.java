@@ -1,16 +1,12 @@
 package br.ufpe.cin.emergo.core;
 
 import java.io.File;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
-import javax.swing.JOptionPane;
-
 import org.apache.commons.lang3.Range;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.jgrapht.DirectedGraph;
 
 import soot.Body;
@@ -19,23 +15,19 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.graph.UnitGraph;
-
-import dk.au.cs.java.compiler.node.AProgram;
-import dk.au.cs.java.compiler.node.PIfdefExp;
-
 import br.ufpe.cin.emergo.analysis.SootManager;
 import br.ufpe.cin.emergo.analysis.reachingdefs.LiftedReachingDefinitions;
-import br.ufpe.cin.emergo.compiler.Compiler;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.graph.transform.DependencyGraphBuilder;
-import br.ufpe.cin.emergo.graph.transform.GraphTransformer;
 import br.ufpe.cin.emergo.handlers.GenerateEmergentInterfaceHandler;
 import br.ufpe.cin.emergo.instrument.EagerConfigTag;
 import br.ufpe.cin.emergo.instrument.FeatureInstrumentor;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
 import br.ufpe.cin.emergo.util.ASTNodeUnitBridge;
-import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
+import br.ufpe.cin.emergo.util.ASTNodeUnitBridgeGroovy;
+import dk.au.cs.java.compiler.node.AProgram;
+import dk.au.cs.java.compiler.node.PIfdefExp;
 
 /**
  * A fa�ade class for invoking the process of dependency discovery.
@@ -81,30 +73,40 @@ public class DependencyFinder {
              * contains the selection
              */
 			Object cp = options.get("correspondentClasspath");
+			String fileExt = (String) options.get("fileExtension");
+			
+			if(fileExt.equals("java")){
+				ArrayList<String> p = (ArrayList<String>) options.get("classpath");
+				cp = p.get(0); //gets classpath for java source code input
+			}
+			
 			SootManager.configure(cp.toString());
 			
 			String clazz = retrieveClassName(selectionPosition.getFilePath());
     		SootClass c = SootManager.loadAndSupport(clazz);
     		
+    		// Retrieve the method and its body
+    		String methodName = (String)options.get("methodName");
     		
-    		// Retrieve the method and its body  
-    		
-    		Set<ASTNode> nodes = (Set<ASTNode>) options.get("selectionNodes");
-    		
-    		MethodDeclaration methodDeclaration = MethodDeclarationSootMethodBridge.getParentMethod(nodes.iterator().next());
-            String declaringMethodClass = methodDeclaration.resolveBinding().getDeclaringClass().getQualifiedName();
-            MethodDeclarationSootMethodBridge mdsm = new MethodDeclarationSootMethodBridge(methodDeclaration);
-            SootMethod sootMethod = SootManager.getMethodBySignature(declaringMethodClass, mdsm.getSootMethodSubSignature());
-            Body b = sootMethod.retrieveActiveBody();
-            
-    		System.out.println("Methods => "+c.getMethods());
-            System.out.println("sootMethod => "+sootMethod.getName());
+    		SootMethod m = c.getMethodByName(methodName);
+    		Body b = m.retrieveActiveBody();
     		
     		/*
              * Maps ASTNodes to Units based on the line no.
              */
-            Collection<Unit> unitsInSelection = ASTNodeUnitBridge.getUnitsFromLines(ASTNodeUnitBridge.getLinesFromASTNodes(GenerateEmergentInterfaceHandler.selectionNodes, GenerateEmergentInterfaceHandler.jdtCompilationUnit),
-                    b);
+    		Collection<Unit> unitsInSelection = null;
+    		
+    		if(fileExt.equals("groovy")){
+    			unitsInSelection = ASTNodeUnitBridgeGroovy.getUnitsFromLines(ASTNodeUnitBridgeGroovy.getLinesFromASTNodes(
+    					(Set<org.codehaus.groovy.ast.ASTNode>) options.get("selectionNodes"), 
+                		GenerateEmergentInterfaceHandler.stmt), b);
+    			
+    		} else {
+    			unitsInSelection = ASTNodeUnitBridge.getUnitsFromLines(ASTNodeUnitBridge.getLinesFromASTNodes(GenerateEmergentInterfaceHandler.selectionNodes, 
+                		GenerateEmergentInterfaceHandler.jdtCompilationUnit), b);
+    		}
+    		
+            
             if (unitsInSelection.isEmpty()) {
                 System.out.println("the selection doesn't map to any Soot Unit");
                 return null;
@@ -123,8 +125,7 @@ public class DependencyFinder {
     		/*
     		 * Builds the CFG and runs the analysis
     		 */
-    		EagerConfigTag configTag = (EagerConfigTag) b
-    				.getTag(EagerConfigTag.TAG_NAME);
+    		EagerConfigTag configTag = (EagerConfigTag) b.getTag(EagerConfigTag.TAG_NAME);
 
     		if (configTag == null) {
     			throw new IllegalStateException(
@@ -146,15 +147,13 @@ public class DependencyFinder {
     		 */
     		DependencyGraphBuilder builder = new DependencyGraphBuilder();
     		
-//    		selectionPosition = selectionPosition.builder().startLine(49).endLine(49).startColumn(9).endColumn(76).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).filePath(selectionPosition.getFilePath()).build();
-    		
     		final int selectionStartLine = selectionPosition.getStartLine() + 1;
     		final int selecionEndLine = selectionPosition.getEndLine() + 1;
     		
     		selectionPosition = selectionPosition.builder().startLine(selectionStartLine).endLine(selecionEndLine).
     				startColumn(9).endColumn(19).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).
     				filePath(selectionPosition.getFilePath()).build();
-    		
+    		  		
 			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition);
 		//#endif
 		} catch (Exception e) {

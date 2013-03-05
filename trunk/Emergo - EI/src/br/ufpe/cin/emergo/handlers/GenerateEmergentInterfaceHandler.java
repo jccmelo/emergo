@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.codehaus.groovy.ast.MethodNode;
+import org.codehaus.groovy.ast.ModuleNode;
+import org.codehaus.groovy.ast.stmt.Statement;
+import org.codehaus.jdt.groovy.model.GroovyCompilationUnit;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -17,16 +21,20 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.internal.ide.dialogs.InternalErrorDialog;
@@ -43,9 +51,11 @@ import br.ufpe.cin.emergo.graph.transform.GraphTransformer;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
 import br.ufpe.cin.emergo.util.ResourceUtil;
+import br.ufpe.cin.emergo.util.SelectionNodesGroovyVisitor;
 import br.ufpe.cin.emergo.util.SelectionNodesVisitor;
 import br.ufpe.cin.emergo.views.EmergoGraphView;
 import br.ufpe.cin.emergo.views.EmergoView;
+
 
 /**
  * Handler for the br.ufal.cideei.commands.DoCompute extension command.
@@ -57,6 +67,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 	
 	public static Set<ASTNode> selectionNodes;
 	public static CompilationUnit jdtCompilationUnit;
+	public static Statement stmt;
 	
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -86,23 +97,6 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "The selection is invalid.", MessageDialog.WARNING, new String[] { "Ok" }, 0).open();
 			}
 			
-			//===========JEAN ADDED================
-			
-			SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(textSelection);
-			jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
-
-	        jdtCompilationUnit.accept(selectionNodesVisitor);
-	        selectionNodes = selectionNodesVisitor.getNodes();
-
-	        for (ASTNode astNode : selectionNodes) {
-	        	GraphTransformer.lineNumbers.add(jdtCompilationUnit.getLineNumber(astNode.getStartPosition()));
-	        }
-	        
-	        options.put("selectionNodes", selectionNodes);
-	        
-			//===========END=======================
-	        
-	        
 
 			// The project that contains the file in which the selection happened.
 			IProject project = textSelectionFile.getProject();
@@ -138,15 +132,68 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			options.put("classpath", classpath);
 			
 			String correspondentClasspath = MethodDeclarationSootMethodBridge.getCorrespondentClasspath(textSelectionFile);
-			options.put("correspondentClasspath", correspondentClasspath);
-
+			options.put("correspondentClasspath", getBinPath(correspondentClasspath));
+	        
 			/*
 			 * This instance of SelectionPosition holds the textual selection information that needs to br passed along
 			 * to the underlying compiler infrastructure
 			 */
 			String selectionFileString = textSelectionFile.getLocation().toOSString();
+			options.put("selectionFile", selectionFileString);
+			options.put("textSelection", textSelection);
+			
 			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 
+			//
+			String fileExtension = "";
+			
+			IEditorInput editorInput = editor.getEditorInput();
+			IJavaElement elem = JavaUI.getEditorInputJavaElement(editorInput);
+			if (elem instanceof ICompilationUnit) {
+			    ICompilationUnit unit = (ICompilationUnit) elem;
+			    IJavaElement selected = unit.getElementAt(textSelection.getOffset());
+
+			    // gets the file extension
+			    fileExtension = selected.getResource().getFileExtension();
+			    // sets in options to be used later
+			    options.put("methodName", selected.getElementName());
+			    options.put("fileExtension", fileExtension);
+			    
+			    if(fileExtension.equals("java")){
+					SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(textSelection);
+					jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
+
+			        jdtCompilationUnit.accept(selectionNodesVisitor);
+			        selectionNodes = selectionNodesVisitor.getNodes();
+
+			        for (ASTNode astNode : selectionNodes) {
+			        	GraphTransformer.lineNumbers.add(jdtCompilationUnit.getLineNumber(astNode.getStartPosition()));
+			        }
+			        
+			        options.put("selectionNodes", selectionNodes);
+			        
+				} else { // groovy
+					SelectionNodesGroovyVisitor selectionNodesVisitor = new SelectionNodesGroovyVisitor(textSelection);
+					
+					MethodNode methodNode = GraphTransformer.getGroovyCompilationUnit(textSelectionFile, options);
+					stmt = methodNode.getCode();
+					selectionNodesVisitor.visitStatement(stmt);
+					
+//					methodNode.visit(selectionNodesVisitor);
+					
+			        Set<org.codehaus.groovy.ast.ASTNode> nodes = selectionNodesVisitor.getNodes();
+
+			        for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
+			        	GraphTransformer.lineNumbers.add(astNode.getLineNumber());
+			        }
+			        
+			        options.put("selectionNodes", nodes);
+				}
+			    
+			}
+			options.put("unitsInSelection", textSelection.getText());
+			System.out.println("text: "+textSelection.getText());
+			
 			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(selectionPosition, options);
 
 			/*
@@ -190,6 +237,11 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	private String getBinPath(String path) {
+		path = path.replace("src", "bin");
+		return path;
 	}
 
 	/**

@@ -145,7 +145,7 @@ public class EmergoGraphView extends ViewPart {
 				}
 			}
 			if (tgt == null) {
-				int startLine = edgeTgt.getPosition().getStartLine() + 1;//- 1; TODO fix this bug! how to get the correct position from uses?
+				int startLine = edgeTgt.getPosition().getStartLine() - 1; //TODO fix this bug! how to get the correct position from uses?
 				String nodeLabel = null;
 				try {
 					IDocument document = getDocument(edgeTgt.getPosition().getFilePath());
