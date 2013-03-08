@@ -179,10 +179,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 					stmt = methodNode.getCode();
 					selectionNodesVisitor.visitStatement(stmt);
 					
-//					methodNode.visit(selectionNodesVisitor);
-					
 			        Set<org.codehaus.groovy.ast.ASTNode> nodes = selectionNodesVisitor.getNodes();
-
 			        for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
 			        	GraphTransformer.lineNumbers.add(astNode.getLineNumber());
 			        }

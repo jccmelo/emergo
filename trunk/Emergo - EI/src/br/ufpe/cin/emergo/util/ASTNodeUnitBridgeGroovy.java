@@ -98,7 +98,7 @@ public class ASTNodeUnitBridgeGroovy {
 	public static Collection<Integer> getLinesFromASTNodes(Collection<ASTNode> nodes, Statement stmt) {
 		Set<Integer> lineSet = new HashSet<Integer>();
 		for (ASTNode node : nodes) {
-			lineSet.add(stmt.getLineNumber());
+			lineSet.add(node.getLineNumber());
 		}
 		return lineSet;
 	}
@@ -155,7 +155,7 @@ public class ASTNodeUnitBridgeGroovy {
 				if (unit.hasTag("LineNumberTag")) {
 					LineNumberTag lineTag = (LineNumberTag) unit.getTag("LineNumberTag");
 					if (lineTag != null) {
-						if (lineTag.getLineNumber() == line.intValue()+1) {
+						if (lineTag.getLineNumber() == line.intValue()) {
 							unitSet.add(unit);
 						}
 					}

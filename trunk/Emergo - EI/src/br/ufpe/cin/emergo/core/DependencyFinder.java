@@ -157,6 +157,7 @@ public class DependencyFinder {
 			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition);
 		//#endif
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new UnsupportedOperationException("Dependency finder unavailable");
 		}
 	}

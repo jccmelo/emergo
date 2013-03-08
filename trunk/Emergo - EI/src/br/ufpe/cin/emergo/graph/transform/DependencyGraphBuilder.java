@@ -16,6 +16,7 @@ import soot.jimple.DefinitionStmt;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
+import soot.jimple.internal.JInvokeStmt;
 import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.FlowSet;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
@@ -62,42 +63,36 @@ public class DependencyGraphBuilder {
 			// Gets a node/unit
 			Unit u = (Unit) i.next();
 			DependencyNode node;
-
-			/*
-			 * exclude definitions when it's $temp on the leftOp.
-			 */
+			
 			if (u instanceof DefinitionStmt) {
 				DefinitionStmt definition = (DefinitionStmt) u;
 				Local leftOp = (Local) definition.getLeftOp();
+				
+				// exclude definitions when it's $temp on the leftOp.
 				if (leftOp.getName().contains("$")) {
 					continue;
 				}
 
-				if (unitsInSelection.contains(u)) {
-					// Creates the node				
-					node = new DependencyNodeWrapper<Unit>(u, true,	selectionPosition, configSet);
-
-					if (!isDef(node)) {
-						System.out.println("Invalid selection..");
-						return null;
-					}
-				} else {
-					int line = -1;
-					if(selectionPosition.getFilePath().contains("java"))
-						line = ASTNodeUnitBridge.getLineFromUnit(u);
-					else
-						line = ASTNodeUnitBridgeGroovy.getLineFromUnit(u);
-					
-					System.out.println("Unit: "+u+ ", line: "+line);
-					SelectionPosition pos = null;
-					if (line != -1) {
-						pos = new SelectionPosition(selectionPosition.getLength(), selectionPosition.getOffSet(), line, 
-								selectionPosition.getStartColumn(), line, selectionPosition.getEndColumn(), selectionPosition.getFilePath());
-					}
-					node = new DependencyNodeWrapper<Unit>(u, false, pos, configSet);
-				}
-
+				node = createNode(unitsInSelection, selectionPosition, configSet, u);
 				visitedNodes.add(node);
+				
+			} else if (u instanceof JInvokeStmt) {
+				JInvokeStmt inv = (JInvokeStmt) u;
+				for (Unit unit : unitsInSelection) {
+					if(unit instanceof JAssignStmt){
+						JAssignStmt assignStmt = (JAssignStmt) unit;
+						Local leftOp = (Local) assignStmt.getLeftOp();
+						
+						List useBoxes = inv.getUseBoxes();
+						for (Object use : useBoxes) {
+							if(use.toString().contains(leftOp.toString())) {
+								node = createNode(unitsInSelection, selectionPosition, configSet, u);
+								visitedNodes.add(node);
+								break;
+							}
+						}
+					}
+				}
 			}
 
 			// Gets value of OUT set for unit
@@ -143,26 +138,66 @@ public class DependencyGraphBuilder {
 		return dependencyGraph;
 	}
 
+	private DependencyNode createNode(Collection<Unit> unitsInSelection,
+			SelectionPosition selectionPosition, ConfigSet configSet, Unit u) {
+		
+		DependencyNode node;
+		
+		if (unitsInSelection.contains(u)) {
+			node = new DependencyNodeWrapper<Unit>(u, true,	selectionPosition, configSet);
+
+			if (!isDef(node)) {
+				System.out.println("Invalid selection..");
+				return null;
+			}
+		} else {
+			int line = -1;
+			if(selectionPosition.getFilePath().contains("java"))
+				line = ASTNodeUnitBridge.getLineFromUnit(u);
+			else
+				line = ASTNodeUnitBridgeGroovy.getLineFromUnit(u);
+			
+			SelectionPosition pos = null;
+			if (line != -1) {
+				pos = new SelectionPosition(selectionPosition.getLength(), selectionPosition.getOffSet(), line, 
+						selectionPosition.getStartColumn(), line, selectionPosition.getEndColumn(), selectionPosition.getFilePath());
+			}
+			node = new DependencyNodeWrapper<Unit>(u, false, pos, configSet);
+		}
+	
+		return node;
+	}
+
 	private List<DependencyNode> getUse(List<DependencyNode> nodes,
 			DependencyNode currentNode) {
 		List<DependencyNode> uses = new ArrayList<DependencyNode>();
 
 		Unit unit = ((DependencyNodeWrapper<Unit>) currentNode).getData();
+		
 		JAssignStmt def = (JAssignStmt) unit;
 
 		for (Iterator it = nodes.iterator(); it.hasNext();) {
 			DependencyNode useCandidateNode = (DependencyNode) it.next();
 
 			Unit u = ((DependencyNodeWrapper<Unit>) useCandidateNode).getData();
-
+			
 			if (u instanceof JAssignStmt) {
 				JAssignStmt stmt = (JAssignStmt) u;
 
 				if (stmt.getRightOp().toString().contains(def.getLeftOp().toString())) {
 					uses.add(useCandidateNode);
 				}
+			} else if (u instanceof JInvokeStmt) {
+				JInvokeStmt inv = (JInvokeStmt) u;
+			
+				List useBoxes = inv.getUseBoxes();
+				for (Object use : useBoxes) {
+					if(use.toString().contains(def.getLeftOp().toString())) {
+						uses.add(useCandidateNode);
+						break;
+					}
+				}
 			}
-
 		}
 
 		return uses;

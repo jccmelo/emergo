@@ -6,7 +6,7 @@
 	
 	<extension point="org.eclipse.ui.menus">
     	<menuContribution allPopups="false"
-          				  locationURI="popup:#CompilationUnitEditorContext"> <!-- GroovyCompilationUnitEditorContext -->
+          				  locationURI="popup:#GroovyCompilationUnitEditorContext"> <!-- GroovyCompilationUnitEditorContext -->
        		<menu id="emergo" label="Emergo!" icon="icons/Emergo-Logo-Blue.png">
           		<command commandId="br.ufpe.cin.emergo.command.generateinterface"
                 		 style="push">

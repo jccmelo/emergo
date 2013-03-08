@@ -9,6 +9,7 @@ import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.CodeVisitorSupport;
 import org.codehaus.groovy.ast.builder.AstBuilderTransformation;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
+import org.codehaus.groovy.ast.stmt.ExpressionStatement;
 import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.control.SourceUnit;
 import org.eclipse.jface.text.ITextSelection;
@@ -53,7 +54,8 @@ public class SelectionNodesGroovyVisitor extends CodeVisitorSupport {
 				Statement currentStmt = (Statement) it.next();
 				
 				if (currentStmt.getLineNumber() == textSelection.getStartLine() + 1) {
-					nodes.add(stmt);
+					System.out.println("Node added => "+currentStmt.getText());
+					nodes.add(currentStmt);
 				}
 
 			}

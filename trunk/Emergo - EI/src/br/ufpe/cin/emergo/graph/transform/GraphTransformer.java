@@ -25,13 +25,8 @@ import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jface.text.ITextSelection;
 
 import br.ufpe.cin.emergo.handlers.ClassNodeOperationGroovy;
-//import static org.codehaus.groovy.eclipse.core.model.GroovyProject.GROOVY_ERROR_MARKER;
-//import static org.eclipse.core.resources.IResource.DEPTH_INFINITE;
 
 public class GraphTransformer {
-	// maps class name to a list of org.codehaus.groovy.ast.ModuleNode
-    //  ModuleNodes then map to ClassNodes
-    private final Map<String, List<ModuleNode>> scriptPathModuleNodeMap = new HashMap<String, List<ModuleNode>>();
 	
 	public static TreeSet<Integer> lineNumbers = new TreeSet<Integer>();
 	
@@ -86,72 +81,7 @@ public class GraphTransformer {
 		
 		return methodNode;
 		
-//		ast.getStatementBlock().visit(null);
-//		
-//		List<org.codehaus.groovy.ast.ASTNode> nodes = new AstBuilder().buildFromString(scriptLocation);//CompilePhase.SEMANTIC_ANALYSIS, true, codeString
-//		
-//		for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
-//			System.out.println(astNode.getText());
-//		}
-//		
-//		
-//		
-//		
-//		
-//		GroovyCompilationUnit compilationUnit = (GroovyCompilationUnit) JavaCore.createCompilationUnitFrom(textSelectionFile);
-//		try {
-//			compilationUnit.becomeWorkingCopy(null);
-//		} catch (JavaModelException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		ModuleNode node = compilationUnit.getModuleNode();
-
     }
-	
-	
-//	public List<ModuleNode> getModuleNodes(final IFile file) {
-//        final String className = getSourceFileKey( file );
-//        final List< ModuleNode > list = getModuleNodes( className );
-//        if( list.isEmpty() ) 
-//        {     
-//            // If there are error markers on the file, then it means that the file
-//            // has been compiled already and there is no ModuleNode info available
-//            // from a successful compile
-//            IMarker[] markers = null;
-//            try 
-//            {
-//                markers = file.findMarkers(GROOVY_ERROR_MARKER, true, DEPTH_INFINITE);
-//                // There may be error in other files that this file extends which prevents it from building.
-//                // Since we don't have a valid AST to walk if the file has problems being built, there is no
-//                // way to check for just errors in a superclass. Therefore the best we can do is see if there
-//                // are still errors in the project. If so don't try to rebuild.
-//                //
-//                // The outline view will be out of sync with the source file until all project errors are resolved.
-//                // This can be fixed when we stop depending on the Groovy compiler for parsing files and
-//                // use our own parser to walk up the superclasses.
-//                //
-//                if( markers == null || markers.length ==  0 ) 
-//                {
-//                	trace("trying to get project error markers");
-//                	markers = file.getProject().findMarkers( GROOVY_ERROR_MARKER, false, DEPTH_INFINITE );
-//                }
-//            } 
-//            catch( final CoreException e ) 
-//            {
-//                logException( e.getMessage(), e );
-//            }
-//            if( ( markers == null || markers.length ==  0 ) && isInSourceFolder( file, project.getJavaProject() ) ) 
-//            {
-//                trace( "ProjectModel.getModuleNodes() - starting compile for file:" + file );
-//                //List files = fullBuild();
-//                project.compileGroovyFile( file );
-//               	list.clear();
-//                list.addAll( getModuleNodes( className ) );
-//            }
-//        }
-//        return list;
-//    }
 	
 	/**
      * This returns a string for the IFile that is used to generate the keys
@@ -159,18 +89,10 @@ public class GraphTransformer {
      * @param file
      * @return
      */
-    public static String getSourceFileKey( final IFile file )
-    {
+    public static String getSourceFileKey(final IFile file) {
         return file.getRawLocation().toOSString();
     }
     
-//    public List<ModuleNode> getModuleNodes(final String scriptPath) {
-//    	final List< ModuleNode > list = scriptPathModuleNodeMap.get( scriptPath );
-//    	if( list == null )
-//    	    return newList();
-//    	return list;
-//    }
-
 //	// TODO: extract *some* methods from this one.
 //    private Map<Pair<Unit, IFeatureRep>, Set<Unit>> createProvidesGraph(Collection<Unit> unitsInSelection, LiftedReachingDefinitions reachingDefinitions,
 //            Body body) {
