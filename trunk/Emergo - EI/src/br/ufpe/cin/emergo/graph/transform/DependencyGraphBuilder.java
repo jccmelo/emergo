@@ -50,6 +50,7 @@ public class DependencyGraphBuilder {
 
 		// List of nodes to be visited
 		List<DependencyNode> visitedNodes = new ArrayList<DependencyNode>();
+		List<DependencyNode> defs = new ArrayList<DependencyNode>();
 
 		ConfigSet configSet = new ConfigSetImpl(); // without feature
 
@@ -113,7 +114,7 @@ public class DependencyGraphBuilder {
 
 			if (currentNode.isInSelection()) {
 				// Now, currentNode is def
-				// Gets the all uses for this def
+				// Gets all uses for this def
 				List<DependencyNode> uses = getUse(visitedNodes, currentNode);
 				
 				//To avoid duplicate edges
@@ -126,10 +127,15 @@ public class DependencyGraphBuilder {
 					}
 				}
 
-				// for each use found.. creates one directed edge (def -> use)
-				for (DependencyNode use : uses) {
-					connectVertices(dependencyGraph, configSet, use, currentNode);
+				// To avoid longer than one root node
+				if (defs.isEmpty() || defs.get(0) == currentNode) {
+					// for each use found.. creates one directed edge (def -> use)
+					for (DependencyNode use : uses) {
+						connectVertices(dependencyGraph, configSet, use, currentNode);
+						defs.add(currentNode);
+					}
 				}
+				
 			}
 		}
 
