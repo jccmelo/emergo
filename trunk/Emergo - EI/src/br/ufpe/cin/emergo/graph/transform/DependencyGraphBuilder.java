@@ -14,22 +14,23 @@ import soot.Local;
 import soot.Unit;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.internal.JAssignStmt;
-import soot.jimple.internal.JGotoStmt;
-import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JInvokeStmt;
 import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.FlowSet;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
 import br.ufpe.cin.emergo.core.ConfigSet;
-import br.ufpe.cin.emergo.core.EmergoException;
 import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
-import br.ufpe.cin.emergo.preprocessor.ContextManager;
+import br.ufpe.cin.emergo.instrument.FeatureTag;
+import br.ufpe.cin.emergo.instrument.IConfigRep;
+import br.ufpe.cin.emergo.instrument.IFeatureRep;
 import br.ufpe.cin.emergo.util.ASTNodeUnitBridge;
 import br.ufpe.cin.emergo.util.ASTNodeUnitBridgeGroovy;
 
 public class DependencyGraphBuilder {
+	
+	private List<DependencyNode> defs = new ArrayList<DependencyNode>();
 
 	/**
 	 * This method generates the data dependency graph
@@ -42,7 +43,8 @@ public class DependencyGraphBuilder {
 			UnitGraph cfg,
 			ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis,
 			Collection<Unit> unitsInSelection,
-			SelectionPosition selectionPosition) {
+			SelectionPosition selectionPosition,
+			Set<IConfigRep> configReps) {
 
 		// This graph will be return
 		DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = new DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>>(
@@ -50,14 +52,11 @@ public class DependencyGraphBuilder {
 
 		// List of nodes to be visited
 		List<DependencyNode> visitedNodes = new ArrayList<DependencyNode>();
-		List<DependencyNode> defs = new ArrayList<DependencyNode>();
-
-		ConfigSet configSet = new ConfigSetImpl(); // without feature
-
+		
 		// Iterate over the results
 		Iterator i = cfg.iterator();
 		
-		System.out.println("Body\n\n"+cfg.getBody()+"\n\n");
+		System.out.println("Body\n"+cfg.getBody()+"\nEnd body");
 
 		// Computes the analysis results
 		while (i.hasNext()) {
@@ -68,94 +67,82 @@ public class DependencyGraphBuilder {
 			if (u instanceof DefinitionStmt) {
 				DefinitionStmt definition = (DefinitionStmt) u;
 				Local leftOp = (Local) definition.getLeftOp();
-				
 				// exclude definitions when it's $temp on the leftOp.
 				if (leftOp.getName().contains("$")) {
 					continue;
 				}
-
-				node = createNode(unitsInSelection, selectionPosition, configSet, u);
-				visitedNodes.add(node);
+				
+				FeatureTag tag = (FeatureTag) u.getTag("FeatureTag");
+				
+				for (IConfigRep confRep : configReps) {
+					if(tag.getFeatureRep().belongsToConfiguration(confRep)) {
+						node = createNode(unitsInSelection, selectionPosition, confRep, tag.getFeatureRep(), u);
+						visitedNodes.add(node);
+						break;
+					}
+				}
+				
+//				node = createNode(unitsInSelection, selectionPosition, configReps.iterator().next(), u);
+//				visitedNodes.add(node);
 				
 			} else if (u instanceof JInvokeStmt) {
-				JInvokeStmt inv = (JInvokeStmt) u;
-				for (Unit unit : unitsInSelection) {
-					if(unit instanceof JAssignStmt){
-						JAssignStmt assignStmt = (JAssignStmt) unit;
-						Local leftOp = (Local) assignStmt.getLeftOp();
-						
-						List useBoxes = inv.getUseBoxes();
-						for (Object use : useBoxes) {
-							if(use.toString().contains(leftOp.toString())) {
-								node = createNode(unitsInSelection, selectionPosition, configSet, u);
-								visitedNodes.add(node);
-								break;
-							}
-						}
+				FeatureTag tag = (FeatureTag) u.getTag("FeatureTag");
+				
+				for (IConfigRep confRep : configReps) {
+					if(tag.getFeatureRep().belongsToConfiguration(confRep)) {
+						node = createNode(unitsInSelection, selectionPosition, confRep, tag.getFeatureRep(), u);
+						visitedNodes.add(node);
+						break;
 					}
 				}
 			}
-
-			// Gets value of OUT set for unit
-			// FlowSet out = analysis.getFlowAfter(u);
-
-			// ==================TODO=================
-			// gets the set of features from line of code
-			// Set<String> setFeatures =
-			// ContextManager.getContext().getFeaturesByLine(ContextManager.getLineNumberForUnit(u));
-
-			// =======================================
-		}
-
-		// Iterates over all nodes of the graph
-		for (int j = 0; j < visitedNodes.size(); j++) {
-
-			DependencyNode currentNode = visitedNodes.get(j);
-
-			if (currentNode.isInSelection()) {
-				// Now, currentNode is def
-				// Gets all uses for this def
-				List<DependencyNode> uses = getUse(visitedNodes, currentNode);
-				
-				//To avoid duplicate edges
-				int tam = uses.size();
-				for (int k = 0; k < tam; k++) {
-					for (int l = k+1; l < tam; l++) {
-						if(uses.get(k).getPosition().getStartLine() == uses.get(l).getPosition().getStartLine()){
-							uses.remove(l);
-						}
+		} // end while
+		
+		while (!defs.isEmpty()) {
+			DependencyNode currentNode = defs.get(0);
+			// Now, currentNode is def
+			// Gets all uses for this def
+			List<DependencyNode> uses = getUse(visitedNodes, currentNode);
+			
+			//To avoid duplicate edges
+			int tam = uses.size();
+			for (int k = 0; k < tam; k++) {
+				if (isDef(uses.get(k))) {
+					defs.add(uses.get(k));
+				}
+				for (int l = k+1; l < tam; l++) {
+					if(uses.get(k).getPosition().getStartLine() == uses.get(l).getPosition().getStartLine()){
+						uses.remove(l);
 					}
 				}
-
-				// To avoid longer than one root node
-				if (defs.isEmpty() || defs.get(0) == currentNode) {
-					// for each use found.. creates one directed edge (def -> use)
-					for (DependencyNode use : uses) {
-						connectVertices(dependencyGraph, configSet, use, currentNode);
-						defs.add(currentNode);
-					}
-				}
-				
 			}
-		}
+			
+			defs.remove(0);
 
-		// TODO: removes the nodes which have not edge
+			// for each use found.. creates one directed edge (def -> use)
+			for (DependencyNode use : uses) {
+				connectVertices(dependencyGraph, use, currentNode);
+			}
+			
+		}
 
 		return dependencyGraph;
 	}
 
 	private DependencyNode createNode(Collection<Unit> unitsInSelection,
-			SelectionPosition selectionPosition, ConfigSet configSet, Unit u) {
+			SelectionPosition selectionPosition, IConfigRep configRep, IFeatureRep featureRep, Unit u) {
 		
 		DependencyNode node;
 		
 		if (unitsInSelection.contains(u)) {
-			node = new DependencyNodeWrapper<Unit>(u, true,	selectionPosition, configSet);
+			node = new DependencyNodeWrapper<Unit>(u, true,	selectionPosition, configRep, featureRep);
 
 			if (!isDef(node)) {
 				System.out.println("Invalid selection..");
 				return null;
 			}
+			
+			defs.add(node);
 		} else {
 			int line = -1;
 			if(selectionPosition.getFilePath().contains("java"))
@@ -168,7 +155,7 @@ public class DependencyGraphBuilder {
 				pos = new SelectionPosition(selectionPosition.getLength(), selectionPosition.getOffSet(), line, 
 						selectionPosition.getStartColumn(), line, selectionPosition.getEndColumn(), selectionPosition.getFilePath());
 			}
-			node = new DependencyNodeWrapper<Unit>(u, false, pos, configSet);
+			node = new DependencyNodeWrapper<Unit>(u, false, pos, configRep, featureRep);
 		}
 	
 		return node;
@@ -239,8 +226,8 @@ public class DependencyGraphBuilder {
 	 */
 	private static void connectVertices(
 			final Graph<DependencyNode, ValueContainerEdge<ConfigSet>> graph,
-			final ConfigSet configSet, final DependencyNode use,
-			DependencyNode def) {
+			final DependencyNode use,
+			final DependencyNode def) {
 
 		/*
 		 * Counting on the graph's implementation to check for the existance of
@@ -251,7 +238,10 @@ public class DependencyGraphBuilder {
 		
 		if (!graph.containsEdge(def, use)) {
 			ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(def, use);
-			addedEdge.setValue(configSet);
+			
+			ConfigSet configS = def.getConfigSet().and(use.getConfigSet());
+			
+			addedEdge.setValue(configS);
 		}
 
 		/*
@@ -285,5 +275,147 @@ public class DependencyGraphBuilder {
 		// // }
 		// }
 	}
+	
+//	public DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateGraph(
+//			UnitGraph cfg,
+//			ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis,
+//			Collection<Unit> unitsInSelection,
+//			SelectionPosition selectionPosition,
+//			Set<IConfigRep> configReps) {
+//		
+//		// This graph will be return
+//		DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = new DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>>(
+//				(Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
+//		
+//		Map<Pair<Unit, IConfigRep>, Set<Unit>> unitConfigurationMap = new HashMap<Pair<Unit, IConfigRep>, Set<Unit>>();
+//		FeatureTag bodyFeatureTag = (FeatureTag) cfg.getBody().getTag("FeatureTag");
+//		
+//		for (Unit unit : unitsInSelection) {
+//			System.out.println("FeatureTag: "+unit.getTag("FeatureTag"));
+//		}
+//		
+//		for (Unit unit : unitsInSelection) {
+//			// exclude definitions when it's $temp on the leftOp.
+//			DefinitionStmt definition = (DefinitionStmt) unit;
+//            Local leftOp = (Local) definition.getLeftOp();
+//            if (leftOp.getName().contains("$")) {
+//                continue;
+//            }
+//            
+//            Set<FeatureTag> featuresThatUseDefinition = new HashSet<FeatureTag>();
+//            
+//            // for every unit in the body
+//            Iterator<Unit> iterator = cfg.getBody().getUnits().snapshotIterator();
+//            while (iterator.hasNext()) {
+//				Unit u = (Unit) iterator.next();
+//				FeatureTag unitTag = (FeatureTag) u.getTag("FeatureTag");
+//				
+//				List useAndDefBoxes = u.getUseAndDefBoxes();
+//				for (Object object : useAndDefBoxes) {
+//					ValueBox vbox = (ValueBox) object;
+//					
+//					if(vbox.getValue().equivTo(leftOp)) {
+//						featuresThatUseDefinition.add(unitTag);
+//					}
+//				}
+//				
+//				EagerMapLiftedFlowSet liftedFlowAfter = (EagerMapLiftedFlowSet) analysis.getFlowAfter(u);
+//				List<FlowSet> lattices = new ArrayList<FlowSet>();
+//				
+//				Iterator<IConfigRep> it = configReps.iterator();
+//				while (it.hasNext()) {
+//					IConfigRep configRep = (IConfigRep) it.next();
+//					FlowSet lattice = liftedFlowAfter.getLattice(configRep);
+//					
+//					lattices.add(lattice);
+//				}
+//				
+//				// and for every configuration..
+//				for (int i = 0; i < lattices.size(); i++) {
+//					FlowSet flowSet = lattices.get(i);
+//					IFeatureRep featureRep = bodyFeatureTag.getFeatureRep();
+//					
+//					// if the unit belongs to the configuration..
+//					Iterator<IConfigRep> it2 = configReps.iterator();
+//					while (it2.hasNext()) {
+//						IConfigRep configRep = (IConfigRep) it2.next();
+//						if (unitTag.getFeatureRep().belongsToConfiguration(configRep)) { //or featureRep
+//							
+//							// if the definition reaches this unit..
+//							if (flowSet.contains(definition)) {
+//								List<ValueBox> useBoxes = u.getUseBoxes();
+//								for (ValueBox valueBox : useBoxes) {
+//									/**
+//									 * and the definition is used, then
+//									 * add to the map (graph)..
+//									 */
+//									if (valueBox.getValue().equivTo(leftOp)) {
+//										Pair<Unit, IConfigRep> currentPair = new Pair<Unit, IConfigRep>(definition, configRep);
+//										Set<Unit> unitConfigReachesSet = unitConfigurationMap.get(currentPair);
+//										
+//										DependencyNode defNode = createNode(unitsInSelection, selectionPosition, configRep, definition);
+//										DependencyNode useNode = createNode(unitsInSelection, selectionPosition, configRep, u);
+//										
+//										if (!dependencyGraph.containsVertex(defNode)) {
+//											dependencyGraph.addVertex(defNode);
+//										}
+//										if (!dependencyGraph.containsVertex(useNode)) {
+//											dependencyGraph.addVertex(useNode);
+//										}
+//										
+//										Set<ValueContainerEdge<ConfigSet>> allEdges = dependencyGraph.getAllEdges(defNode, useNode);
+//										if (allEdges.size() >= 1) {
+//											int diffCounter = 0;
+//											Iterator<ValueContainerEdge<ConfigSet>> edgeIte = allEdges.iterator();
+//											Set<ValueContainerEdge<ConfigSet>> edgeRemovalSchedule = new HashSet<ValueContainerEdge<ConfigSet>>();
+//											
+//											while (edgeIte.hasNext()) {
+//												ValueContainerEdge<ConfigSet> valueContainerEdge = (ValueContainerEdge<ConfigSet>) edgeIte.next();
+//												ConfigSet valueConfig = valueContainerEdge.getValue();
+//												Integer idForConfig = 0;
+//												FlowSet flowSetFromOtherReached = lattices.get(idForConfig);
+//												if (flowSetFromOtherReached.equals(flowSet)) {
+////													if (valueConfig.length > featureRep.size() && featuresThatUseDefinition.contains(featureRep)) {
+////														edgeRemovalSchedule.add(valueContainerEdge);
+////														ValueContainerEdge<ConfigSet> addEdge = dependencyGraph.addEdge(defNode, useNode);
+////														addEdge.setValue(featureRep);
+////													    continue;
+////													}
+//												} else {
+//													diffCounter++;
+//												}
+//											}
+//											
+//											if (diffCounter == allEdges.size() && featuresThatUseDefinition.contains(featureRep)) {
+//												ValueContainerEdge<ConfigSet> addEdge = dependencyGraph.addEdge(defNode, useNode);
+//												ConfigSetImpl configSetImpl = new ConfigSetImpl();
+//												addEdge.setValue(configSetImpl);
+//											}
+//											dependencyGraph.removeAllEdges(edgeRemovalSchedule);
+//										} else {
+//											ValueContainerEdge<ConfigSet> addEdge = dependencyGraph.addEdge(defNode, useNode);
+//											ConfigSetImpl configSetImpl = new ConfigSetImpl();
+//											addEdge.setValue(configSetImpl);
+//										}
+//										
+//										if (unitConfigReachesSet == null) {
+//											unitConfigReachesSet = new HashSet<Unit>();
+//											unitConfigReachesSet.add(u);
+//											unitConfigurationMap.put(currentPair, unitConfigReachesSet);
+//										} else {
+//											unitConfigReachesSet.add(u);
+//										}
+//									}
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//            
+//		}
+//		
+//		return dependencyGraph;
+//	}
 
 }

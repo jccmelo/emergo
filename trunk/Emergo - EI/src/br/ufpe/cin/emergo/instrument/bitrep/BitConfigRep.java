@@ -143,7 +143,13 @@ public final class BitConfigRep implements IConfigRep {
 	public IConfigRep union(IConfigRep rep) {
 		if (rep instanceof BitConfigRep) {
 			BitConfigRep bitRep = (BitConfigRep) rep;
-			return BitVectorConfigRep.union(this, bitRep, Collections.max(((Collection<Integer>) atoms.values())), atoms);
+			
+			int size = 1;
+			if (!atoms.values().isEmpty()) {
+				size = Collections.max(((Collection<Integer>) atoms.values()));
+			}
+			
+			return BitVectorConfigRep.union(this, bitRep, size, atoms);
 		} else {
 			throw new UnsupportedOperationException();
 		}

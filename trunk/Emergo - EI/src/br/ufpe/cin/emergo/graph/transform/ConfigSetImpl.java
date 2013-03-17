@@ -1,14 +1,11 @@
 package br.ufpe.cin.emergo.graph.transform;
 
-import soot.toolkits.scalar.FlowSet;
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
 import br.ufpe.cin.emergo.instrument.IFeatureRep;
 
 
 public class ConfigSetImpl implements ConfigSet {
-
-	private FlowSet configSet; //Set of variables or ifdefs
 
 	private IConfigRep configRep;
 	private IFeatureRep featureRep;
@@ -17,8 +14,8 @@ public class ConfigSetImpl implements ConfigSet {
 		
 	}
 	
-	public ConfigSetImpl(FlowSet configSet) {
-		this.configSet = configSet;
+	public ConfigSetImpl(IConfigRep configRep) {
+		this.configRep = configRep;
 	}
 	
 	public ConfigSetImpl(IConfigRep configRep, IFeatureRep featureRep) {
@@ -42,8 +39,14 @@ public class ConfigSetImpl implements ConfigSet {
 	
 	@Override
 	public ConfigSet and(ConfigSet other) {
-		// TODO Auto-generated method stub
-		return null;
+		if (other instanceof ConfigSetImpl) {
+			IConfigRep otherVarSet = ((ConfigSetImpl) other).configRep;
+			return new ConfigSetImpl(configRep.union(otherVarSet), this.featureRep);
+		} else {
+			throw new IllegalArgumentException("Operation and between types "
+					+ ConfigSetImpl.class + " and " + other.getClass()
+					+ " not supported");
+		}
 	}
 	
 	@Override
@@ -66,6 +69,6 @@ public class ConfigSetImpl implements ConfigSet {
 
 	@Override
 	public String toString() {
-		return "[featureRep = true]";
+		return configRep.toString();
 	}
 }

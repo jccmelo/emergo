@@ -54,7 +54,6 @@ public class SelectionNodesGroovyVisitor extends CodeVisitorSupport {
 				Statement currentStmt = (Statement) it.next();
 				
 				if (currentStmt.getLineNumber() == textSelection.getStartLine() + 1) {
-					System.out.println("Node added => "+currentStmt.getText());
 					nodes.add(currentStmt);
 				}
 

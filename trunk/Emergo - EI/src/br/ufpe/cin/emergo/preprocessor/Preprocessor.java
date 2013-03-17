@@ -21,15 +21,15 @@ import org.apache.tools.ant.BuildException;
 
 public class Preprocessor {
 
-	private String defs; // defs are the features (e.g. DEBUG, LOGGING, etc)
+	private String defs = ""; // defs are the features (e.g. DEBUG, LOGGING, etc)
 	private String incdir;
 
 	public void execute() throws BuildException {
 		ContextManager context = ContextManager.getContext();
 
-		if (context.getSrcfile() == null || context.getDestfile() == null) {
+		if (context.getSrcfile() == null) {
 			throw new BuildException(
-					"Some parameter missed. Make sure that definition list, input and output files are provided.");
+					"Some parameter missed. Make sure that definition list and input files are provided.");
 		}
 
 		try {
@@ -43,12 +43,12 @@ public class Preprocessor {
 		ContextManager context = ContextManager.getContext();
 
 		BufferedReader br = null; // for reading from file
-		BufferedWriter bw = null; // for writing on file
+//		BufferedWriter bw = null; // for writing on file
 
 		try {
 
 			br = new BufferedReader(new FileReader(context.getSrcfile()));
-			bw = new BufferedWriter(new FileWriter(context.getDestfile()));
+//			bw = new BufferedWriter(new FileWriter(context.getDestfile()));
 
 			/**
 			 * Gets the defined features, split them by "," and, finally, remove
@@ -72,8 +72,6 @@ public class Preprocessor {
 			// reading line-by-line from input file
 			while ((line = br.readLine()) != null) {
 				lineNumber++;
-				String infoLine = String.valueOf(lineNumber);
-
 				/**
 				 * Creates a matcher that will match the given input against
 				 * this pattern.
@@ -84,8 +82,8 @@ public class Preprocessor {
 				 * Matches the defined pattern with the current line
 				 */
 				if (matcher.matches()) {
-					bw.write(line);
-					bw.newLine(); // for keeping the real line number
+//					bw.write(line);
+//					bw.newLine(); // for keeping the real line number
 
 					/**
 					 * MatchResult is unaffected by subsequent operations
@@ -154,7 +152,7 @@ public class Preprocessor {
 						}
 						continue;
 					} else if (Tag.INCLUDE.equals(dir)) {
-						include(param, bw);
+//						include(param, bw);
 						continue;
 					}
 				} else {
@@ -172,31 +170,31 @@ public class Preprocessor {
 					}
 				}
 				if (removeLevel == -1 || currentLevel < removeLevel) {
-					bw.write(line);
-					bw.newLine();
+//					bw.write(line);
+//					bw.newLine();
 				}
 			}
 		} finally {
 			if (br != null) {
 				br.close();
 			}
-			if (bw != null) {
-
-				Map2Xml xml = new Map2Xml();
-				try {
-					/* writing in a metadata file about this class */
-					String nameClass = context.getDestfile().split("\\.")[0];
-					
-					FileWriter fw = new FileWriter(new File(nameClass+".xml"));
-
-					xml.toXml(context.getMapFeatures(), fw);
-				} catch (XMLStreamException e) {
-					System.out.println("Error on xml generation");
-					e.printStackTrace();
-				}
-
-				bw.close();
-			}
+//			if (bw != null) {
+//
+//				Map2Xml xml = new Map2Xml();
+//				try {
+//					/* writing in a metadata file about this class */
+//					String nameClass = context.getDestfile().split("\\.")[0];
+//					
+//					FileWriter fw = new FileWriter(new File(nameClass+".xml"));
+//
+//					xml.toXml(context.getMapFeatures(), fw);
+//				} catch (XMLStreamException e) {
+//					System.out.println("Error on xml generation");
+//					e.printStackTrace();
+//				}
+//
+//				bw.close();
+//			}
 		}
 
 	}

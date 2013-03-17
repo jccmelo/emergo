@@ -24,6 +24,8 @@ import br.ufpe.cin.emergo.handlers.GenerateEmergentInterfaceHandler;
 import br.ufpe.cin.emergo.instrument.EagerConfigTag;
 import br.ufpe.cin.emergo.instrument.FeatureInstrumentor;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
+import br.ufpe.cin.emergo.preprocessor.ContextManager;
+import br.ufpe.cin.emergo.preprocessor.Preprocessor;
 import br.ufpe.cin.emergo.util.ASTNodeUnitBridge;
 import br.ufpe.cin.emergo.util.ASTNodeUnitBridgeGroovy;
 import dk.au.cs.java.compiler.node.AProgram;
@@ -68,10 +70,6 @@ public class DependencyFinder {
 //			return JWCompilerDependencyFinder.generateDependencyGraph(selectionPosition, options);
 		//#else
 			
-			/*
-             * Initialize and configure Soot's options and find out which method
-             * contains the selection
-             */
 			Object cp = options.get("correspondentClasspath");
 			String fileExt = (String) options.get("fileExtension");
 			
@@ -80,9 +78,22 @@ public class DependencyFinder {
 				cp = p.get(0); //gets classpath for java source code input
 			}
 			
-			SootManager.configure(cp.toString());
-			
 			String clazz = retrieveClassName(selectionPosition.getFilePath());
+			
+			/**
+			 * First of all, the preprocessing is performed.
+			 */
+			ContextManager manager = ContextManager.getContext();
+			manager.setSrcfile(selectionPosition.getFilePath()); // input class
+//			manager.setDestfile(selectionPosition.getFilePath()); // output class
+
+			new Preprocessor().execute();
+			
+			/**
+             * Initialize and configure Soot's options and find out which method
+             * contains the selection
+             */
+			SootManager.configure(cp.toString());
     		SootClass c = SootManager.loadAndSupport(clazz);
     		
     		// Retrieve the method and its body
@@ -91,7 +102,7 @@ public class DependencyFinder {
     		SootMethod m = c.getMethodByName(methodName);
     		Body b = m.retrieveActiveBody();
     		
-    		/*
+    		/**
              * Maps ASTNodes to Units based on the line no.
              */
     		Collection<Unit> unitsInSelection = null;
@@ -117,12 +128,12 @@ public class DependencyFinder {
 			}
     		
             
-    		/*
+    		/**
     		 * Instruments bytecode of the output class
     		 */
     		new FeatureInstrumentor().transform(b);
     		
-    		/*
+    		/**
     		 * Builds the CFG and runs the analysis
     		 */
     		EagerConfigTag configTag = (EagerConfigTag) b.getTag(EagerConfigTag.TAG_NAME);
@@ -142,7 +153,7 @@ public class DependencyFinder {
     		
     		LiftedReachingDefinitions liftedReachingDefinitions = new LiftedReachingDefinitions(bodyGraph, configReps);
             
-    		/*
+    		/**
     		 * Gets one DependencyGraphBuilder instance, then generates it.
     		 */
     		DependencyGraphBuilder builder = new DependencyGraphBuilder();
@@ -153,8 +164,10 @@ public class DependencyFinder {
     		selectionPosition = selectionPosition.builder().startLine(selectionStartLine).endLine(selecionEndLine).
     				startColumn(9).endColumn(19).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).
     				filePath(selectionPosition.getFilePath()).build();
+    		
+//    		return builder.generateGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps);
     		  		
-			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition);
+			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps);
 		//#endif
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -168,7 +168,7 @@ public static void adaptTo2(ArrayList<Dependency> dependencies, ITextEditor edit
 					FeatureDependency auxFeature = new FeatureDependency()
 						.setConfiguration(configAccumulator)
 						.setFile(textSelectionFile)
-						.setFeature(tgtNode.getConfigSet().toString())
+						.setFeature(tgtNode.getFeatureSet().toString()) //getConfigSet
 						.setLineNumber(tgtNode.getPosition().getStartLine())
 						.setMessage(message);
 					

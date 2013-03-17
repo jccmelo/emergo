@@ -3,6 +3,7 @@ package br.ufpe.cin.emergo.graph;
 import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.core.JWCompilerConfigSet;
 import br.ufpe.cin.emergo.core.SelectionPosition;
+import br.ufpe.cin.emergo.instrument.IConfigRep;
 import dk.au.cs.java.compiler.ifdef.IfDefVarSet;
 
 /**
@@ -131,8 +132,8 @@ public class DependencyNodeWrapper<T> implements DependencyNode {
 	}
 
 	@Override
-	public ConfigSet getFeatureSet() {
-		return new JWCompilerConfigSet(featureSet);
+	public IConfigRep getFeatureSet() {
+		return null; //new JWCompilerConfigSet(featureSet);
 	}
 
 }

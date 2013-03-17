@@ -273,7 +273,7 @@ public class EmergoView extends ViewPart {
 			Set<DependencyNode> targetVertexSet = dependencyGraph.vertexSet();
 			for (DependencyNode tgtNode : targetVertexSet) {
 				
-				if (tgtNode.equals(srcNode)  || tgtNode.getConfigSet().isTrueSet()) {
+				if (tgtNode.equals(srcNode)) { // || tgtNode.getConfigSet().isTrueSet()) {
 					continue;
 				}
 
@@ -308,8 +308,8 @@ public class EmergoView extends ViewPart {
 						message = "Unknown";
 					}
 					
-					if (!configAccumulator.isValid())
-						continue;
+//					if (!configAccumulator.isValid())
+//						continue;
 					
 					FeatureDependency auxFeature = new FeatureDependency()
 							.setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath()))

@@ -24,8 +24,11 @@ package br.ufpe.cin.emergo.instrument.bitrep;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 
+import org.apache.commons.collections.MapIterator;
 import org.apache.commons.collections.bidimap.UnmodifiableBidiMap;
+import org.apache.commons.collections.map.UnmodifiableEntrySet;
 
 import br.ufpe.cin.emergo.features.FeatureSetChecker;
 import br.ufpe.cin.emergo.instrument.IConfigRep;
@@ -100,7 +103,21 @@ public class BitVectorConfigRep implements ILazyConfigRep {
 
 	@Override
 	public String toString() {
-		return this.bitVector.toString();
+		StringBuffer b = new StringBuffer();
+		
+		Collection<Integer> collection = atoms.values();
+		int i = 0;		
+		for (Integer v : collection) {
+			i++;
+			if (bitVector.toString().contains(v.toString())) {
+				b.append(atoms.getKey(v));
+				if (collection.size() != i) {
+					b.append(" ^ ");
+				}
+			}
+		}
+		
+		return b.toString();
 	}
 
 	@Override
@@ -170,9 +187,9 @@ public class BitVectorConfigRep implements ILazyConfigRep {
 		if (vectorSize < id || vectorSize < id2)
 			throw new IllegalArgumentException("The size of the vector is not big enough to hold " + Math.max(id, id2));
 		
-		BitVector vector = new BitVector(vectorSize);
+		BitVector vector = new BitVector(vectorSize+1); //Otherwise, it will throw IndexOutOfBoundsException..
 		vector.put(id, true);
-		vector.put(id2, true);
+		vector.put(id2, true); //.. here!
 		
 		return new BitVectorConfigRep(atoms, vector);
 	}
