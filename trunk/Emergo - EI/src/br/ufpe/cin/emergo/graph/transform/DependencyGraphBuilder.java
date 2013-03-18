@@ -137,8 +137,22 @@ public class DependencyGraphBuilder {
 		
 		DependencyNode node;
 		
+		// Gets the exact position of a given unit
+		int line = -1;
+		if(selectionPosition.getFilePath().contains("java"))
+			line = ASTNodeUnitBridge.getLineFromUnit(u);
+		else
+			line = ASTNodeUnitBridgeGroovy.getLineFromUnit(u);
+		
+		SelectionPosition pos = null;
+		if (line != -1) {
+			pos = new SelectionPosition(selectionPosition.getLength(), selectionPosition.getOffSet(), line, 
+					selectionPosition.getStartColumn(), line, selectionPosition.getEndColumn(), selectionPosition.getFilePath());
+		}
+		
+		// verifies if the current unit is in selection..
 		if (unitsInSelection.contains(u)) {
-			node = new DependencyNodeWrapper<Unit>(u, true,	selectionPosition, configRep, featureRep);
+			node = new DependencyNodeWrapper<Unit>(u, true,	pos, configRep, featureRep);
 
 			if (!isDef(node)) {
 				System.out.println("Invalid selection..");
@@ -146,18 +160,7 @@ public class DependencyGraphBuilder {
 			}
 			
 			defs.add(node);
-		} else {
-			int line = -1;
-			if(selectionPosition.getFilePath().contains("java"))
-				line = ASTNodeUnitBridge.getLineFromUnit(u);
-			else
-				line = ASTNodeUnitBridgeGroovy.getLineFromUnit(u);
-			
-			SelectionPosition pos = null;
-			if (line != -1) {
-				pos = new SelectionPosition(selectionPosition.getLength(), selectionPosition.getOffSet(), line, 
-						selectionPosition.getStartColumn(), line, selectionPosition.getEndColumn(), selectionPosition.getFilePath());
-			}
+		} else { // otherwise..
 			node = new DependencyNodeWrapper<Unit>(u, false, pos, configRep, featureRep);
 		}
 	

@@ -8,9 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.codehaus.groovy.ast.MethodNode;
-import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.ast.stmt.Statement;
-import org.codehaus.jdt.groovy.model.GroovyCompilationUnit;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -189,7 +187,14 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			    
 			}
 			options.put("unitsInSelection", textSelection.getText());
-			System.out.println("text: "+textSelection.getText());
+			
+//			String[] split = textSelection.getText().replaceAll("//[^\r\n]+", "").replaceAll("/\\*.*\\*/", "").split("\n");
+//			for (int i = 0; i < split.length; i++) {
+//				if (!split[i].trim().matches("^\\s*")) {
+//					System.out.println(split[i].trim());
+//				}
+//			}
+			
 			
 			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(selectionPosition, options);
 
