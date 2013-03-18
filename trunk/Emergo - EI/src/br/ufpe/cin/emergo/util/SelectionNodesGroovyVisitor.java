@@ -45,15 +45,15 @@ public class SelectionNodesGroovyVisitor extends CodeVisitorSupport {
 	}
 
 	public void visitStatement(Statement stmt) {
-		// super.visitBlockStatement(stmt);
 		if (stmt instanceof BlockStatement) {
 			super.visitBlockStatement((BlockStatement) stmt);
 			List<Statement> listStmt = ((BlockStatement) stmt).getStatements();
 
 			for (Iterator it = listStmt.iterator(); it.hasNext();) {
 				Statement currentStmt = (Statement) it.next();
-				
-				if (currentStmt.getLineNumber() == textSelection.getStartLine() + 1) {
+								
+				if (currentStmt.getLineNumber() >= textSelection.getStartLine() + 1 &&
+						currentStmt.getLastLineNumber() <= textSelection.getEndLine() + 1) {
 					nodes.add(currentStmt);
 				}
 

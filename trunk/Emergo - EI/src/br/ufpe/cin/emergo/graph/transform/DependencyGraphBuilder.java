@@ -107,13 +107,16 @@ public class DependencyGraphBuilder {
 			//To avoid duplicate edges
 			int tam = uses.size();
 			for (int k = 0; k < tam; k++) {
-				if (isDef(uses.get(k))) {
-					defs.add(uses.get(k));
-				}
 				for (int l = k+1; l < tam; l++) {
 					if(uses.get(k).getPosition().getStartLine() == uses.get(l).getPosition().getStartLine()){
 						uses.remove(l);
 					}
+				}
+			}
+			//For supporting transitivity property..
+			for (int j = 0; j < uses.size(); j++) {
+				if (isDef(uses.get(j))) {
+					defs.add(uses.get(j));
 				}
 			}
 			
