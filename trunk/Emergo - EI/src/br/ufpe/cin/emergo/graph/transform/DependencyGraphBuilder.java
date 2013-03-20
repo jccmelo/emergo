@@ -152,14 +152,13 @@ public class DependencyGraphBuilder {
 		
 		// verifies if the current unit is in selection..
 		if (unitsInSelection.contains(u)) {
+			
 			node = new DependencyNodeWrapper<Unit>(u, true,	pos, configRep, featureRep);
 
-			if (!isDef(node)) {
-				System.out.println("Invalid selection..");
-				return null;
+			if (isDef(node)) {
+				defs.add(node);
+//				System.out.println("Invalid selection..");
 			}
-			
-			defs.add(node);
 		} else { // otherwise..
 			node = new DependencyNodeWrapper<Unit>(u, false, pos, configRep, featureRep);
 		}
@@ -235,6 +234,11 @@ public class DependencyGraphBuilder {
 			final DependencyNode use,
 			final DependencyNode def) {
 
+		// To avoid same nodes (e.g. def == use)
+		if(def.getPosition().getStartLine() == use.getPosition().getStartLine()) {
+			return;
+		}
+		
 		/*
 		 * Counting on the graph's implementation to check for the existance of
 		 * the nodes before adding to avoid duplicate vertices.
