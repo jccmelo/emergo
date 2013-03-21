@@ -19,6 +19,31 @@ public class SystemProperties {
 	
 	public static final QualifiedName CHOOSEN_FEATURES = new QualifiedName(Activator.PLUGIN_ID, "features");
 	
+	public static final QualifiedName FEATURE_DEPENDENCE_PROPKEY = new QualifiedName(Activator.PLUGIN_ID, "featureDependence");
+	private static final boolean DEFAULT_FEATURE_DEPENDENCE = true;
+	
+	public static boolean getFeatureDependence(IResource resource) {
+		try {
+			String value = resource.getPersistentProperty(FEATURE_DEPENDENCE_PROPKEY);
+			if (value == null){
+				return DEFAULT_FEATURE_DEPENDENCE;
+			}
+			return Boolean.parseBoolean(value);
+		} catch (CoreException e) {
+			e.printStackTrace();
+			return DEFAULT_FEATURE_DEPENDENCE;
+		}
+	}
+	
+	public static void setFeatureDependence(IResource resource, boolean feature) {
+		try {
+			resource.setPersistentProperty(SystemProperties.FEATURE_DEPENDENCE_PROPKEY, "" + feature);
+		} catch (CoreException e) {
+			e.printStackTrace();
+			//XXX
+		}	
+	}
+	
 	public static boolean getInterprocedural(IResource resource){
 		try {
 			String value = resource.getPersistentProperty(INTERPROCEDURAL_PROPKEY);

@@ -83,10 +83,6 @@ public class DependencyFinder {
 			/**
 			 * First of all, the preprocessing is performed.
 			 */
-			ContextManager manager = ContextManager.getContext();
-			manager.setSrcfile(selectionPosition.getFilePath()); // input class
-//			manager.setDestfile(selectionPosition.getFilePath()); // output class
-
 			new Preprocessor().execute();
 			
 			/**
@@ -167,7 +163,7 @@ public class DependencyFinder {
     		
 //    		return builder.generateGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps);
     		  		
-			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps);
+			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps, options);
 		//#endif
 		} catch (Exception e) {
 			e.printStackTrace();

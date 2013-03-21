@@ -1,11 +1,16 @@
 package br.ufpe.cin.emergo.handlers;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.stmt.Statement;
@@ -28,6 +33,7 @@ import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.ui.JavaUI;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.BlockTextSelection;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
@@ -46,6 +52,8 @@ import br.ufpe.cin.emergo.core.SelectionPosition;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.graph.transform.GraphTransformer;
+import br.ufpe.cin.emergo.preprocessor.ContextManager;
+import br.ufpe.cin.emergo.preprocessor.Tag;
 import br.ufpe.cin.emergo.properties.SystemProperties;
 import br.ufpe.cin.emergo.util.MethodDeclarationSootMethodBridge;
 import br.ufpe.cin.emergo.util.ResourceUtil;
@@ -109,6 +117,8 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			options.put("interprocedural-depth", SystemProperties.getInterproceduralDepth(javaProject.getResource()));
 			options.put("interprocedural-inline", SystemProperties.getInterproceduralInline(javaProject.getResource()));
 			options.put("rootpath", javaProject.getResource().getLocation().toFile().getAbsolutePath());
+			
+			options.put("featureDependence", SystemProperties.getFeatureDependence(javaProject.getResource()));
 
 			IClasspathEntry[] resolvedClasspath = javaProject.getResolvedClasspath(true);
 			List<File> classpath = new ArrayList<File>();
@@ -140,9 +150,74 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			options.put("selectionFile", selectionFileString);
 			options.put("textSelection", textSelection);
 			
-			final SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
+			SelectionPosition selectionPosition = null;
+			
+			ContextManager context = ContextManager.getContext();
+			context.setSrcfile(selectionFileString); // input class
+			
+			//====================================================================
+			
+			if (textSelection.getText().matches(Tag.regex)) {
+				BufferedReader br = new BufferedReader(new FileReader(context.getSrcfile()));
+				Pattern pattern = Pattern.compile(Tag.regex, Pattern.CASE_INSENSITIVE);
+				
+				String line;
+				int lineNumber = -1;
+				while ((line = br.readLine()) != null) {
+					lineNumber++;
+					/**
+					 * Creates a matcher that will match the given input against
+					 * this pattern.
+					 */
+					Matcher matcher = pattern.matcher(textSelection.getText());
 
-			//
+					/**
+					 * Matches the defined pattern with the current line
+					 */
+					if (matcher.matches()) {
+						/**
+						 * MatchResult is unaffected by subsequent operations
+						 */
+						MatchResult result = matcher.toMatchResult();
+						// preprocessor directives
+						String dir = result.group(1).toLowerCase();
+						// feature's name
+						String param = result.group(2);
+
+						
+						if (textSelection.getStartLine() <= lineNumber) {
+							if (line.contains(Tag.IFDEF)) {
+								// adds ifdef X on the stack
+								context.addDirective(dir + " "+ param.replaceAll("\\s", ""));
+								
+								continue;
+							} else if (line.contains(Tag.ENDIF)) {
+								
+								context.removeTopDirective();
+								
+								if (context.stackIsEmpty()) {
+									selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(lineNumber).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
+									break;
+								}
+								
+								continue;
+							} else {
+								if (!line.trim().matches("^\\s*")) {
+									System.out.println(line.trim()); //set selectionPosition
+								}
+							}
+						}
+					}
+				}
+				br.close();
+			} else {
+				selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
+			}
+			
+			ITextSelection blockTextSelection = new BlockTextSelection(document, selectionPosition.getStartLine(), selectionPosition.getStartColumn(), selectionPosition.getEndLine(), selectionPosition.getEndColumn(), 0);
+			
+			//====================================================================
+			
 			String fileExtension = "";
 			
 			IEditorInput editorInput = editor.getEditorInput();
@@ -158,7 +233,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			    options.put("fileExtension", fileExtension);
 			    
 			    if(fileExtension.equals("java")){
-					SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(textSelection);
+					SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(blockTextSelection);
 					jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
 
 			        jdtCompilationUnit.accept(selectionNodesVisitor);
@@ -171,7 +246,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			        options.put("selectionNodes", selectionNodes);
 			        
 				} else { // groovy
-					SelectionNodesGroovyVisitor selectionNodesVisitor = new SelectionNodesGroovyVisitor(textSelection);
+					SelectionNodesGroovyVisitor selectionNodesVisitor = new SelectionNodesGroovyVisitor(blockTextSelection);
 					
 					MethodNode methodNode = GraphTransformer.getGroovyCompilationUnit(textSelectionFile, options);
 					stmt = methodNode.getCode();

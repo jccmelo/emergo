@@ -17,6 +17,8 @@ public class EmergoPropertyPage extends PropertyPage implements
 
 	private Button radioInterprocedural;
 	private Button radioIntraprocedural;
+	private Button currentFeatureButton;
+	private Button otherFeaturesButton;
 	private Spinner depthSpinner;
 	private Spinner inlineSpinner;
 
@@ -69,8 +71,35 @@ public class EmergoPropertyPage extends PropertyPage implements
 		inlineSpinner.setMaximum(Integer.MAX_VALUE);
 		inlineSpinner.setSelection(getInterproceduralInline());
 		inlineSpinner.setLayoutData(new GridData());
+		
+		//============ Jean ===================================
+		
+		Label dependenceLabel = new Label(myComposite, SWT.NONE);
+		dependenceLabel.setLayoutData(new GridData());
+		dependenceLabel.setText("\nChoose the kind of dependencies that you want to see:\n");
+		
+		currentFeatureButton = new Button(myComposite, SWT.CHECK);
+		currentFeatureButton.setText("within current feature that is being maintained;");
+		boolean currentFeature = getFeatureDependence();
+		currentFeatureButton.setSelection(currentFeature);
+
+		otherFeaturesButton = new Button(myComposite, SWT.CHECK);
+		otherFeaturesButton.setText("among other features. (Checked by default)");
+		otherFeaturesButton.setSelection(true);
+		
+		//=====================================================
 
 		return myComposite;
+	}
+	
+	protected boolean getFeatureDependence() {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		return SystemProperties.getFeatureDependence(resource);
+	}
+	
+	protected void setFeatureDependence(boolean feature) {
+		IResource resource = (IResource) getElement().getAdapter(IResource.class);
+		SystemProperties.setFeatureDependence(resource, feature);
 	}
 
 	protected boolean getInterprocedural() {
@@ -108,6 +137,7 @@ public class EmergoPropertyPage extends PropertyPage implements
 		setInterprocedural(radioInterprocedural.getSelection());
 		setInterproceduralDepth(Integer.parseInt(depthSpinner.getText()));
 		setInterproceduralInline(Integer.parseInt(inlineSpinner.getText()));
+		setFeatureDependence(currentFeatureButton.getSelection());
 		return super.performOk();
 	}
 	

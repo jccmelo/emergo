@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jgrapht.DirectedGraph;
@@ -31,6 +32,7 @@ import br.ufpe.cin.emergo.util.ASTNodeUnitBridgeGroovy;
 public class DependencyGraphBuilder {
 	
 	private List<DependencyNode> defs = new ArrayList<DependencyNode>();
+	private static boolean featureDependence = false;
 
 	/**
 	 * This method generates the data dependency graph
@@ -44,7 +46,10 @@ public class DependencyGraphBuilder {
 			ForwardFlowAnalysis<Unit, ? extends FlowSet> analysis,
 			Collection<Unit> unitsInSelection,
 			SelectionPosition selectionPosition,
-			Set<IConfigRep> configReps) {
+			Set<IConfigRep> configReps,
+			Map<Object, Object> options) {
+		
+		featureDependence = (Boolean) options.get("featureDependence");
 
 		// This graph will be return
 		DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = new DirectedMultigraph<DependencyNode, ValueContainerEdge<ConfigSet>>(
@@ -239,6 +244,17 @@ public class DependencyGraphBuilder {
 			return;
 		}
 		
+		// takes into account the statements related to current feature
+		if (DependencyGraphBuilder.featureDependence && def.getFeatureSet() == use.getFeatureSet()) {
+			addVerticesAndEdge(graph, def, use);
+		} else if (def.getFeatureSet() != use.getFeatureSet()) { //between other features
+			addVerticesAndEdge(graph, def, use);
+		}
+	}
+
+	private static void addVerticesAndEdge(
+			Graph<DependencyNode, ValueContainerEdge<ConfigSet>> graph,
+			DependencyNode def, DependencyNode use) {
 		/*
 		 * Counting on the graph's implementation to check for the existance of
 		 * the nodes before adding to avoid duplicate vertices.
@@ -250,10 +266,12 @@ public class DependencyGraphBuilder {
 			ValueContainerEdge<ConfigSet> addedEdge = graph.addEdge(def, use);
 			
 			ConfigSet configS = def.getConfigSet().and(use.getConfigSet());
-			
 			addedEdge.setValue(configS);
 		}
-
+	}
+		
+		
+		
 		/*
 		 * To avoid having more than one edge between two given nodes, the
 		 * information contained in these edges, internally an IfDefVarSet
@@ -284,7 +302,6 @@ public class DependencyGraphBuilder {
 		// // addedEdge.setValue(sourceConfigAndMean);
 		// // }
 		// }
-	}
 	
 //	public DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> generateGraph(
 //			UnitGraph cfg,
