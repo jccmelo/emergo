@@ -157,7 +157,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			
 			//====================================================================
 			
-			if (textSelection.getText().matches(Tag.regex)) {
+			if (textSelection.getText().matches(Tag.ifdefRegex)) {
 				BufferedReader br = new BufferedReader(new FileReader(context.getSrcfile()));
 				Pattern pattern = Pattern.compile(Tag.regex, Pattern.CASE_INSENSITIVE);
 				

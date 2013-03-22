@@ -19,4 +19,6 @@ public final class Tag {
 			+ "|" + ELSE + "|" + ENDIF + "|" + INCLUDE
 			+ ")\\s*(.*)\\s*$";
 	
+	public static final String ifdefRegex = "^\\s*"+comment+"(" + IFDEF + "|" + IFNDEF
+			+ "|" + ELSE + ")\\s*(.*)\\s*$";
 }
