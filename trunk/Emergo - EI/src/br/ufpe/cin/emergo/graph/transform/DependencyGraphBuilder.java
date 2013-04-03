@@ -73,9 +73,9 @@ public class DependencyGraphBuilder {
 				DefinitionStmt definition = (DefinitionStmt) u;
 				Local leftOp = (Local) definition.getLeftOp();
 				// exclude definitions when it's $temp on the leftOp.
-				if (leftOp.getName().contains("$")) {
-					continue;
-				}
+//				if (leftOp.getName().contains("$")) {
+//					continue;
+//				}
 				
 				FeatureTag tag = (FeatureTag) u.getTag("FeatureTag");
 				
@@ -110,11 +110,10 @@ public class DependencyGraphBuilder {
 			List<DependencyNode> uses = getUse(visitedNodes, currentNode);
 			
 			//To avoid duplicate edges
-			int tam = uses.size();
-			for (int k = 0; k < tam; k++) {
-				for (int l = k+1; l < tam; l++) {
+			for (int k = 0; k < uses.size(); k++) {
+				for (int l = k+1; l < uses.size(); l++) {
 					if(uses.get(k).getPosition().getStartLine() == uses.get(l).getPosition().getStartLine()){
-						uses.remove(l);
+						uses.remove(l--);
 					}
 				}
 			}

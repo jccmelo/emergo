@@ -117,6 +117,10 @@ public class BitVectorConfigRep implements ILazyConfigRep {
 			}
 		}
 		
+		if(b.toString().endsWith(" ^ ")) {
+			return b.toString().substring(0, b.length()-3);
+		}
+		
 		return b.toString();
 	}
 

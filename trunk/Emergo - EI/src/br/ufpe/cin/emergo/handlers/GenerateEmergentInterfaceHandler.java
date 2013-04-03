@@ -2,7 +2,9 @@ package br.ufpe.cin.emergo.handlers;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -158,58 +160,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			//====================================================================
 			
 			if (textSelection.getText().matches(Tag.ifdefRegex)) {
-				BufferedReader br = new BufferedReader(new FileReader(context.getSrcfile()));
-				Pattern pattern = Pattern.compile(Tag.regex, Pattern.CASE_INSENSITIVE);
-				
-				String line;
-				int lineNumber = -1;
-				while ((line = br.readLine()) != null) {
-					lineNumber++;
-					/**
-					 * Creates a matcher that will match the given input against
-					 * this pattern.
-					 */
-					Matcher matcher = pattern.matcher(textSelection.getText());
-
-					/**
-					 * Matches the defined pattern with the current line
-					 */
-					if (matcher.matches()) {
-						/**
-						 * MatchResult is unaffected by subsequent operations
-						 */
-						MatchResult result = matcher.toMatchResult();
-						// preprocessor directives
-						String dir = result.group(1).toLowerCase();
-						// feature's name
-						String param = result.group(2);
-
-						
-						if (textSelection.getStartLine() <= lineNumber) {
-							if (line.contains(Tag.IFDEF)) {
-								// adds ifdef X on the stack
-								context.addDirective(dir + " "+ param.replaceAll("\\s", ""));
-								
-								continue;
-							} else if (line.contains(Tag.ENDIF)) {
-								
-								context.removeTopDirective();
-								
-								if (context.stackIsEmpty()) {
-									selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(lineNumber).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
-									break;
-								}
-								
-								continue;
-							} else {
-								if (!line.trim().matches("^\\s*")) {
-									System.out.println(line.trim()); //set selectionPosition
-								}
-							}
-						}
-					}
-				}
-				br.close();
+				selectionPosition = getSelectionPosFromFeature(document, textSelection, selectionFileString, selectionPosition,	context);
 			} else {
 				selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 			}
@@ -314,6 +265,65 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	private SelectionPosition getSelectionPosFromFeature(IDocument document,
+			ITextSelection textSelection, String selectionFileString,
+			SelectionPosition selectionPosition, ContextManager context)
+			throws FileNotFoundException, IOException {
+		BufferedReader br = new BufferedReader(new FileReader(context.getSrcfile()));
+		Pattern pattern = Pattern.compile(Tag.regex, Pattern.CASE_INSENSITIVE);
+		
+		String line;
+		int lineNumber = -1;
+		while ((line = br.readLine()) != null) {
+			lineNumber++;
+			/**
+			 * Creates a matcher that will match the given input against
+			 * this pattern.
+			 */
+			Matcher matcher = pattern.matcher(textSelection.getText());
+
+			/**
+			 * Matches the defined pattern with the current line
+			 */
+			if (matcher.matches()) {
+				/**
+				 * MatchResult is unaffected by subsequent operations
+				 */
+				MatchResult result = matcher.toMatchResult();
+				// preprocessor directives
+				String dir = result.group(1).toLowerCase();
+				// feature's name
+				String param = result.group(2);
+
+				
+				if (textSelection.getStartLine() <= lineNumber) {
+					if (line.contains(Tag.IFDEF)) {
+						// adds ifdef X on the stack
+						context.addDirective(dir + " "+ param.replaceAll("\\s", ""));
+						
+						continue;
+					} else if (line.contains(Tag.ENDIF)) {
+						
+						context.removeTopDirective();
+						
+						if (context.stackIsEmpty()) {
+							selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(lineNumber).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
+							break;
+						}
+						
+						continue;
+					} else {
+						if (!line.trim().matches("^\\s*")) {
+							System.out.println(line.trim()); //set selectionPosition
+						}
+					}
+				}
+			}
+		}
+		br.close();
+		return selectionPosition;
 	}
 
 	private String getBinPath(String path) {
