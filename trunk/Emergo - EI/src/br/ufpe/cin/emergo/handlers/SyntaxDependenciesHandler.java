@@ -136,7 +136,7 @@ public class SyntaxDependenciesHandler extends AbstractHandler {
 			final EmergoView emergoView = (EmergoView) treeView;
 			new Runnable() {
 				public void run() {
-					emergoView.adaptTo2(JWCompilerDependencyFinderSyntax.dependencies.dependencies, true);
+					emergoView.adaptToSyntaxDependencies(JWCompilerDependencyFinderSyntax.dependencies.dependencies, true);
 				}
 				}.run();
 			}

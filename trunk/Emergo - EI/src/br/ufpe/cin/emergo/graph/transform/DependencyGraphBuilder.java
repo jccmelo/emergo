@@ -61,7 +61,7 @@ public class DependencyGraphBuilder {
 		// Iterate over the results
 		Iterator i = cfg.iterator();
 		
-		System.out.println("Body\n"+cfg.getBody()+"\nEnd body");
+//		System.out.println("Body\n"+cfg.getBody()+"\nEnd body");
 
 		// Computes the analysis results
 		while (i.hasNext()) {
@@ -86,9 +86,6 @@ public class DependencyGraphBuilder {
 						break;
 					}
 				}
-				
-//				node = createNode(unitsInSelection, selectionPosition, configReps.iterator().next(), u);
-//				visitedNodes.add(node);
 				
 			} else if (u instanceof JInvokeStmt) {
 				FeatureTag tag = (FeatureTag) u.getTag("FeatureTag");

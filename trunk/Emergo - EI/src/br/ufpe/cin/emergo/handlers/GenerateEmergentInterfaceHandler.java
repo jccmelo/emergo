@@ -77,6 +77,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 	public static CompilationUnit jdtCompilationUnit;
 	public static Statement stmt;
 	
+	public List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs = new ArrayList<DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>>>();
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		
@@ -152,23 +153,11 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			options.put("selectionFile", selectionFileString);
 			options.put("textSelection", textSelection);
 			
-			SelectionPosition selectionPosition = null;
+			List<SelectionPosition> selectionPositions = new ArrayList<SelectionPosition>();
 			
 			ContextManager context = ContextManager.getContext();
 			context.setSrcfile(selectionFileString); // input class
-			
-			//====================================================================
-			
-			if (textSelection.getText().matches(Tag.ifdefRegex)) {
-				selectionPosition = getSelectionPosFromFeature(document, textSelection, selectionFileString, selectionPosition,	context);
-			} else {
-				selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
-			}
-			
-			ITextSelection blockTextSelection = new BlockTextSelection(document, selectionPosition.getStartLine(), selectionPosition.getStartColumn(), selectionPosition.getEndLine(), selectionPosition.getEndColumn(), 0);
-			
-			//====================================================================
-			
+
 			String fileExtension = "";
 			
 			IEditorInput editorInput = editor.getEditorInput();
@@ -183,56 +172,69 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			    options.put("methodName", selected.getElementName());
 			    options.put("fileExtension", fileExtension);
 			    
-			    if(fileExtension.equals("java")){
-					SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(blockTextSelection);
-					jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
+				
+				//====================================================================
+				
+				if (textSelection.getText().matches(Tag.ifdefRegex)) {
+					selectionPositions = getSelectionPosFromFeatureWithinOneMethod(document, textSelection, selectionFileString, context);
+				} else {
+					SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(textSelection.getEndLine()).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
+					selectionPositions.add(selectionPosition);
+				}
+				
+				//====================================================================
+			    
+			    //
+			    for (int i = 0; i < selectionPositions.size(); i++) {
+			    	ITextSelection blockTextSelection = new BlockTextSelection(document, selectionPositions.get(i).getStartLine(), selectionPositions.get(i).getStartColumn(), selectionPositions.get(i).getEndLine(), selectionPositions.get(i).getEndColumn(), 0);
+			    	
+			    	//TODO: Apply the command pattern here!
+			    	 if(fileExtension.equals("java")){
+							SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(blockTextSelection);
+							jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
 
-			        jdtCompilationUnit.accept(selectionNodesVisitor);
-			        selectionNodes = selectionNodesVisitor.getNodes();
+					        jdtCompilationUnit.accept(selectionNodesVisitor);
+					        selectionNodes = selectionNodesVisitor.getNodes();
 
-			        for (ASTNode astNode : selectionNodes) {
-			        	GraphTransformer.lineNumbers.add(jdtCompilationUnit.getLineNumber(astNode.getStartPosition()));
-			        }
-			        
-			        options.put("selectionNodes", selectionNodes);
-			        
-				} else { // groovy
-					SelectionNodesGroovyVisitor selectionNodesVisitor = new SelectionNodesGroovyVisitor(blockTextSelection);
-					
-					MethodNode methodNode = GraphTransformer.getGroovyCompilationUnit(textSelectionFile, options);
-					stmt = methodNode.getCode();
-					selectionNodesVisitor.visitStatement(stmt);
-					
-			        Set<org.codehaus.groovy.ast.ASTNode> nodes = selectionNodesVisitor.getNodes();
-			        for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
-			        	GraphTransformer.lineNumbers.add(astNode.getLineNumber());
-			        }
-			        
-			        options.put("selectionNodes", nodes);
+					        for (ASTNode astNode : selectionNodes) {
+					        	GraphTransformer.lineNumbers.add(jdtCompilationUnit.getLineNumber(astNode.getStartPosition()));
+					        }
+					        
+					        options.put("selectionNodes", selectionNodes);
+					        
+						} else { // groovy
+							SelectionNodesGroovyVisitor selectionNodesVisitor = new SelectionNodesGroovyVisitor(blockTextSelection);
+							
+							MethodNode methodNode = GraphTransformer.getGroovyCompilationUnit(textSelectionFile, options);
+							stmt = methodNode.getCode();
+							selectionNodesVisitor.visitStatement(stmt);
+							
+					        Set<org.codehaus.groovy.ast.ASTNode> nodes = selectionNodesVisitor.getNodes();
+					        for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
+					        	GraphTransformer.lineNumbers.add(astNode.getLineNumber());
+					        }
+					        
+					        options.put("selectionNodes", nodes);
+						}
+			    	 
+			    	 dependencyGraphs.add(DependencyFinder.findFromSelection(selectionPositions.get(i), options));
 				}
 			    
 			}
-			options.put("unitsInSelection", textSelection.getText());
 			
-//			String[] split = textSelection.getText().replaceAll("//[^\r\n]+", "").replaceAll("/\\*.*\\*/", "").split("\n");
-//			for (int i = 0; i < split.length; i++) {
-//				if (!split[i].trim().matches("^\\s*")) {
-//					System.out.println(split[i].trim());
-//				}
-//			}
-			
-			
-			final DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = DependencyFinder.findFromSelection(selectionPosition, options);
-
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
 			 */
-			if (dependencyGraph == null || dependencyGraph.vertexSet().size() < 2) {
-				// XXX cannot find path to icon!
-				new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
-				// TODO clear the views!
-				return null;
-			}
+//			for (int j = 0; j < dependencyGraphs.size(); j++) {
+//				DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>> graph = dependencyGraphs.get(j);
+//				
+//				if (graph == null || graph.vertexSet().size() < 2) {
+//					// XXX cannot find path to icon!
+//					new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
+//					// TODO clear the views!
+//					return null;
+//				}
+//			}
 
 			// TODO: make this a list of things to update instead of hardcoding.
 			// Update the graph view
@@ -241,7 +243,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 				final EmergoGraphView view = (EmergoGraphView) findGraphView;
 				new Runnable() {
 					public void run() {
-						view.adaptTo(dependencyGraph);
+						view.adaptTo2(dependencyGraphs);
 					}
 				}.run();
 			}
@@ -252,11 +254,12 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 				final EmergoView emergoView = (EmergoView) treeView;
 				new Runnable() {
 					public void run() {
-						emergoView.adaptTo(dependencyGraph, true);
+						emergoView.adaptTo2(dependencyGraphs, true);
 					}
 				}.run();
 			}
 			
+			dependencyGraphs.clear();
 		} catch (Throwable e) {
 			String message = e.getMessage() == null ? "No message specified" : e.getMessage();
 			InternalErrorDialog internalErrorDialog = new InternalErrorDialog(shell, "An error has occurred", ResourceUtil.getEmergoIcon(), message, e, MessageDialog.ERROR, new String[] { "Ok", "Details" }, 0);
@@ -267,63 +270,77 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 		return null;
 	}
 
-	private SelectionPosition getSelectionPosFromFeature(IDocument document,
-			ITextSelection textSelection, String selectionFileString,
-			SelectionPosition selectionPosition, ContextManager context)
+	private List<SelectionPosition> getSelectionPosFromFeatureWithinOneMethod(IDocument document,
+			ITextSelection textSelection, String selectionFileString, ContextManager context)
 			throws FileNotFoundException, IOException {
+		
+		List<SelectionPosition> positions = new ArrayList<SelectionPosition>();
+		
 		BufferedReader br = new BufferedReader(new FileReader(context.getSrcfile()));
 		Pattern pattern = Pattern.compile(Tag.regex, Pattern.CASE_INSENSITIVE);
 		
+		String rg = "(public|protected|private|static|\\s)+\\w+ +\\w+ *\\([^\\)]*\\) *\\{";//+[\\w<>[]]+\\s+(\\w+)*([^)]*)*({?|[^;])";
+		
 		String line;
-		int lineNumber = -1;
+		int lineNumber = 0;
+		int startLine = 0;
 		while ((line = br.readLine()) != null) {
 			lineNumber++;
-			/**
-			 * Creates a matcher that will match the given input against
-			 * this pattern.
-			 */
-			Matcher matcher = pattern.matcher(textSelection.getText());
-
-			/**
-			 * Matches the defined pattern with the current line
-			 */
-			if (matcher.matches()) {
+			
+			if (textSelection.getStartLine() < lineNumber) { // && lineNumber < sizeMethod
 				/**
-				 * MatchResult is unaffected by subsequent operations
+				 * Creates a matcher that will match the given input against
+				 * this pattern.
 				 */
-				MatchResult result = matcher.toMatchResult();
-				// preprocessor directives
-				String dir = result.group(1).toLowerCase();
-				// feature's name
-				String param = result.group(2);
+				Matcher matcher = pattern.matcher(line);
 
-				
-				if (textSelection.getStartLine() <= lineNumber) {
+				/**
+				 * Matches the defined pattern with the current line
+				 */
+				if (matcher.matches()) {
+					/**
+					 * MatchResult is unaffected by subsequent operations
+					 */
+					MatchResult result = matcher.toMatchResult();
+					// preprocessor directives
+					String dir = result.group(1).toLowerCase();
+					// feature's name
+					String param = result.group(2);
+
 					if (line.contains(Tag.IFDEF)) {
 						// adds ifdef X on the stack
-						context.addDirective(dir + " "+ param.replaceAll("\\s", ""));
-						
+						context.addDirective(dir + " " + param.replaceAll("\\s", ""));
+						startLine = lineNumber;
+
 						continue;
 					} else if (line.contains(Tag.ENDIF)) {
+						String ifdef = context.getTopDirective();
 						
 						context.removeTopDirective();
 						
-						if (context.stackIsEmpty()) {
-							selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(textSelection.getStartLine()).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(lineNumber).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
-							break;
+						if (context.stackIsEmpty() && textSelection.getText().contains(ifdef)) {
+							SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(startLine).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(lineNumber).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
+							positions.add(selectionPosition);
+//							break;
 						}
 						
 						continue;
-					} else {
-						if (!line.trim().matches("^\\s*")) {
-							System.out.println(line.trim()); //set selectionPosition
-						}
+					} 
+				} else {
+					
+					//XXX: This is necessary at the moment because the dataflow analysis is intraprocedural.
+					if (line.matches(rg)) {
+						break; //end method body
+					}
+					
+					if (!line.trim().matches("^\\s*")) {
+						System.out.println(line.trim()); //set selectionPosition
 					}
 				}
 			}
 		}
 		br.close();
-		return selectionPosition;
+		return positions;
 	}
 
 	private String getBinPath(String path) {

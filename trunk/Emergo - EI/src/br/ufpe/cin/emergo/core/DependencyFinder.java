@@ -3,11 +3,13 @@ package br.ufpe.cin.emergo.core;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.Range;
 import org.jgrapht.DirectedGraph;
+import org.jgrapht.graph.DirectedMultigraph;
 
 import soot.Body;
 import soot.SootClass;
@@ -58,7 +60,7 @@ public class DependencyFinder {
 	 * The return is a directed graph representing the dependencies found.
 	 * 
 	 * @param finder
-	 * @param selectionPosition
+	 * @param selectionPositions
 	 * @param options
 	 * @param interprocedural 
 	 * @return
@@ -150,20 +152,12 @@ public class DependencyFinder {
     		LiftedReachingDefinitions liftedReachingDefinitions = new LiftedReachingDefinitions(bodyGraph, configReps);
             
     		/**
-    		 * Gets one DependencyGraphBuilder instance, then generates it.
+    		 * Gets one DependencyGraphBuilder instance, then generates the graph.
     		 */
     		DependencyGraphBuilder builder = new DependencyGraphBuilder();
     		
-    		final int selectionStartLine = selectionPosition.getStartLine() + 1;
-    		final int selecionEndLine = selectionPosition.getEndLine() + 1;
-    		
-    		selectionPosition = selectionPosition.builder().startLine(selectionStartLine).endLine(selecionEndLine).
-    				startColumn(9).endColumn(19).length(selectionPosition.getLength()).offSet(selectionPosition.getOffSet()).
-    				filePath(selectionPosition.getFilePath()).build();
-    		
-//    		return builder.generateGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps);
-    		  		
-			return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps, options);
+    		return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps, options);
+    			
 		//#endif
 		} catch (Exception e) {
 			e.printStackTrace();

@@ -98,12 +98,16 @@ public class EmergoGraphView extends ViewPart {
 	 */
 	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		clearGraph();
+		
+		printGraph(dependencyGraph);
 
+}
+
+	private void printGraph(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		Display display = parent.getDisplay();
 
 		// TODO: make this configurable for the user.
 		graph.setLayoutAlgorithm(new RadialLayoutAlgorithm(LayoutStyles.NO_LAYOUT_NODE_RESIZING), true);
-
 		/*
 		 * The Graph from the Zest toolkit will gladly add objects that are are equal by the JAVA Object#equals(..)
 		 * contract into the graph. This inspired the workaround using the Map objectNodeMapping to keep track of which
@@ -173,6 +177,23 @@ public class EmergoGraphView extends ViewPart {
 			graphConnection.setFont(new Font(display, new FontData("Courrier", 8, SWT.BOLD)));
 			graphConnection.setText(valueContainerEdge.getValue().toString());
 		}
+	}
+	
+	/**
+	 * Updates the graph visualization with the information provided by the dependency graph.
+	 * 
+	 * @param dependencyGraph
+	 * @param compilationUnit
+	 */
+	public void adaptTo2(List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs) {
+		clearGraph();
+		
+		for (int i = 0; i < dependencyGraphs.size(); i++) {
+			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = dependencyGraphs.get(i);
+			
+			printGraph(dependencyGraph);
+		}
+
 	}
 
 	/**

@@ -257,6 +257,36 @@ public class EmergoView extends ViewPart {
 			return;
 		}
 		
+		checkFeatureDependencies(dependencyGraph);
+	}
+	
+	public void adaptTo2(List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs, boolean delete) {
+		/*
+		 * Delete markers of all previously selected files.
+		 */
+		if (delete){
+			try {
+				clearView();
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		
+		for (int i = 0; i < dependencyGraphs.size(); i++) {
+			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph = dependencyGraphs.get(i);
+			
+			if (dependencyGraph.vertexSet().size() < 2) {
+				continue;
+			}
+			
+			checkFeatureDependencies(dependencyGraph);
+		}
+		
+	}
+
+	private void checkFeatureDependencies(
+			DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		/*
 		 * Store a reference to every FeatureDependency so that IMarkers created
 		 * based on them can be checked for duplicates.
@@ -308,8 +338,8 @@ public class EmergoView extends ViewPart {
 						message = "Unknown";
 					}
 					
-//					if (!configAccumulator.isValid())
-//						continue;
+//						if (!configAccumulator.isValid())
+//							continue;
 					
 					FeatureDependency auxFeature = new FeatureDependency()
 							.setFile(ResourceUtil.getIFile(tgtNode.getPosition().getFilePath()))
@@ -359,7 +389,7 @@ public class EmergoView extends ViewPart {
 		updateTree();
 	}
 	
-	public void adaptTo2(ArrayList<Dependency> dependencies, boolean delete) {
+	public void adaptToSyntaxDependencies(ArrayList<Dependency> dependencies, boolean delete) {
 		/*
 		 * Delete markers of all previously selected files.
 		 */
