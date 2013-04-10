@@ -225,16 +225,18 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			/*
 			 * There is not enough information on the graph to be shown. Instead, show an alert message to the user.
 			 */
-//			for (int j = 0; j < dependencyGraphs.size(); j++) {
-//				DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>> graph = dependencyGraphs.get(j);
-//				
-//				if (graph == null || graph.vertexSet().size() < 2) {
-//					// XXX cannot find path to icon!
-//					new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
-//					// TODO clear the views!
-//					return null;
-//				}
-//			}
+			if (!textSelection.getText().matches(Tag.ifdefRegex)) {
+				for (int j = 0; j < dependencyGraphs.size(); j++) {
+					DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>> graph = dependencyGraphs.get(j);
+					
+					if (graph == null || graph.vertexSet().size() < 2) {
+						// XXX cannot find path to icon!
+						new MessageDialog(shell, "Emergo Message", ResourceUtil.getEmergoIcon(), "No dependencies found!", MessageDialog.INFORMATION, new String[] { "Ok" }, 0).open();
+						// TODO clear the views!
+						return null;
+					}
+				}
+			}
 
 			// TODO: make this a list of things to update instead of hardcoding.
 			// Update the graph view
@@ -281,13 +283,16 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 		
 		String rg = "(public|protected|private|static|\\s)+\\w+ +\\w+ *\\([^\\)]*\\) *\\{";//+[\\w<>[]]+\\s+(\\w+)*([^)]*)*({?|[^;])";
 		
+		int methodStartLine = getMethodStartLine(textSelection);
+		
 		String line;
 		int lineNumber = 0;
 		int startLine = 0;
 		while ((line = br.readLine()) != null) {
 			lineNumber++;
 			
-			if (textSelection.getStartLine() < lineNumber) { // && lineNumber < sizeMethod
+			if (methodStartLine < lineNumber) { // textSelection.getStartLine() < lineNumber
+				
 				/**
 				 * Creates a matcher that will match the given input against
 				 * this pattern.
@@ -321,7 +326,6 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 						if (context.stackIsEmpty() && textSelection.getText().contains(ifdef)) {
 							SelectionPosition selectionPosition = SelectionPosition.builder().length(textSelection.getLength()).offSet(textSelection.getOffset()).startLine(startLine).startColumn(calculateColumnFromOffset(document, textSelection.getOffset())).endLine(lineNumber).endColumn(calculateColumnFromOffset(document, textSelection.getOffset() + textSelection.getLength())).filePath(selectionFileString).build();
 							positions.add(selectionPosition);
-//							break;
 						}
 						
 						continue;
@@ -332,15 +336,33 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 					if (line.matches(rg)) {
 						break; //end method body
 					}
-					
-					if (!line.trim().matches("^\\s*")) {
-						System.out.println(line.trim()); //set selectionPosition
-					}
 				}
 			}
 		}
 		br.close();
 		return positions;
+	}
+
+	private int getMethodStartLine(ITextSelection textSelection) throws IOException {
+		BufferedReader br = new BufferedReader(new FileReader(ContextManager.getContext().getSrcfile()));
+		
+		String rg = "(public|protected|private|static|\\s)+\\w+ +\\w+ *\\([^\\)]*\\) *\\{";//+[\\w<>[]]+\\s+(\\w+)*([^)]*)*({?|[^;])";
+		
+		String methodSignature = "";
+		String line;
+		int currentLine = 0;
+		int startLine = 0;
+		while ((line = br.readLine()) != null) {
+			currentLine++;
+			
+			if (line.matches(rg) && currentLine <= textSelection.getStartLine()) {
+				methodSignature = line;
+				startLine = currentLine;
+			}
+		}
+		
+//		System.out.println("Method: "+methodSignature+" , startLine: "+startLine);
+		return startLine;
 	}
 
 	private String getBinPath(String path) {
