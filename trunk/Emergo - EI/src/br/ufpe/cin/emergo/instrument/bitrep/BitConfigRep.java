@@ -132,7 +132,19 @@ public final class BitConfigRep implements IConfigRep {
 
 	@Override
 	public String toString() {
-		return "" + id;
+		StringBuffer b = new StringBuffer();
+
+		Collection<Integer> collection = atoms.values();
+		
+		for (Integer v : collection) {
+			if (v.toString().contains(Integer.toString(id))) {
+				b.append(atoms.getKey(v));
+			}
+		}
+		
+	    b.append((b.length() == 0)? "ROOT" : "");
+
+		return b.toString();
 	}
 	
 	public UnmodifiableBidiMap getAtoms() {
