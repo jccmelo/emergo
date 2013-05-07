@@ -1,0 +1,3 @@
+def a = 0 =A=> def b = a
+def b = a ==> def c = b
+def b = a ==> m(b)

@@ -73,10 +73,6 @@ import br.ufpe.cin.emergo.views.EmergoView;
  */
 public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 	
-	public static Set<ASTNode> selectionNodes;
-	public static CompilationUnit jdtCompilationUnit;
-	public static Statement stmt;
-	
 	public List<DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>>> dependencyGraphs = new ArrayList<DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>>>();
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -174,7 +170,6 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			    
 				
 				//====================================================================
-				
 				if (textSelection.getText().matches(Tag.ifdefRegex)) {
 					selectionPositions = getSelectionPosFromFeatureWithinOneMethod(document, textSelection, selectionFileString, context);
 				} else {
@@ -182,42 +177,25 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 					selectionPositions.add(selectionPosition);
 				}
 				
+				for (SelectionPosition position : selectionPositions) {
+					System.out.println("Position: "+position);
+				}
 				//====================================================================
 			    
-			    //
 			    for (int i = 0; i < selectionPositions.size(); i++) {
 			    	ITextSelection blockTextSelection = new BlockTextSelection(document, selectionPositions.get(i).getStartLine(), selectionPositions.get(i).getStartColumn(), selectionPositions.get(i).getEndLine(), selectionPositions.get(i).getEndColumn(), 0);
 			    	
-			    	//TODO: Apply the command pattern here!
-			    	 if(fileExtension.equals("java")){
-							SelectionNodesVisitor selectionNodesVisitor = new SelectionNodesVisitor(blockTextSelection);
-							jdtCompilationUnit = GraphTransformer.getCompilationUnit(textSelectionFile);
+					if (fileExtension.equals("java")) {
+						CommandCompilationUnit cu = new CompilationUnitJava();
+						cu.markNodesFromSelection(textSelectionFile, blockTextSelection, options);
 
-					        jdtCompilationUnit.accept(selectionNodesVisitor);
-					        selectionNodes = selectionNodesVisitor.getNodes();
+					} else { // groovy
+						CommandCompilationUnit cuGroovy = new CompilationUnitGroovy();
+						cuGroovy.markNodesFromSelection(textSelectionFile, blockTextSelection, options);
 
-					        for (ASTNode astNode : selectionNodes) {
-					        	GraphTransformer.lineNumbers.add(jdtCompilationUnit.getLineNumber(astNode.getStartPosition()));
-					        }
-					        
-					        options.put("selectionNodes", selectionNodes);
-					        
-						} else { // groovy
-							SelectionNodesGroovyVisitor selectionNodesVisitor = new SelectionNodesGroovyVisitor(blockTextSelection);
-							
-							MethodNode methodNode = GraphTransformer.getGroovyCompilationUnit(textSelectionFile, options);
-							stmt = methodNode.getCode();
-							selectionNodesVisitor.visitStatement(stmt);
-							
-					        Set<org.codehaus.groovy.ast.ASTNode> nodes = selectionNodesVisitor.getNodes();
-					        for (org.codehaus.groovy.ast.ASTNode astNode : nodes) {
-					        	GraphTransformer.lineNumbers.add(astNode.getLineNumber());
-					        }
-					        
-					        options.put("selectionNodes", nodes);
-						}
+					}
 			    	 
-			    	 dependencyGraphs.add(DependencyFinder.findFromSelection(selectionPositions.get(i), options));
+			    	dependencyGraphs.add(DependencyFinder.findFromSelection(selectionPositions.get(i), options));
 				}
 			    
 			}
@@ -238,28 +216,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 				}
 			}
 
-			// TODO: make this a list of things to update instead of hardcoding.
-			// Update the graph view
-			IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoGraphView.ID);
-			if (findGraphView instanceof EmergoGraphView) {
-				final EmergoGraphView view = (EmergoGraphView) findGraphView;
-				new Runnable() {
-					public void run() {
-						view.adaptTo2(dependencyGraphs);
-					}
-				}.run();
-			}
-
-			// Update the tree view.
-			IViewPart treeView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
-			if (treeView instanceof EmergoView) {
-				final EmergoView emergoView = (EmergoView) treeView;
-				new Runnable() {
-					public void run() {
-						emergoView.adaptTo2(dependencyGraphs, true);
-					}
-				}.run();
-			}
+			updateViews(event);
 			
 			dependencyGraphs.clear();
 		} catch (Throwable e) {
@@ -270,6 +227,31 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	private void updateViews(ExecutionEvent event) {
+		// TODO: make this a list of things to update instead of hardcoding.
+		// Update the graph view
+		IViewPart findGraphView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoGraphView.ID);
+		if (findGraphView instanceof EmergoGraphView) {
+			final EmergoGraphView view = (EmergoGraphView) findGraphView;
+			new Runnable() {
+				public void run() {
+					view.adaptTo2(dependencyGraphs);
+				}
+			}.run();
+		}
+
+		// Update the tree view.
+		IViewPart treeView = HandlerUtil.getActiveWorkbenchWindow(event).getActivePage().findView(EmergoView.ID);
+		if (treeView instanceof EmergoView) {
+			final EmergoView emergoView = (EmergoView) treeView;
+			new Runnable() {
+				public void run() {
+					emergoView.adaptTo2(dependencyGraphs, true);
+				}
+			}.run();
+		}
 	}
 
 	private List<SelectionPosition> getSelectionPosFromFeatureWithinOneMethod(IDocument document,
@@ -320,6 +302,7 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 						continue;
 					} else if (line.contains(Tag.ENDIF)) {
 						String ifdef = context.getTopDirective();
+						System.out.println("Top directive "+ifdef+" will be removed.");
 						
 						context.removeTopDirective();
 						
@@ -329,7 +312,12 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 						}
 						
 						continue;
-					} 
+					} else if (line.contains(Tag.ELSE)) {
+						context.addDirective(dir + " ~" + param.replaceAll("\\s", ""));
+						startLine = lineNumber;
+
+						continue;
+					}
 				} else {
 					
 					//XXX: This is necessary at the moment because the dataflow analysis is intraprocedural.
@@ -361,7 +349,6 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
 			}
 		}
 		
-//		System.out.println("Method: "+methodSignature+" , startLine: "+startLine);
 		return startLine;
 	}
 
@@ -401,13 +388,5 @@ public class GenerateEmergentInterfaceHandler extends AbstractHandler {
         }
         return path;
     }
-
-	public static Set<ASTNode> getSelectionNodes() {
-		return selectionNodes;
-	}
-
-	public static CompilationUnit getJdtCompilationUnit() {
-		return jdtCompilationUnit;
-	}
 
 }

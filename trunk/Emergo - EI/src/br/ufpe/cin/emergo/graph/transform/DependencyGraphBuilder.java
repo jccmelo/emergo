@@ -70,9 +70,9 @@ public class DependencyGraphBuilder {
 			DependencyNode node;
 			
 			if (u instanceof DefinitionStmt) {
-				DefinitionStmt definition = (DefinitionStmt) u;
-				Local leftOp = (Local) definition.getLeftOp();
-				// exclude definitions when it's $temp on the leftOp.
+//				DefinitionStmt definition = (DefinitionStmt) u;
+//				Local leftOp = (Local) definition.getLeftOp();
+//				// exclude definitions when it's $temp on the leftOp.
 //				if (leftOp.getName().contains("$")) {
 //					continue;
 //				}
@@ -129,6 +129,8 @@ public class DependencyGraphBuilder {
 			}
 			
 		}
+		
+		
 
 		return dependencyGraph;
 	}
@@ -240,6 +242,14 @@ public class DependencyGraphBuilder {
 			return;
 		}
 		
+//		String src = ((DependencyNodeWrapper<Unit>) def).getData().toString();
+//		String tgt = ((DependencyNodeWrapper<Unit>) use).getData().toString();
+//		
+//		String leftOp = src.toString().split("=")[0];
+//		if (!tgt.matches(leftOp)) { //dando pau aqui!
+//			return;
+//		}
+		
 		// takes into account the statements related to current feature
 		if (DependencyGraphBuilder.featureDependence && def.getFeatureSet() == use.getFeatureSet()) {
 			addVerticesAndEdge(graph, def, use);
@@ -251,6 +261,26 @@ public class DependencyGraphBuilder {
 	private static void addVerticesAndEdge(
 			Graph<DependencyNode, ValueContainerEdge<ConfigSet>> graph,
 			DependencyNode def, DependencyNode use) {
+		
+		Set<DependencyNode> vertexSet = graph.vertexSet();
+		for (DependencyNode node : vertexSet) {
+			
+			Set<ValueContainerEdge<ConfigSet>> edgesOf = graph.edgesOf(node);
+			for (ValueContainerEdge<ConfigSet> edge : edgesOf) {
+				DependencyNode target = graph.getEdgeTarget(edge);
+				
+				if(node.getPosition().getStartLine() == def.getPosition().getStartLine() && 
+						use.getPosition().getStartLine() == target.getPosition().getStartLine()) {
+					return;
+				} 
+				else if (node.getPosition().getStartLine() == def.getPosition().getStartLine() &&
+						node.getPosition().getStartLine() == target.getPosition().getStartLine()) {
+					def = node;
+//					break;
+				}
+			}
+		}
+		
 		/*
 		 * Counting on the graph's implementation to check for the existance of
 		 * the nodes before adding to avoid duplicate vertices.

@@ -1,0 +1,6 @@
+int x = 10+w; =A=> soma = z + x;
+int x = 10+w; =A ^ SOMA=> int soma = x;
+soma = z + x; ==> println soma
+def z = y; =A=> m(z);
+def z = y; =A=> soma = z + x;
+soma = z + x; ==> println soma

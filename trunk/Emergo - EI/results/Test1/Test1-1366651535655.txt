@@ -1,0 +1,1 @@
+def a = 100; ==> System.out.println("The value of a is "+a);

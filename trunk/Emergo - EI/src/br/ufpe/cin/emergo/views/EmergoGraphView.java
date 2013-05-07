@@ -35,6 +35,7 @@ import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.DependencyNodeWrapper;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
+import br.ufpe.cin.emergo.tests.GraphResult;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class EmergoGraphView extends ViewPart {
@@ -98,10 +99,9 @@ public class EmergoGraphView extends ViewPart {
 	 */
 	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		clearGraph();
-		
 		printGraph(dependencyGraph);
-
-}
+		GraphResult.saveResult(graph);
+	}
 
 	private void printGraph(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		Display display = parent.getDisplay();
@@ -118,6 +118,37 @@ public class EmergoGraphView extends ViewPart {
 		for (ValueContainerEdge<ConfigSet> valueContainerEdge : edgeSet) {
 			DependencyNode edgeSrc = dependencyGraph.getEdgeSource(valueContainerEdge);
 			DependencyNode edgeTgt = dependencyGraph.getEdgeTarget(valueContainerEdge);
+			
+			// prune the graph
+			int lineSrc = edgeSrc.getPosition().getStartLine() - 1;
+			int lineTgt = edgeTgt.getPosition().getStartLine() - 1;
+			
+			IDocument doc;
+			try {
+				doc = getDocument(edgeSrc.getPosition().getFilePath());
+				String nodeLabelSrc = doc.get(doc.getLineOffset(lineSrc), doc.getLineLength(lineSrc)).toString().trim();
+				String nodeLabelTgt = doc.get(doc.getLineOffset(lineTgt), doc.getLineLength(lineTgt)).toString().trim();
+				
+				String leftOp = nodeLabelSrc.split("=")[0];
+				String rg = "(def|int|String|\\s)\\s*(.*)\\s*$";
+
+				if (leftOp.matches(rg)) {
+					String var = leftOp.split(" ")[1];
+					
+					if (!nodeLabelTgt.contains(var)) {
+						continue;
+					}
+				}
+				
+			} catch (CoreException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			} catch (BadLocationException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			
+			
 
 			GraphNode src = objectNodeMapping.get(edgeSrc);
 			GraphNode tgt = objectNodeMapping.get(edgeTgt);
@@ -193,6 +224,7 @@ public class EmergoGraphView extends ViewPart {
 			
 			printGraph(dependencyGraph);
 		}
+		GraphResult.saveResult(graph);
 
 	}
 

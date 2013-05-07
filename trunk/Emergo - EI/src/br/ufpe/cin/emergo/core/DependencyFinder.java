@@ -3,10 +3,12 @@ package br.ufpe.cin.emergo.core;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Range;
 import org.jgrapht.DirectedGraph;
 import org.jgrapht.graph.DirectedMultigraph;
@@ -22,6 +24,7 @@ import br.ufpe.cin.emergo.analysis.reachingdefs.LiftedReachingDefinitions;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
 import br.ufpe.cin.emergo.graph.transform.DependencyGraphBuilder;
+import br.ufpe.cin.emergo.handlers.CommandCompilationUnit;
 import br.ufpe.cin.emergo.handlers.GenerateEmergentInterfaceHandler;
 import br.ufpe.cin.emergo.instrument.EagerConfigTag;
 import br.ufpe.cin.emergo.instrument.FeatureInstrumentor;
@@ -108,11 +111,11 @@ public class DependencyFinder {
     		if(fileExt.equals("groovy")){
     			unitsInSelection = ASTNodeUnitBridgeGroovy.getUnitsFromLines(ASTNodeUnitBridgeGroovy.getLinesFromASTNodes(
     					(Set<org.codehaus.groovy.ast.ASTNode>) options.get("selectionNodes"), 
-                		GenerateEmergentInterfaceHandler.stmt), b);
+                		CommandCompilationUnit.stmt), b);
     			
     		} else {
-    			unitsInSelection = ASTNodeUnitBridge.getUnitsFromLines(ASTNodeUnitBridge.getLinesFromASTNodes(GenerateEmergentInterfaceHandler.selectionNodes, 
-                		GenerateEmergentInterfaceHandler.jdtCompilationUnit), b);
+    			unitsInSelection = ASTNodeUnitBridge.getUnitsFromLines(ASTNodeUnitBridge.getLinesFromASTNodes(CommandCompilationUnit.selectionNodes, 
+    					CommandCompilationUnit.jdtCompilationUnit), b);
     		}
     		
             
@@ -156,7 +159,11 @@ public class DependencyFinder {
     		 */
     		DependencyGraphBuilder builder = new DependencyGraphBuilder();
     		
-    		return builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps, options);
+    		DirectedGraph<DependencyNode,ValueContainerEdge<ConfigSet>> graph = builder.generateDependencyGraph(bodyGraph, liftedReachingDefinitions, unitsInSelection, selectionPosition, configReps, options);
+    		
+    		// pruning the graph
+    		
+			return graph;
     			
 		//#endif
 		} catch (Exception e) {
