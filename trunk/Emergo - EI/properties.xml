@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<TestSuite>
+	<!-- info about the project that will be tested by the Emergo -->
+	<project>
+		<name>Test-1.0</name>
+		<classpath>C:\\Users\\JEAN\\runtime-EclipseApplication\\Test-1.0\\src\\</classpath>
+		<fileExtension>groovy</fileExtension>
+		<selectionPosition>
+			<startLine>5</startLine>
+			<endLine>5</endLine>
+			<startColumn>3</startColumn>
+			<endColumn>15</endColumn>
+			<className>Test1</className>
+			<methodName>main</methodName>
+		</selectionPosition>
+		<selectionPosition>
+			<startLine>5</startLine>
+			<endLine>5</endLine>
+			<startColumn>3</startColumn>
+			<endColumn>12</endColumn>
+			<className>Test2</className>
+			<methodName>main</methodName>
+		</selectionPosition>
+		<selectionPosition>
+			<startLine>7</startLine>
+			<endLine>7</endLine>
+			<startColumn>3</startColumn>
+			<endColumn>12</endColumn>
+			<className>Test2</className>
+			<methodName>main</methodName>
+		</selectionPosition>
+		<selectionPosition>
+			<startLine>6</startLine>
+			<endLine>6</endLine>
+			<startColumn>3</startColumn>
+			<endColumn>12</endColumn>
+			<className>Test3</className>
+			<methodName>main</methodName>
+		</selectionPosition>
+		<selectionPosition>
+			<startLine>6</startLine>
+			<endLine>8</endLine>
+			<startColumn>3</startColumn>
+			<endColumn>13</endColumn>
+			<className>Test3</className>
+			<methodName>main</methodName>
+		</selectionPosition>
+		<selectionPosition>
+			<startLine>5</startLine>
+			<endLine>5</endLine>
+			<startColumn>4</startColumn>
+			<endColumn>12</endColumn>
+			<className>Soma</className>
+			<methodName>main</methodName>
+		</selectionPosition>
+	</project>
+</TestSuite>

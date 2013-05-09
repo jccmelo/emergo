@@ -1,0 +1,1 @@
+r2 = (java.lang.Integer) $r3 ==> $r10 = interfaceinvoke $r9.<org.codehaus.groovy.runtime.callsite.CallSite: java.lang.Object call(java.lang.Object,java.lang.Object)>("The value of a is ", r2)

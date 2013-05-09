@@ -1,5 +1,0 @@
-def y = 15; =B=> m(y);
-def y = 15; =A ^ B=> def z = y;
-def z = y; =A=> m(z);
-def z = y; =A=> soma = z + x;
-soma = z + x; ==> println soma

@@ -1,1 +1,0 @@
-def a = 0 =A=> def b = a

@@ -35,7 +35,6 @@ import br.ufpe.cin.emergo.core.ConfigSet;
 import br.ufpe.cin.emergo.graph.DependencyNode;
 import br.ufpe.cin.emergo.graph.DependencyNodeWrapper;
 import br.ufpe.cin.emergo.graph.ValueContainerEdge;
-import br.ufpe.cin.emergo.tests.GraphResult;
 import br.ufpe.cin.emergo.util.ResourceUtil;
 
 public class EmergoGraphView extends ViewPart {
@@ -100,7 +99,7 @@ public class EmergoGraphView extends ViewPart {
 	public void adaptTo(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
 		clearGraph();
 		printGraph(dependencyGraph);
-		GraphResult.saveResult(graph);
+//		GraphResult.saveResult(graph);
 	}
 
 	private void printGraph(DirectedGraph<DependencyNode, ValueContainerEdge<ConfigSet>> dependencyGraph) {
@@ -224,7 +223,7 @@ public class EmergoGraphView extends ViewPart {
 			
 			printGraph(dependencyGraph);
 		}
-		GraphResult.saveResult(graph);
+//		GraphResult.saveResult(graph);
 
 	}
 

@@ -1,4 +1,0 @@
-int w=5; =A=> int x = 10+w;
-int x = 10+w; =A=> soma = z + x;
-int x = 10+w; =A ^ SOMA=> int soma = x;
-soma = z + x; ==> println soma

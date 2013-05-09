@@ -1,0 +1,1 @@
+r3 = r2 ==> interfaceinvoke $r7.<org.codehaus.groovy.runtime.callsite.CallSite: java.lang.Object callStatic(java.lang.Class,java.lang.Object)>($r8, r3)

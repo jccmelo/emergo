@@ -184,7 +184,15 @@ public class DependencyFinder {
      */
     public static String retrieveClassName(String completeName) {
     	//Getting all parts of the path+classname+extension
-    	String[] parts = completeName.split("/");
+    	String separator = System.getProperty("file.separator");
+    	String[] parts = null;
+    	
+    	if (System.getProperty("os.name").contains("Windows")) {
+    		parts = completeName.split(separator+separator);
+		} else {
+			parts = completeName.split(separator);
+		}
+    	
     	//Getting the classname without extension as well as path
     	String className = parts[parts.length-1].split("\\.")[0];
     	
