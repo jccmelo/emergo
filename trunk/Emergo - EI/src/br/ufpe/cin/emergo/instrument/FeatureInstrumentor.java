@@ -1,6 +1,7 @@
 package br.ufpe.cin.emergo.instrument;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -30,10 +31,12 @@ public class FeatureInstrumentor extends BodyTransformer {
 	
 	protected FeatureSetChecker fmChecker;
 	
+	private Map options = new HashMap();
+	
 	// TODO: implement reset method for the singleton instance.
 	
-	public FeatureInstrumentor(){
-		
+	public FeatureInstrumentor(Map options){
+		this.options = options;
 	}
 	
 	/**
@@ -78,12 +81,23 @@ public class FeatureInstrumentor extends BodyTransformer {
 		int idGen = 1;
 		while (unitIt.hasNext()) {
 			Unit nextUnit = unitIt.next();
-			LineNumberTag lineTag = (LineNumberTag) nextUnit.getTag("LineNumberTag"); //SourceLnPosTag
+			Object lineTag = (LineNumberTag) nextUnit.getTag("LineNumberTag"); //SourceLnPosTag
+			
+			String fileExt = (String) this.options.get("fileExtension");
+			if(fileExt.equals("java")){
+				lineTag = (SourceLnPosTag) nextUnit.getTag("SourceLnPosTag");
+			}
 			
 			if (lineTag == null) {
 				nextUnit.addTag(emptyFeatureTag);
 			} else {
-				int unitLine = lineTag.getLineNumber(); // lineTag.startLn();
+				int unitLine;
+				if(fileExt.equals("java")){
+					unitLine = ((SourceLnPosTag)lineTag).startLn();
+				} else {
+					unitLine = ((LineNumberTag)lineTag).getLineNumber();
+				}
+//				int unitLine = lineTag.getLineNumber(); // lineTag.startLn();
 				Set<String> nextUnitFeatures = (Set<String>) ContextManager.getContext().getMap().get(unitLine);
 //				Set<String> nextUnitFeatures = currentColorMap.get(unitLine);
 				

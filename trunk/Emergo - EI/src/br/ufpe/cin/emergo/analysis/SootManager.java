@@ -41,6 +41,7 @@ public class SootManager {
 	public static SootClass loadAndSupport(String className) {
 		SootClass sootClass = Scene.v().loadClassAndSupport(className);
 		sootClass.setApplicationClass();
+		Scene.v().loadNecessaryClasses();
 		return sootClass;
 	}
 

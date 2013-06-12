@@ -132,7 +132,7 @@ public class DependencyFinder {
     		/**
     		 * Instruments bytecode of the output class
     		 */
-    		new FeatureInstrumentor().transform(b);
+    		new FeatureInstrumentor(options).transform(b);
     		
     		/**
     		 * Builds the CFG and runs the analysis
