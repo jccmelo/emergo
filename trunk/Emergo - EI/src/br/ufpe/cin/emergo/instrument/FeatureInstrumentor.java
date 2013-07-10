@@ -34,6 +34,9 @@ public class FeatureInstrumentor extends BodyTransformer {
 	private Map options = new HashMap();
 	
 	// TODO: implement reset method for the singleton instance.
+	public FeatureInstrumentor(){
+		
+	}
 	
 	public FeatureInstrumentor(Map options){
 		this.options = options;

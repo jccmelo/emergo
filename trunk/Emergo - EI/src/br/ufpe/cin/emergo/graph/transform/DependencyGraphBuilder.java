@@ -11,11 +11,15 @@ import org.jgrapht.DirectedGraph;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DirectedMultigraph;
 
-import soot.Local;
+import soot.PrimType;
+import soot.RefType;
 import soot.Unit;
+import soot.Value;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.internal.JAssignStmt;
 import soot.jimple.internal.JInvokeStmt;
+import soot.jimple.internal.JVirtualInvokeExpr;
+import soot.jimple.internal.JimpleLocal;
 import soot.toolkits.graph.UnitGraph;
 import soot.toolkits.scalar.FlowSet;
 import soot.toolkits.scalar.ForwardFlowAnalysis;
@@ -31,7 +35,7 @@ import br.ufpe.cin.emergo.util.ASTNodeUnitBridgeGroovy;
 
 public class DependencyGraphBuilder {
 	
-	private List<DependencyNode> defs = new ArrayList<DependencyNode>();
+	private List<DependencyNode> selectionNodes = new ArrayList<DependencyNode>();
 	private static boolean featureDependence = false;
 
 	/**
@@ -56,7 +60,7 @@ public class DependencyGraphBuilder {
 				(Class<? extends ValueContainerEdge<ConfigSet>>) ValueContainerEdge.class);
 
 		// List of nodes to be visited
-		List<DependencyNode> visitedNodes = new ArrayList<DependencyNode>();
+		List<DependencyNode> createdNodes = new ArrayList<DependencyNode>();
 		
 		// Iterate over the results
 		Iterator i = cfg.iterator();
@@ -70,11 +74,18 @@ public class DependencyGraphBuilder {
 			DependencyNode node;
 			
 			if (u instanceof DefinitionStmt) {
-//				DefinitionStmt definition = (DefinitionStmt) u;
-//				Local leftOp = (Local) definition.getLeftOp();
-//				// exclude definitions when it's $temp on the leftOp.
-//				if (leftOp.getName().contains("$")) {
-//					continue;
+				
+//				if (u instanceof JAssignStmt) {
+//					JAssignStmt stmt = (JAssignStmt) u;
+//					Value leftOp = stmt.getLeftOp();
+//					Value rightOp = stmt.getRightOp();
+//					
+//					// exclude definitions when it's $temp on the leftOp.
+//					if (leftOp.toString().contains("$") && rightOp instanceof JVirtualInvokeExpr) {
+//						
+//						JVirtualInvokeExpr expr = (JVirtualInvokeExpr) rightOp;
+//						System.out.println(expr.toString());
+//					}
 //				}
 				
 				FeatureTag tag = (FeatureTag) u.getTag("FeatureTag");
@@ -82,7 +93,7 @@ public class DependencyGraphBuilder {
 				for (IConfigRep confRep : configReps) {
 					if(tag.getFeatureRep().belongsToConfiguration(confRep)) {
 						node = createNode(unitsInSelection, selectionPosition, confRep, tag.getFeatureRep(), u);
-						visitedNodes.add(node);
+						createdNodes.add(node);
 						break;
 					}
 				}
@@ -93,46 +104,86 @@ public class DependencyGraphBuilder {
 				for (IConfigRep confRep : configReps) {
 					if(tag.getFeatureRep().belongsToConfiguration(confRep)) {
 						node = createNode(unitsInSelection, selectionPosition, confRep, tag.getFeatureRep(), u);
-						visitedNodes.add(node);
+						createdNodes.add(node);
 						break;
 					}
 				}
 			}
 		} // end while
 		
-		while (!defs.isEmpty()) {
-			DependencyNode currentNode = defs.get(0);
-			// Now, currentNode is def
-			// Gets all uses for this def
-			List<DependencyNode> uses = getUse(visitedNodes, currentNode);
+		// To avoid infinite loop
+		List<DependencyNode> visitedNodes = new ArrayList<DependencyNode>();
+		
+		while (!selectionNodes.isEmpty()) {
+			DependencyNode currentNode = selectionNodes.get(0);
 			
-			//To avoid duplicate edges
-			for (int k = 0; k < uses.size(); k++) {
-				for (int l = k+1; l < uses.size(); l++) {
-					if(uses.get(k).getPosition().getStartLine() == uses.get(l).getPosition().getStartLine()){
-						uses.remove(l--);
+			if (isDef(currentNode)) {
+				// Now, currentNode is def
+				// Gets all uses for this def
+				List<DependencyNode> uses = getUse(createdNodes, currentNode);
+				
+				//To avoid duplicate edges
+				removeDuplicate(uses);
+				
+				//For supporting transitivity property..
+				for (int j = 0; j < uses.size(); j++) {
+					if (isDef(uses.get(j)) && !selectionNodes.contains(uses.get(j))) {
+						selectionNodes.add(uses.get(j));
+					}
+				}
+
+				// for each use found.. creates one directed edge (def -> use)
+				for (DependencyNode use : uses) {
+					connectVertices(dependencyGraph, use, currentNode);
+				}
+				
+				if (isDefWithUse(currentNode)) {
+					List<DependencyNode> defs = getDefsFromAssignment(createdNodes, currentNode);
+					
+					for (DependencyNode def : defs) {
+						if(isDefWithUse(def) && !selectionNodes.contains(def) && 
+							 	!visitedNodes.contains(def) && 
+							 	def.getPosition().getStartLine() != currentNode.getPosition().getStartLine()) {
+							
+							selectionNodes.add(def);
+							connectVertices(dependencyGraph, currentNode, def);
+						}
+					}
+				}
+				
+			} else {
+				List<DependencyNode> defs = getDefs(createdNodes, currentNode);
+				
+				removeDuplicate(defs);
+				
+				for (DependencyNode def : defs) {
+					if (!visitedNodes.contains(def) &&
+							def.getPosition() != currentNode.getPosition()) {
+						
+						connectVertices(dependencyGraph, currentNode, def);
 					}
 				}
 			}
-			//For supporting transitivity property..
-			for (int j = 0; j < uses.size(); j++) {
-				if (isDef(uses.get(j))) {
-					defs.add(uses.get(j));
-				}
-			}
 			
-			defs.remove(0);
-
-			// for each use found.. creates one directed edge (def -> use)
-			for (DependencyNode use : uses) {
-				connectVertices(dependencyGraph, use, currentNode);
-			}
-			
+			visitedNodes.add(currentNode);
+			selectionNodes.remove(0);
 		}
-		
-		
 
 		return dependencyGraph;
+	}
+
+	/**
+	 * This method is responsible by avoiding duplicate edges.
+	 * @param nodeList
+	 */
+	private void removeDuplicate(List<DependencyNode> nodeList) {
+		for (int k = 0; k < nodeList.size(); k++) {
+			for (int l = k+1; l < nodeList.size(); l++) {
+				if(nodeList.get(k).getPosition().getStartLine() == nodeList.get(l).getPosition().getStartLine()){
+					nodeList.remove(l--);
+				}
+			}
+		}
 	}
 
 	private DependencyNode createNode(Collection<Unit> unitsInSelection,
@@ -157,11 +208,11 @@ public class DependencyGraphBuilder {
 		if (unitsInSelection.contains(u)) {
 			
 			node = new DependencyNodeWrapper<Unit>(u, true,	pos, configRep, featureRep);
+			selectionNodes.add(node);
 
-			if (isDef(node)) {
-				defs.add(node);
-//				System.out.println("Invalid selection..");
-			}
+//			if (isDef(node)) {
+//				selectionNodes.add(node);
+//			}
 		} else { // otherwise..
 			node = new DependencyNodeWrapper<Unit>(u, false, pos, configRep, featureRep);
 		}
@@ -203,6 +254,72 @@ public class DependencyGraphBuilder {
 
 		return uses;
 	}
+	
+	private List<DependencyNode> getDefs(List<DependencyNode> nodes,
+			DependencyNode currentNode) {
+		List<DependencyNode> defs = new ArrayList<DependencyNode>();
+
+		Unit unit = ((DependencyNodeWrapper<Unit>) currentNode).getData();
+	    JInvokeStmt useStmt = (JInvokeStmt) unit;
+		
+		for (Iterator it = nodes.iterator(); it.hasNext();) {
+			DependencyNode defCandidateNode = (DependencyNode) it.next();
+
+			Unit u = ((DependencyNodeWrapper<Unit>) defCandidateNode).getData();
+			
+			if (u instanceof JAssignStmt) {
+				JAssignStmt defStmt = (JAssignStmt) u;
+				
+				List useBoxes = useStmt.getUseBoxes();
+				for (Object use : useBoxes) {
+					if (use.toString().contains(defStmt.getLeftOp().toString())) {
+						defs.add(defCandidateNode);
+					}
+				}
+			}
+		}
+
+		return defs;
+	}
+	
+	private List<DependencyNode> getDefsFromAssignment(
+			List<DependencyNode> visitedNodes, DependencyNode currentNode) {
+		List<DependencyNode> defs = new ArrayList<DependencyNode>();
+
+		Unit unit = ((DependencyNodeWrapper<Unit>) currentNode).getData();
+	    
+	    if (unit instanceof JAssignStmt) {
+			JAssignStmt stmt = (JAssignStmt) unit;
+			
+			Value useExpr = stmt.getRightOp();
+		
+			for (Iterator it = visitedNodes.iterator(); it.hasNext();) {
+				DependencyNode defCandidateNode = (DependencyNode) it.next();
+
+				Unit u = ((DependencyNodeWrapper<Unit>) defCandidateNode).getData();
+
+				if (u instanceof JAssignStmt) {
+					JAssignStmt defStmt = (JAssignStmt) u;
+
+					if (useExpr.getUseBoxes().isEmpty()) {
+						if (useExpr.toString().contains(defStmt.getLeftOp().toString())) {
+							defs.add(defCandidateNode);
+						}
+					} else {
+						List useBoxes = useExpr.getUseBoxes();
+						for (Object use : useBoxes) {
+							if (use.toString().contains(defStmt.getLeftOp().toString())) {
+								defs.add(defCandidateNode);
+							}
+						}
+					}
+					
+				}
+			}
+		}
+
+		return defs;
+	}
 
 	private boolean isDef(DependencyNode dependencyNode) {
 
@@ -213,6 +330,38 @@ public class DependencyGraphBuilder {
 
 			if (stmt.getLeftOp() != null && stmt.getRightOp() != null) { 
 				return true;
+			} else {
+				return false;
+			}
+		}
+		return false;
+	}
+	
+	private boolean isDefWithUse(DependencyNode dependencyNode) {
+
+		Unit u = ((DependencyNodeWrapper<Unit>) dependencyNode).getData();
+
+		if (u instanceof JAssignStmt) {
+			JAssignStmt stmt = (JAssignStmt) u;
+			
+			if (stmt.getLeftOp() != null && stmt.getRightOp() != null) { 
+				if(stmt.getRightOp() instanceof JVirtualInvokeExpr || 
+						(stmt.getRightOp() instanceof JimpleLocal && 
+								(stmt.getRightOp().getType() instanceof PrimType || stmt.getRightOp().getType() instanceof RefType))){
+					return true;
+				} 
+//				else if (stmt.getRightOp() instanceof AbstractJimpleFloatBinopExpr) {
+//					String rightOp = stmt.getRightOp().toString();
+//					
+//					String regex = "\\w+";
+//					
+//					String[] parts = rightOp.split(" ");
+//					for (int i = 0; i < parts.length; i++) {
+//						if (!parts[i].contains("$") && parts[i].matches(regex)) {
+//							return true;
+//						}
+//					}
+//				}
 			} else {
 				return false;
 			}
